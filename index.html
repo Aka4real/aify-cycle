@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AifyCycle - An intelligent, modern, and beautifully designed menstrual cycle and holistic wellness tracker dedicated to Agatha & Aify.">
+  <title>AifyCycle • Period & Holistic Health Tracker</title>
+
+  <!-- Google Fonts: Outfit & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Core Stylesheet -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="brand-wrapper">
+        <div class="brand-icon" aria-hidden="true">🌸</div>
+        <div class="brand-text">
+          <h1>AifyCycle</h1>
+          <span class="brand-tagline">Dedicated to Agatha &amp; Aify • Personal Wellness</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <span id="user-greeting" style="font-size: 0.88rem; font-weight: 600; color: var(--text-secondary); margin-right: 0.5rem;">Hello, Agatha ✨</span>
+        
+        <button id="btn-quick-log" class="btn-quick-log" title="Log today's symptoms">
+          <span>📝</span>
+          <span>Log Today</span>
+        </button>
+
+        <button id="btn-theme-toggle" class="btn-icon" title="Toggle Theme" aria-label="Toggle Theme">
+          <span id="theme-toggle-icon">☀️</span>
+        </button>
+
+        <button id="btn-open-settings" class="btn-icon" title="Cycle &amp; App Settings" aria-label="Settings">
+          <span>⚙️</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tab-bar" aria-label="Main Navigation">
+      <button class="nav-tab active" data-tab="dial">
+        <span>🔄</span>
+        <span class="tab-text">Cycle Dial</span>
+      </button>
+      <button class="nav-tab" data-tab="calendar">
+        <span>📅</span>
+        <span class="tab-text">Calendar</span>
+      </button>
+      <button class="nav-tab" data-tab="syncing">
+        <span>🌿</span>
+        <span class="tab-text">Cycle Syncing</span>
+      </button>
+      <button class="nav-tab" data-tab="analytics">
+        <span>📊</span>
+        <span class="tab-text">Insights</span>
+      </button>
+    </nav>
+
+    <!-- ===================================================================
+         VIEW 1: CYCLE DIAL & DAILY HERO
+         =================================================================== -->
+    <main id="view-dial" class="view-panel active">
+      <div class="hero-cycle-grid">
+        
+        <!-- Left: Cycle Dial Card -->
+        <section class="cycle-dial-card">
+          <div class="dial-container">
+            <svg class="dial-svg" viewBox="0 0 280 280">
+              <defs>
+                <linearGradient id="dial-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#FF6B8B" />
+                  <stop offset="50%" stop-color="#D65DB1" />
+                  <stop offset="100%" stop-color="#845EC2" />
+                </linearGradient>
+              </defs>
+              <!-- Background Track -->
+              <circle class="dial-track" cx="140" cy="140" r="120" />
+              <!-- Progress Ring -->
+              <circle id="dial-progress" class="dial-progress" cx="140" cy="140" r="120" />
+            </svg>
+
+            <!-- Center Phase Information -->
+            <div class="dial-phase-indicator">
+              <span class="dial-day-badge">CURRENT CYCLE</span>
+              <div style="display: flex; align-items: baseline; gap: 0.2rem;">
+                <span id="dial-day-number" class="dial-day-number">14</span>
+                <span id="dial-total-days" class="dial-total-days">/ 28 days</span>
+              </div>
+              <h2 id="dial-phase-title" class="dial-phase-title">✨ Ovulatory Phase</h2>
+              <span id="dial-fertility-badge" class="dial-fertility-badge fertility-peak">Fertility: Peak</span>
+            </div>
+          </div>
+
+          <!-- Bottom Stats -->
+          <div class="dial-footer-stats">
+            <div class="stat-item">
+              <span id="stat-days-next-period" class="stat-value">15 days</span>
+              <span class="stat-label">Next Period In</span>
+            </div>
+            <div class="stat-item">
+              <span id="stat-period-start-date" class="stat-value">Sep 27</span>
+              <span class="stat-label">Predicted Start</span>
+            </div>
+            <div class="stat-item">
+              <span id="stat-ovulation-date" class="stat-value">Today</span>
+              <span class="stat-label">Ovulation</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Right: Side Insights & Quick Actions -->
+        <aside class="hero-side-cards">
+          
+          <!-- Today's Energy Card -->
+          <div class="today-summary-card">
+            <div class="card-header-flex">
+              <h3 class="card-title"><span>🌟</span> Today's Body Insight</h3>
+              <span class="phase-pill-indicator" style="background: rgba(255,150,113,0.18); color: var(--color-coral);">Peak Vitality</span>
+            </div>
+            <p id="hero-phase-desc" style="font-size: 0.92rem; color: var(--text-secondary); line-height: 1.55;">
+              Estrogen peaks and your body is at its highest energetic stamina. Ideal for bold communications, strength training, and radiant confidence.
+            </p>
+          </div>
+
+          <!-- Aify's Care Note Card -->
+          <div class="partner-care-card">
+            <div class="card-header-flex">
+              <h3 class="card-title"><span>💌</span> Aify’s Care Note for Agatha</h3>
+              <span class="partner-badge">Partner Sync</span>
+            </div>
+            <p id="hero-partner-care-note" class="care-note-quote">
+              "Agatha's glow and charisma are at peak bloom today! Compliment her shine, plan a fun romantic dinner, and celebrate her magnetic energy."
+            </p>
+          </div>
+
+          <!-- Quick Action Buttons -->
+          <div class="quick-actions-card">
+            <h3 class="card-title" style="margin-bottom: 0.4rem;"><span>⚡</span> Quick Logging</h3>
+            <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.75rem;">Keep your predictions accurate with one tap.</p>
+            <div class="quick-action-row">
+              <button id="btn-period-start-today" class="btn-secondary" title="Mark period started today">
+                <span>🩸</span>
+                <span>Period Started</span>
+              </button>
+              <button onclick="document.getElementById('btn-quick-log').click()" class="btn-primary" title="Open logger modal">
+                <span>✨</span>
+                <span>Log Symptoms</span>
+              </button>
+            </div>
+          </div>
+
+        </aside>
+
+      </div>
+    </main>
+
+    <!-- ===================================================================
+         VIEW 2: INTERACTIVE CALENDAR
+         =================================================================== -->
+    <section id="view-calendar" class="view-panel">
+      <div class="calendar-card">
+        <div class="calendar-header">
+          <div class="calendar-title-group">
+            <h2 id="calendar-month-year">September 2026</h2>
+            <span class="calendar-subtitle">Click on any date to log symptoms or inspect past flow</span>
+          </div>
+
+          <div class="calendar-nav-buttons">
+            <button id="btn-cal-prev" class="btn-icon" title="Previous Month" aria-label="Previous Month">◀</button>
+            <button id="btn-cal-today" class="btn-secondary" style="padding: 0.45rem 0.9rem; font-size: 0.8rem;">Today</button>
+            <button id="btn-cal-next" class="btn-icon" title="Next Month" aria-label="Next Month">▶</button>
+          </div>
+        </div>
+
+        <!-- Weekday Labels -->
+        <div class="calendar-grid" style="margin-bottom: 0.5rem;">
+          <div class="calendar-weekday">Sun</div>
+          <div class="calendar-weekday">Mon</div>
+          <div class="calendar-weekday">Tue</div>
+          <div class="calendar-weekday">Wed</div>
+          <div class="calendar-weekday">Thu</div>
+          <div class="calendar-weekday">Fri</div>
+          <div class="calendar-weekday">Sat</div>
+        </div>
+
+        <!-- Days Grid -->
+        <div id="calendar-days-grid" class="calendar-grid">
+          <!-- Populated by JavaScript -->
+        </div>
+
+        <!-- Legend -->
+        <div class="calendar-legend">
+          <div class="legend-item">
+            <span class="legend-color-box" style="background: var(--color-rose);"></span>
+            <span>Period Days</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-color-box" style="background: repeating-linear-gradient(45deg, rgba(255,107,139,0.3) 0px, rgba(255,107,139,0.3) 3px, transparent 3px, transparent 6px);"></span>
+            <span>Predicted Period</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-color-box" style="background: var(--color-gold);"></span>
+            <span>Ovulation Peak</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-color-box" style="background: rgba(255,142,83,0.3); border: 1px solid var(--color-coral);"></span>
+            <span>Fertile Window</span>
+          </div>
+          <div class="legend-item">
+            <span class="badge-symptom-dot" style="display:inline-block;"></span>
+            <span>Symptoms / Notes Logged</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         VIEW 3: CYCLE SYNCING & WELLNESS INSIGHTS
+         =================================================================== -->
+    <section id="view-syncing" class="view-panel">
+      <!-- Syncing Hero Banner -->
+      <div class="syncing-hero">
+        <div class="syncing-hero-content">
+          <span style="font-size: 0.8rem; font-weight: 700; color: var(--color-rose); letter-spacing: 0.08em; text-transform: uppercase;">Holistic Bio-Rhythm Guide</span>
+          <h2 id="sync-phase-title">✨ Ovulatory Phase (Summer Season)</h2>
+          <p id="sync-phase-tagline">Align your nutrition, workouts, and self-care with your body's natural hormones.</p>
+        </div>
+      </div>
+
+      <!-- Syncing 4 Pillars Grid -->
+      <div class="syncing-grid">
+        <!-- Nutrition Card -->
+        <div class="sync-card">
+          <div class="sync-card-icon" style="background: rgba(0, 201, 167, 0.15); color: var(--color-teal);">🥗</div>
+          <h3>Nutrition &amp; Fuel</h3>
+          <ul id="sync-nutrition-list" class="sync-list">
+            <!-- Populated by JS -->
+          </ul>
+        </div>
+
+        <!-- Workouts & Movement Card -->
+        <div class="sync-card">
+          <div class="sync-card-icon" style="background: rgba(255, 107, 139, 0.15); color: var(--color-rose);">🏃‍♀️</div>
+          <h3>Fitness &amp; Movement</h3>
+          <ul id="sync-workout-list" class="sync-list">
+            <!-- Populated by JS -->
+          </ul>
+        </div>
+
+        <!-- Mindset & Focus Card -->
+        <div class="sync-card">
+          <div class="sync-card-icon" style="background: rgba(132, 94, 194, 0.15); color: var(--color-fuchsia);">🧠</div>
+          <h3>Mind, Mood &amp; Focus</h3>
+          <ul id="sync-mindset-list" class="sync-list">
+            <!-- Populated by JS -->
+          </ul>
+        </div>
+
+        <!-- Partner Support Card -->
+        <div class="sync-card" style="border-color: var(--border-accent); background: linear-gradient(145deg, rgba(255, 107, 139, 0.08), rgba(132, 94, 194, 0.06));">
+          <div class="sync-card-icon" style="background: rgba(255, 199, 95, 0.18); color: var(--color-gold);">💖</div>
+          <h3>Aify's Care Tip</h3>
+          <p id="sync-partner-tip" style="font-size: 0.92rem; color: var(--text-primary); line-height: 1.6; font-style: italic;">
+            <!-- Populated by JS -->
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         VIEW 4: INSIGHTS & ANALYTICS
+         =================================================================== -->
+    <section id="view-analytics" class="view-panel">
+      <div class="analytics-metrics-grid">
+        <div class="metric-card">
+          <div class="metric-icon" style="background: rgba(255, 107, 139, 0.15); color: var(--color-rose);">🔄</div>
+          <div class="metric-info">
+            <div id="metric-avg-cycle" class="metric-num">28d</div>
+            <div class="metric-label">Average Cycle Length</div>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-icon" style="background: rgba(132, 94, 194, 0.15); color: var(--color-purple);">🩸</div>
+          <div class="metric-info">
+            <div id="metric-avg-period" class="metric-num">5d</div>
+            <div class="metric-label">Average Period Duration</div>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-icon" style="background: rgba(0, 201, 167, 0.15); color: var(--color-teal);">📝</div>
+          <div class="metric-info">
+            <div id="metric-total-logged" class="metric-num">12</div>
+            <div class="metric-label">Total Days Logged</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="history-card">
+        <h3>Recent Cycle &amp; Symptom Timeline</h3>
+        <div id="cycle-timeline-list" class="cycle-timeline-list">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ===================================================================
+       MODAL: DAILY SYMPTOM & MOOD LOGGER
+       =================================================================== -->
+  <div id="logger-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-logger-title">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modal-logger-title">Daily Wellness &amp; Symptom Log</h2>
+        <button class="btn-close-modal" aria-label="Close modal">&times;</button>
+      </div>
+
+      <!-- Date selector -->
+      <div class="form-section">
+        <label for="log-date-input" class="form-label">Log Date</label>
+        <input type="date" id="log-date-input" class="form-input" style="max-width: 220px;">
+      </div>
+
+      <!-- Menstrual Flow -->
+      <div class="form-section">
+        <span class="form-label">Menstrual Flow</span>
+        <div class="chips-grid">
+          <button type="button" class="chip-select flow-chip" data-value="none">None</button>
+          <button type="button" class="chip-select flow-chip" data-value="spotting">🌸 Spotting</button>
+          <button type="button" class="chip-select flow-chip" data-value="light">💧 Light</button>
+          <button type="button" class="chip-select flow-chip" data-value="medium">🩸 Medium</button>
+          <button type="button" class="chip-select flow-chip" data-value="heavy">🌊 Heavy</button>
+        </div>
+      </div>
+
+      <!-- Physical Symptoms -->
+      <div class="form-section">
+        <span class="form-label">Physical Symptoms</span>
+        <div class="chips-grid">
+          <button type="button" class="chip-select symptom-chip" data-value="Cramps">⚡ Cramps</button>
+          <button type="button" class="chip-select symptom-chip" data-value="Tender Breasts">🌸 Tender Breasts</button>
+          <button type="button" class="chip-select symptom-chip" data-value="Headache">💆 Headache</button>
+          <button type="button" class="chip-select symptom-chip" data-value="Bloating">🎈 Bloating</button>
+          <button type="button" class="chip-select symptom-chip" data-value="Acne">✨ Acne / Breakouts</button>
+          <button type="button" class="chip-select symptom-chip" data-value="Lower Back Pain">🦴 Lower Back Pain</button>
+          <button type="button" class="chip-select symptom-chip" data-value="Fatigue">😴 Fatigue</button>
+          <button type="button" class="chip-select symptom-chip" data-value="Nausea">🍃 Nausea</button>
+        </div>
+      </div>
+
+      <!-- Mood & Emotions -->
+      <div class="form-section">
+        <span class="form-label">Mood &amp; Energy</span>
+        <div class="chips-grid">
+          <button type="button" class="chip-select mood-chip" data-value="Calm">🕊️ Calm</button>
+          <button type="button" class="chip-select mood-chip" data-value="Happy">☀️ Happy</button>
+          <button type="button" class="chip-select mood-chip" data-value="High Energy">⚡ High Energy</button>
+          <button type="button" class="chip-select mood-chip" data-value="Romantic">💖 Romantic</button>
+          <button type="button" class="chip-select mood-chip" data-value="Sensitive">🥺 Sensitive</button>
+          <button type="button" class="chip-select mood-chip" data-value="Anxious">🌪️ Anxious</button>
+          <button type="button" class="chip-select mood-chip" data-value="Irritable">🔥 Irritable</button>
+          <button type="button" class="chip-select mood-chip" data-value="Low Energy">🔋 Low Energy</button>
+        </div>
+      </div>
+
+      <!-- Water & Hydration -->
+      <div class="form-section">
+        <span class="form-label">Water Intake</span>
+        <div class="stepper-control">
+          <button type="button" id="btn-water-minus" class="btn-stepper" aria-label="Decrease water">−</button>
+          <span id="log-water-val" class="stepper-value">8 glasses</span>
+          <button type="button" id="btn-water-plus" class="btn-stepper" aria-label="Increase water">+</button>
+        </div>
+      </div>
+
+      <!-- Sleep Hours -->
+      <div class="form-section">
+        <span class="form-label">Sleep Hours</span>
+        <div class="range-container">
+          <input type="range" id="log-sleep-slider" class="range-slider" min="4" max="12" step="0.5" value="8">
+          <span id="log-sleep-val" class="range-value">8h</span>
+        </div>
+      </div>
+
+      <!-- Journal Notes -->
+      <div class="form-section">
+        <label for="log-notes" class="form-label">Notes &amp; Journal</label>
+        <textarea id="log-notes" class="form-textarea" placeholder="How did you feel today? Any special moments with Aify or body observations?"></textarea>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="modal-footer-actions">
+        <button type="button" class="btn-secondary btn-modal-cancel">Cancel</button>
+        <button type="button" id="btn-save-log" class="btn-primary">Save Entry</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       MODAL: SETTINGS & BACKUP
+       =================================================================== -->
+  <div id="settings-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-settings-title">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modal-settings-title">Profile &amp; Cycle Configuration</h2>
+        <button class="btn-close-modal" aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="form-section">
+        <label for="setting-username" class="form-label">Your Name</label>
+        <input type="text" id="setting-username" class="form-input" value="Agatha">
+      </div>
+
+      <div class="form-section">
+        <label for="setting-partnername" class="form-label">Partner's Name</label>
+        <input type="text" id="setting-partnername" class="form-input" value="Aify">
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-section">
+          <label for="setting-cyclelength" class="form-label">Average Cycle Length (Days)</label>
+          <input type="number" id="setting-cyclelength" class="form-input" min="20" max="45" value="28">
+        </div>
+        <div class="form-section">
+          <label for="setting-periodlength" class="form-label">Average Period (Days)</label>
+          <input type="number" id="setting-periodlength" class="form-input" min="2" max="10" value="5">
+        </div>
+      </div>
+
+      <div class="form-section">
+        <label for="setting-lastperiod" class="form-label">Last Period Start Date</label>
+        <input type="date" id="setting-lastperiod" class="form-input">
+      </div>
+
+      <div class="form-section" style="border-top: 1px solid var(--border-subtle); padding-top: 1.25rem;">
+        <span class="form-label">Data Privacy &amp; Management</span>
+        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+          <button type="button" id="btn-export-data" class="btn-secondary">
+            <span>📥</span>
+            <span>Export Backup (JSON)</span>
+          </button>
+          <button type="button" id="btn-reset-data" class="btn-secondary" style="color: var(--color-rose);">
+            <span>🔄</span>
+            <span>Reset Demo Data</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-footer-actions">
+        <button type="button" class="btn-secondary btn-modal-cancel">Cancel</button>
+        <button type="button" id="btn-save-settings" class="btn-primary">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Scripts (ES Modules) -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

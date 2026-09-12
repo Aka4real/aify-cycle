@@ -1,0 +1,1275 @@
+/* ===================================================================
+   AifyCycle - Modern Health & Period Tracker Design System
+   Dedicated to Agatha & Aify
+   Aesthetics: Sleek Velvet Dark Mode, Rose Quartz, Glassmorphism, Micro-Animations
+   =================================================================== */
+
+:root {
+  /* Core Color Palette - Velvet & Rose Quartz */
+  --bg-primary: #0F0814;
+  --bg-secondary: #170E1F;
+  --bg-tertiary: #23162F;
+  --surface-card: rgba(35, 22, 47, 0.7);
+  --surface-card-hover: rgba(48, 30, 64, 0.85);
+  --surface-glass: rgba(255, 255, 255, 0.04);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-accent: rgba(255, 107, 139, 0.3);
+
+  /* Typography Colors */
+  --text-primary: #FFFFFF;
+  --text-secondary: #B9A8C7;
+  --text-muted: #7E6B8E;
+  --text-inverse: #0F0814;
+
+  /* Accent & Phase Colors */
+  --color-rose: #FF6B8B;
+  --color-coral: #FF8E53;
+  --color-purple: #845EC2;
+  --color-fuchsia: #D65DB1;
+  --color-gold: #FFC75F;
+  --color-teal: #00C9A7;
+  --color-blue: #2C73D2;
+
+  /* Gradients */
+  --grad-primary: linear-gradient(135deg, #FF6B8B 0%, #D65DB1 50%, #845EC2 100%);
+  --grad-rose: linear-gradient(135deg, #FF6B8B 0%, #FF8E53 100%);
+  --grad-purple: linear-gradient(135deg, #845EC2 0%, #D65DB1 100%);
+  --grad-gold: linear-gradient(135deg, #FF9671 0%, #FFC75F 100%);
+  --grad-teal: linear-gradient(135deg, #00C9A7 0%, #008E9B 100%);
+  --grad-dark-card: linear-gradient(145deg, rgba(35, 22, 47, 0.8), rgba(20, 11, 28, 0.9));
+
+  /* Shadows & Glows */
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.5);
+  --glow-rose: 0 0 30px rgba(255, 107, 139, 0.35);
+  --glow-purple: 0 0 30px rgba(132, 94, 194, 0.35);
+  --glow-gold: 0 0 30px rgba(255, 199, 95, 0.35);
+
+  /* Layout & Geometry */
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-full: 9999px;
+  --max-width: 1180px;
+  --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Light Theme Variables */
+[data-theme="light"] {
+  --bg-primary: #FAF5F8;
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #F3E8EE;
+  --surface-card: rgba(255, 255, 255, 0.85);
+  --surface-card-hover: rgba(255, 255, 255, 0.98);
+  --surface-glass: rgba(255, 255, 255, 0.6);
+  --border-subtle: rgba(136, 14, 79, 0.08);
+  --border-accent: rgba(255, 107, 139, 0.4);
+
+  --text-primary: #281223;
+  --text-secondary: #6B4E63;
+  --text-muted: #9E8195;
+  --text-inverse: #FFFFFF;
+
+  --shadow-sm: 0 4px 14px rgba(136, 14, 79, 0.06);
+  --shadow-md: 0 10px 30px rgba(136, 14, 79, 0.09);
+  --shadow-lg: 0 20px 45px rgba(136, 14, 79, 0.12);
+  --glow-rose: 0 0 25px rgba(255, 107, 139, 0.25);
+  --glow-purple: 0 0 25px rgba(132, 94, 194, 0.2);
+  --glow-gold: 0 0 25px rgba(255, 199, 95, 0.25);
+}
+
+/* Reset & Base Setup */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  min-height: 100vh;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+  overflow-x: hidden;
+  transition: background-color var(--transition-smooth), color var(--transition-smooth);
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: -15vw;
+  right: -10vw;
+  width: 50vw;
+  height: 50vw;
+  background: radial-gradient(circle, rgba(255, 107, 139, 0.12) 0%, rgba(132, 94, 194, 0.05) 50%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  bottom: -20vw;
+  left: -10vw;
+  width: 55vw;
+  height: 55vw;
+  background: radial-gradient(circle, rgba(132, 94, 194, 0.12) 0%, rgba(0, 201, 167, 0.04) 50%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Layout Framework */
+.app-container {
+  position: relative;
+  z-index: 1;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 5rem;
+}
+
+/* ===================================================================
+   Header & Brand Monogram
+   =================================================================== */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  background: var(--surface-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  margin-bottom: 2rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.brand-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.brand-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--grad-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  color: #FFFFFF;
+  box-shadow: var(--glow-rose);
+  flex-shrink: 0;
+}
+
+.brand-text h1 {
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: var(--grad-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.brand-text .brand-tagline {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 400;
+  display: block;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+/* Icon Buttons */
+.btn-icon {
+  background: var(--surface-glass);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-size: 1.1rem;
+}
+
+.btn-icon:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  border-color: var(--border-accent);
+  transform: translateY(-2px);
+}
+
+.btn-quick-log {
+  background: var(--grad-primary);
+  color: #FFFFFF;
+  border: none;
+  border-radius: var(--radius-full);
+  padding: 0.55rem 1.1rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  box-shadow: var(--glow-rose);
+  transition: all var(--transition-smooth);
+}
+
+.btn-quick-log:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 35px rgba(255, 107, 139, 0.55);
+}
+
+/* Navigation Tabs */
+.nav-tab-bar {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.4rem;
+  background: var(--surface-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  margin-bottom: 2rem;
+  max-width: 680px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.nav-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 0.9rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  transition: all var(--transition-smooth);
+}
+
+.nav-tab:hover {
+  color: var(--text-primary);
+}
+
+.nav-tab.active {
+  background: var(--grad-primary);
+  color: #FFFFFF;
+  font-weight: 600;
+  box-shadow: var(--glow-rose);
+}
+
+/* View Containers */
+.view-panel {
+  display: none;
+  animation: fadeIn 0.3s ease-in-out forwards;
+}
+
+.view-panel.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===================================================================
+   Dashboard: Main Cycle Wheel & Hero Area
+   =================================================================== */
+.hero-cycle-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+@media (max-width: 880px) {
+  .hero-cycle-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cycle-dial-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 2.2rem 1.8rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
+
+.cycle-dial-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--grad-primary);
+}
+
+/* Circular Cycle Visualizer */
+.dial-container {
+  position: relative;
+  width: 290px;
+  height: 290px;
+  margin: 1rem auto 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dial-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.dial-track {
+  fill: none;
+  stroke: var(--surface-glass);
+  stroke-width: 18;
+}
+
+.dial-progress {
+  fill: none;
+  stroke: url(#dial-gradient);
+  stroke-width: 18;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s ease;
+  filter: drop-shadow(0 0 10px rgba(255, 107, 139, 0.45));
+}
+
+.dial-phase-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  pointer-events: none;
+}
+
+.dial-day-badge {
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full);
+  background: rgba(255, 107, 139, 0.15);
+  color: var(--color-rose);
+  border: 1px solid rgba(255, 107, 139, 0.3);
+  margin-bottom: 0.4rem;
+}
+
+.dial-day-number {
+  font-size: 3.2rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--text-primary);
+}
+
+.dial-total-days {
+  font-size: 1rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.dial-phase-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-top: 0.35rem;
+}
+
+.dial-fertility-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--radius-full);
+  margin-top: 0.4rem;
+}
+
+.fertility-low {
+  background: rgba(185, 168, 199, 0.15);
+  color: var(--text-secondary);
+}
+
+.fertility-medium {
+  background: rgba(255, 199, 95, 0.18);
+  color: var(--color-gold);
+}
+
+.fertility-high {
+  background: rgba(255, 142, 83, 0.2);
+  color: var(--color-coral);
+}
+
+.fertility-peak {
+  background: rgba(255, 107, 139, 0.22);
+  color: var(--color-rose);
+  box-shadow: 0 0 15px rgba(255, 107, 139, 0.3);
+}
+
+.dial-footer-stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  width: 100%;
+  margin-top: 1rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.15rem;
+}
+
+/* Right Column Hero Cards */
+.hero-side-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.today-summary-card, .partner-care-card, .quick-actions-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+.card-header-flex {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+}
+
+.card-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.phase-pill-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--radius-full);
+}
+
+/* Partner Care Note Card */
+.partner-care-card {
+  background: linear-gradient(145deg, rgba(255, 107, 139, 0.12), rgba(132, 94, 194, 0.1));
+  border-color: var(--border-accent);
+}
+
+.partner-care-card .care-note-quote {
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--text-primary);
+  font-style: italic;
+  position: relative;
+  padding-left: 1.1rem;
+  border-left: 3px solid var(--color-rose);
+  margin-top: 0.6rem;
+}
+
+.partner-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-rose);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* Quick Action Buttons */
+.quick-action-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.btn-secondary {
+  background: var(--surface-glass);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  transition: all var(--transition-fast);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--border-accent);
+  transform: translateY(-2px);
+}
+
+.btn-primary {
+  background: var(--grad-primary);
+  color: #FFFFFF;
+  border: none;
+  padding: 0.75rem 1.2rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  box-shadow: var(--glow-rose);
+  transition: all var(--transition-smooth);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 25px rgba(255, 107, 139, 0.45);
+}
+
+/* ===================================================================
+   Interactive Calendar View
+   =================================================================== */
+.calendar-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  box-shadow: var(--shadow-md);
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.calendar-title-group h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.calendar-title-group .calendar-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.calendar-nav-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+}
+
+.calendar-weekday {
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  padding-bottom: 0.5rem;
+}
+
+.calendar-day-cell {
+  min-height: 84px;
+  background: var(--surface-glass);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 0.45rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.calendar-day-cell:hover {
+  border-color: var(--border-accent);
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-2px);
+}
+
+.calendar-day-cell.empty {
+  background: transparent;
+  border-color: transparent;
+  cursor: default;
+}
+
+.calendar-day-cell.today {
+  border: 2px solid var(--color-rose);
+  box-shadow: var(--glow-rose);
+}
+
+.day-cell-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.day-number {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.day-phase-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+/* Day Types */
+.calendar-day-cell.period-day {
+  background: rgba(255, 107, 139, 0.18);
+  border-color: rgba(255, 107, 139, 0.4);
+}
+
+.calendar-day-cell.predicted-period-day {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(255, 107, 139, 0.08),
+    rgba(255, 107, 139, 0.08) 6px,
+    rgba(255, 107, 139, 0.16) 6px,
+    rgba(255, 107, 139, 0.16) 12px
+  );
+  border-color: rgba(255, 107, 139, 0.3);
+}
+
+.calendar-day-cell.ovulation-day {
+  background: rgba(255, 199, 95, 0.18);
+  border-color: rgba(255, 199, 95, 0.45);
+}
+
+.calendar-day-cell.fertile-day {
+  background: rgba(255, 142, 83, 0.12);
+  border-color: rgba(255, 142, 83, 0.3);
+}
+
+.day-indicator-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: auto;
+}
+
+.indicator-badge {
+  font-size: 0.65rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-period {
+  background: var(--color-rose);
+  color: #FFFFFF;
+}
+
+.badge-predicted {
+  background: rgba(255, 107, 139, 0.3);
+  color: var(--color-rose);
+}
+
+.badge-ovulation {
+  background: var(--color-gold);
+  color: #0F0814;
+}
+
+.badge-symptom-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-purple);
+  margin-left: auto;
+}
+
+/* Calendar Legend */
+.calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.legend-color-box {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+}
+
+/* ===================================================================
+   Cycle Syncing & Wellness Insights View
+   =================================================================== */
+.syncing-hero {
+  background: var(--grad-dark-card);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-lg);
+  padding: 2.2rem;
+  margin-bottom: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.syncing-hero::after {
+  content: '';
+  position: absolute;
+  right: -50px;
+  bottom: -50px;
+  width: 250px;
+  height: 250px;
+  background: radial-gradient(circle, rgba(255, 107, 139, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.syncing-hero-content h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.5rem;
+}
+
+.syncing-hero-content p {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  max-width: 620px;
+  line-height: 1.6;
+}
+
+.syncing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.75rem;
+}
+
+.sync-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-fast), border-color var(--transition-fast);
+}
+
+.sync-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--border-accent);
+}
+
+.sync-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  margin-bottom: 1rem;
+}
+
+.sync-card h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.sync-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.sync-list li {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  line-height: 1.45;
+}
+
+.sync-list li::before {
+  content: '•';
+  color: var(--color-rose);
+  font-weight: bold;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+/* ===================================================================
+   History & Analytics View
+   =================================================================== */
+.analytics-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.metric-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.metric-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.metric-info .metric-num {
+  font-size: 1.8rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--text-primary);
+}
+
+.metric-info .metric-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+}
+
+.history-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  box-shadow: var(--shadow-md);
+}
+
+.history-card h3 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 1.2rem;
+}
+
+.cycle-timeline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.timeline-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  background: var(--surface-glass);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast);
+}
+
+.timeline-row:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.timeline-dates {
+  display: flex;
+  flex-direction: column;
+}
+
+.timeline-dates-main {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.timeline-dates-sub {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.timeline-tags {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pill-tag {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--radius-full);
+}
+
+/* ===================================================================
+   Modals & Daily Logger Sheet
+   =================================================================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 5, 15, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-content {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-lg);
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  transform: scale(0.95);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 2rem;
+  position: relative;
+}
+
+.modal-overlay.active .modal-content {
+  transform: scale(1);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 1.5rem;
+}
+
+.modal-header h2 {
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.btn-close-modal {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.4rem;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.btn-close-modal:hover {
+  color: var(--text-primary);
+}
+
+/* Form Groups & Chips */
+.form-section {
+  margin-bottom: 1.5rem;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.65rem;
+}
+
+.chips-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.chip-select {
+  background: var(--surface-glass);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  border-radius: var(--radius-full);
+  padding: 0.45rem 0.95rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  user-select: none;
+}
+
+.chip-select:hover {
+  border-color: var(--border-accent);
+  color: var(--text-primary);
+}
+
+.chip-select.active {
+  background: var(--grad-primary);
+  border-color: transparent;
+  color: #FFFFFF;
+  box-shadow: var(--glow-rose);
+  font-weight: 600;
+}
+
+/* Stepper & Slider */
+.stepper-control {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.btn-stepper {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--surface-glass);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.btn-stepper:hover {
+  border-color: var(--border-accent);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.stepper-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  min-width: 65px;
+  text-align: center;
+}
+
+/* Range Slider */
+.range-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.range-slider {
+  flex: 1;
+  accent-color: var(--color-rose);
+  cursor: pointer;
+}
+
+.range-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-rose);
+  min-width: 45px;
+}
+
+/* Textarea & Inputs */
+.form-input, .form-textarea {
+  width: 100%;
+  background: var(--surface-glass);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.92rem;
+  transition: border-color var(--transition-fast);
+}
+
+.form-input:focus, .form-textarea:focus {
+  outline: none;
+  border-color: var(--color-rose);
+  box-shadow: 0 0 0 3px rgba(255, 107, 139, 0.2);
+}
+
+.form-textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+/* Modal Actions */
+.modal-footer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* Toast Notifications */
+.toast-container {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.toast {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-accent);
+  color: var(--text-primary);
+  padding: 0.85rem 1.4rem;
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-lg);
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  animation: slideUp 0.3s ease forwards;
+  pointer-events: auto;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .app-container {
+    padding: 1rem 0.8rem 4rem;
+  }
+
+  .brand-text .brand-tagline {
+    display: none;
+  }
+
+  .dial-container {
+    width: 250px;
+    height: 250px;
+  }
+
+  .dial-day-number {
+    font-size: 2.8rem;
+  }
+
+  .calendar-day-cell {
+    min-height: 65px;
+    padding: 0.3rem;
+  }
+
+  .nav-tab span.tab-text {
+    display: none;
+  }
+
+  .nav-tab {
+    padding: 0.65rem;
+  }
+}

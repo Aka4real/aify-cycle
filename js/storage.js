@@ -8,7 +8,11 @@ import { formatDateKey, addDays } from './cycle-engine.js';
 const STORAGE_KEYS = {
   PROFILE: 'aifycycle_profile_v1',
   LOGS: 'aifycycle_logs_v1',
-  THEME: 'aifycycle_theme_v1'
+  THEME: 'aifycycle_theme_v1',
+  AUTH_SESSION: 'aifycycle_auth_session_v1',
+  USERS: 'aifycycle_users_v1',
+  ONBOARDING_DONE: 'aifycycle_onboarding_done_v1',
+  CHAT_HISTORY: 'aifycycle_chat_history_v1'
 };
 
 /**
@@ -189,6 +193,67 @@ export class StorageService {
     localStorage.removeItem(STORAGE_KEYS.PROFILE);
     localStorage.removeItem(STORAGE_KEYS.LOGS);
     this.init();
+  }
+
+  // --- Auth Session ---
+
+  getAuthSession() {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.AUTH_SESSION);
+      return data ? JSON.parse(data) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  saveAuthSession(session) {
+    localStorage.setItem(STORAGE_KEYS.AUTH_SESSION, JSON.stringify(session));
+  }
+
+  clearAuthSession() {
+    localStorage.removeItem(STORAGE_KEYS.AUTH_SESSION);
+  }
+
+  // --- Users ---
+
+  getUsers() {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.USERS);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  saveUsers(users) {
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+  }
+
+  // --- Onboarding ---
+
+  getOnboardingCompleted() {
+    return localStorage.getItem(STORAGE_KEYS.ONBOARDING_DONE) === 'true';
+  }
+
+  setOnboardingCompleted(done) {
+    localStorage.setItem(STORAGE_KEYS.ONBOARDING_DONE, done ? 'true' : 'false');
+  }
+
+  // --- Chat History ---
+
+  getChatHistory() {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  saveChatHistory(history) {
+    // Keep last 50 messages to avoid localStorage bloat
+    const trimmed = history.slice(-50);
+    localStorage.setItem(STORAGE_KEYS.CHAT_HISTORY, JSON.stringify(trimmed));
   }
 }
 

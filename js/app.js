@@ -1,12 +1,15 @@
 /**
  * AifyCycle - Application Controller
- * Main entry point coordinating storage, cycle predictions, UI rendering,
- * and user interactions.
+ * Main entry point coordinating auth, onboarding, storage, cycle predictions,
+ * AI coaching, UI rendering, and user interactions.
  */
 
 import { storage } from './storage.js';
 import { getCycleStatus, formatDateKey, parseDateKey } from './cycle-engine.js';
 import { ui } from './ui-components.js';
+import { AuthManager } from './auth.js';
+import { OnboardingWizard } from './onboarding.js';
+import { AICoach } from './ai-coach.js';
 
 class AifyCycleApp {
   constructor() {
@@ -15,15 +18,182 @@ class AifyCycleApp {
     this.currentYear = this.today.getFullYear();
     this.currentMonth = this.today.getMonth();
     this.activeLogDate = formatDateKey(this.today);
-
     this.waterCount = 8;
+
+    // New modules
+    this.auth = new AuthManager();
+    this.onboarding = null;
+    this.aiCoach = null;
   }
 
   init() {
     this.setupTheme();
+    this._routeUser();
+    console.log('🌸 AifyCycle Initialized successfully.');
+  }
+
+  /**
+   * Route user based on auth & onboarding state
+   */
+  _routeUser() {
+    if (!this.auth.isLoggedIn()) {
+      this._showAuthScreen();
+    } else if (!this.auth.hasCompletedOnboarding()) {
+      this._showOnboardingScreen();
+    } else {
+      this._showMainApp();
+    }
+  }
+
+  // =============================================
+  // AUTH SCREEN
+  // =============================================
+
+  _showAuthScreen() {
+    document.getElementById('view-auth').style.display = '';
+    document.getElementById('view-onboarding').style.display = 'none';
+    document.getElementById('main-app-container').style.display = 'none';
+
+    this._attachAuthListeners();
+  }
+
+  _attachAuthListeners() {
+    // Tab switching
+    const loginTab = document.getElementById('auth-tab-login');
+    const signupTab = document.getElementById('auth-tab-signup');
+    const loginForm = document.getElementById('auth-login-form');
+    const signupForm = document.getElementById('auth-signup-form');
+    const indicator = document.querySelector('.auth-tab-indicator');
+
+    if (loginTab && signupTab) {
+      loginTab.addEventListener('click', () => {
+        loginTab.classList.add('active');
+        signupTab.classList.remove('active');
+        loginForm.style.display = '';
+        signupForm.style.display = 'none';
+        if (indicator) indicator.style.transform = 'translateX(0)';
+        this._clearAuthErrors();
+      });
+
+      signupTab.addEventListener('click', () => {
+        signupTab.classList.add('active');
+        loginTab.classList.remove('active');
+        signupForm.style.display = '';
+        loginForm.style.display = 'none';
+        if (indicator) indicator.style.transform = 'translateX(100%)';
+        this._clearAuthErrors();
+      });
+    }
+
+    // Login form submit
+    if (loginForm) {
+      loginForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+
+        const result = this.auth.login({ email, password });
+        if (result.success) {
+          this._routeUser();
+        } else {
+          this._showAuthErrors(result.errors);
+        }
+      });
+    }
+
+    // Signup form submit
+    if (signupForm) {
+      signupForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = document.getElementById('signup-name').value;
+        const email = document.getElementById('signup-email').value;
+        const password = document.getElementById('signup-password').value;
+        const dateOfBirth = document.getElementById('signup-dob').value || null;
+
+        const result = this.auth.signup({ name, email, password, dateOfBirth });
+        if (result.success) {
+          // Set user name in profile
+          const profile = storage.getProfile();
+          profile.userName = name.trim();
+          storage.saveProfile(profile);
+          this._routeUser();
+        } else {
+          this._showAuthErrors(result.errors);
+        }
+      });
+    }
+
+    // Guest login
+    const guestBtn = document.getElementById('btn-guest-login');
+    if (guestBtn) {
+      guestBtn.addEventListener('click', () => {
+        this.auth.guestLogin();
+        this._routeUser();
+      });
+    }
+  }
+
+  _showAuthErrors(errors) {
+    const display = document.getElementById('auth-error-display');
+    if (display) {
+      display.style.display = 'block';
+      display.innerHTML = errors.map(e => `<p>⚠️ ${e}</p>`).join('');
+      // Shake animation
+      display.classList.remove('shake');
+      void display.offsetWidth;
+      display.classList.add('shake');
+    }
+  }
+
+  _clearAuthErrors() {
+    const display = document.getElementById('auth-error-display');
+    if (display) {
+      display.style.display = 'none';
+      display.innerHTML = '';
+    }
+  }
+
+  // =============================================
+  // ONBOARDING SCREEN
+  // =============================================
+
+  _showOnboardingScreen() {
+    document.getElementById('view-auth').style.display = 'none';
+    document.getElementById('view-onboarding').style.display = '';
+    document.getElementById('main-app-container').style.display = 'none';
+
+    // Pre-fill name from auth
+    const user = this.auth.currentUser;
+    
+    this.onboarding = new OnboardingWizard((data) => {
+      // Onboarding complete callback
+      this.auth.completeOnboarding();
+      this._showMainApp();
+    });
+
+    // If user has a name from signup, use it
+    if (user && user.name && user.name !== 'Guest') {
+      this.onboarding.data.userName = user.name;
+    }
+
+    this.onboarding.init();
+  }
+
+  // =============================================
+  // MAIN APP
+  // =============================================
+
+  _showMainApp() {
+    document.getElementById('view-auth').style.display = 'none';
+    document.getElementById('view-onboarding').style.display = 'none';
+    document.getElementById('main-app-container').style.display = '';
+
     this.renderAll();
     this.attachEventListeners();
-    console.log('🌸 AifyCycle Initialized successfully.');
+
+    // Initialize AI Coach
+    this.aiCoach = new AICoach();
+    this.aiCoach.init();
   }
 
   setupTheme() {
@@ -53,10 +223,10 @@ class AifyCycleApp {
     const logs = storage.getAllLogs();
     const todayStatus = getCycleStatus(this.today, profile);
 
-    // Update greeting with Agatha's name
+    // Update greeting
     const greetingEl = document.getElementById('user-greeting');
     if (greetingEl) {
-      greetingEl.textContent = `Hello, ${profile.userName || 'Agatha'} ✨`;
+      greetingEl.textContent = `Hello, ${profile.userName || 'there'} ✨`;
     }
 
     // Render Dial
@@ -96,6 +266,11 @@ class AifyCycleApp {
     // If switching to calendar or analytics, refresh their layouts
     if (tabId === 'calendar' || tabId === 'analytics') {
       this.renderAll();
+    }
+
+    // If switching to AI coach, refresh suggestions
+    if (tabId === 'ai-coach' && this.aiCoach) {
+      this.aiCoach.renderChatUI();
     }
   }
 
@@ -158,7 +333,7 @@ class AifyCycleApp {
     // If user selected period flow (light/medium/heavy) on this date, check if this should adjust last period start
     if (selectedFlow && selectedFlow !== 'none') {
       const profile = storage.getProfile();
-      // If user marks flow on today or newer date, ask or update lastPeriodStart
+      // If user marks flow on today or newer date, update lastPeriodStart
       const activeDate = parseDateKey(targetDateKey);
       const currentStart = parseDateKey(profile.lastPeriodStart);
       if (activeDate >= currentStart) {
@@ -330,8 +505,8 @@ class AifyCycleApp {
     if (btnOpenSettings && settingsModal) {
       btnOpenSettings.addEventListener('click', () => {
         const profile = storage.getProfile();
-        document.getElementById('setting-username').value = profile.userName || 'Agatha';
-        document.getElementById('setting-partnername').value = profile.partnerName || 'Aify';
+        document.getElementById('setting-username').value = profile.userName || 'User';
+        document.getElementById('setting-partnername').value = profile.partnerName || '';
         document.getElementById('setting-cyclelength').value = profile.cycleLength || 28;
         document.getElementById('setting-periodlength').value = profile.periodLength || 5;
         document.getElementById('setting-lastperiod').value = profile.lastPeriodStart || formatDateKey(this.today);
@@ -343,8 +518,8 @@ class AifyCycleApp {
     if (btnSaveSettings) {
       btnSaveSettings.addEventListener('click', () => {
         const profile = storage.getProfile();
-        profile.userName = document.getElementById('setting-username').value.trim() || 'Agatha';
-        profile.partnerName = document.getElementById('setting-partnername').value.trim() || 'Aify';
+        profile.userName = document.getElementById('setting-username').value.trim() || 'User';
+        profile.partnerName = document.getElementById('setting-partnername').value.trim() || '';
         profile.cycleLength = parseInt(document.getElementById('setting-cyclelength').value, 10) || 28;
         profile.periodLength = parseInt(document.getElementById('setting-periodlength').value, 10) || 5;
         profile.lastPeriodStart = document.getElementById('setting-lastperiod').value || formatDateKey(this.today);
@@ -380,6 +555,18 @@ class AifyCycleApp {
           this.closeModal('settings-modal');
           this.renderAll();
           ui.showToast('Starter demo data restored', '🔄');
+        }
+      });
+    }
+
+    // Logout
+    const btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) {
+      btnLogout.addEventListener('click', () => {
+        if (confirm('Are you sure you want to log out?')) {
+          this.auth.logout();
+          // Reload the page to show auth screen cleanly
+          window.location.reload();
         }
       });
     }

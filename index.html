@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="AifyCycle - An intelligent, modern, and beautifully designed menstrual cycle and holistic wellness tracker dedicated to Agatha & Aify.">
+  <meta name="description" content="AifyCycle - An intelligent, modern, and beautifully designed menstrual cycle and holistic wellness tracker with AI-powered health coaching.">
   <title>AifyCycle • Period & Holistic Health Tracker</title>
 
   <!-- Google Fonts: Outfit & Plus Jakarta Sans -->
@@ -16,19 +16,163 @@
 </head>
 <body>
 
-  <div class="app-container">
+  <!-- ===================================================================
+       AUTH VIEW: LOGIN & SIGNUP
+       =================================================================== -->
+  <div id="view-auth" class="auth-screen">
+    <!-- Animated Background -->
+    <div class="auth-bg-effects">
+      <div class="auth-blob blob-1"></div>
+      <div class="auth-blob blob-2"></div>
+      <div class="auth-blob blob-3"></div>
+      <div class="auth-particles"></div>
+    </div>
+
+    <div class="auth-container">
+      <!-- Brand -->
+      <div class="auth-brand">
+        <div class="auth-brand-icon">🌸</div>
+        <h1 class="auth-brand-title">Aify Cycle</h1>
+        <p class="auth-brand-tagline">Your intelligent period & wellness companion</p>
+      </div>
+
+      <!-- Auth Card -->
+      <div class="auth-card">
+        <!-- Tab Toggle -->
+        <div class="auth-tabs">
+          <button class="auth-tab active" data-auth-tab="login" id="auth-tab-login">Log In</button>
+          <button class="auth-tab" data-auth-tab="signup" id="auth-tab-signup">Sign Up</button>
+          <div class="auth-tab-indicator"></div>
+        </div>
+
+        <!-- Error Display -->
+        <div id="auth-error-display" class="auth-error-display" style="display: none;"></div>
+
+        <!-- Login Form -->
+        <form id="auth-login-form" class="auth-form">
+          <div class="auth-field">
+            <label for="login-email" class="form-label">Email</label>
+            <div class="auth-input-wrap">
+              <span class="auth-input-icon">📧</span>
+              <input type="email" id="login-email" class="form-input" placeholder="you@example.com" autocomplete="email" required />
+            </div>
+          </div>
+          <div class="auth-field">
+            <label for="login-password" class="form-label">Password</label>
+            <div class="auth-input-wrap">
+              <span class="auth-input-icon">🔒</span>
+              <input type="password" id="login-password" class="form-input" placeholder="Enter your password" autocomplete="current-password" required />
+            </div>
+          </div>
+          <button type="submit" class="btn-primary auth-submit-btn" id="btn-login">
+            <span>Log In</span>
+            <span>→</span>
+          </button>
+        </form>
+
+        <!-- Signup Form -->
+        <form id="auth-signup-form" class="auth-form" style="display: none;">
+          <div class="auth-field">
+            <label for="signup-name" class="form-label">Full Name</label>
+            <div class="auth-input-wrap">
+              <span class="auth-input-icon">👤</span>
+              <input type="text" id="signup-name" class="form-input" placeholder="Your name" autocomplete="name" required />
+            </div>
+          </div>
+          <div class="auth-field">
+            <label for="signup-email" class="form-label">Email</label>
+            <div class="auth-input-wrap">
+              <span class="auth-input-icon">📧</span>
+              <input type="email" id="signup-email" class="form-input" placeholder="you@example.com" autocomplete="email" required />
+            </div>
+          </div>
+          <div class="auth-field">
+            <label for="signup-password" class="form-label">Password</label>
+            <div class="auth-input-wrap">
+              <span class="auth-input-icon">🔒</span>
+              <input type="password" id="signup-password" class="form-input" placeholder="At least 6 characters" autocomplete="new-password" required />
+            </div>
+          </div>
+          <div class="auth-field">
+            <label for="signup-dob" class="form-label">Date of Birth <span class="auth-optional">(optional)</span></label>
+            <div class="auth-input-wrap">
+              <span class="auth-input-icon">🎂</span>
+              <input type="date" id="signup-dob" class="form-input" />
+            </div>
+          </div>
+          <button type="submit" class="btn-primary auth-submit-btn" id="btn-signup">
+            <span>Create Account</span>
+            <span>→</span>
+          </button>
+        </form>
+
+        <!-- Divider -->
+        <div class="auth-divider">
+          <span>or</span>
+        </div>
+
+        <!-- Guest Entry -->
+        <button id="btn-guest-login" class="btn-secondary auth-guest-btn">
+          <span>✨</span>
+          <span>Continue as Guest</span>
+        </button>
+      </div>
+
+      <p class="auth-footer-text">Your data stays private — stored only on your device.</p>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       ONBOARDING VIEW: MULTI-STEP WIZARD
+       =================================================================== -->
+  <div id="view-onboarding" class="onboarding-screen" style="display: none;">
+    <div class="onboarding-container">
+      <!-- Progress Bar -->
+      <div class="onboarding-progress-bar">
+        <div class="onboarding-progress-track">
+          <div id="onboarding-progress-fill" class="onboarding-progress-fill" style="width: 0%;"></div>
+        </div>
+        <span id="onboarding-step-label" class="onboarding-step-label">Step 1 of 6</span>
+      </div>
+
+      <!-- Step Content (dynamic) -->
+      <div id="onboarding-step-content" class="onboarding-step-content">
+        <!-- Populated by OnboardingWizard -->
+      </div>
+
+      <!-- Navigation -->
+      <div class="onboarding-nav">
+        <button id="onboarding-prev" class="btn-secondary onboarding-nav-btn" style="display: none;">
+          <span>←</span>
+          <span>Back</span>
+        </button>
+        <button id="onboarding-skip" class="btn-ghost onboarding-nav-btn" style="display: none;">
+          <span>Skip</span>
+        </button>
+        <button id="onboarding-next" class="btn-primary onboarding-nav-btn">
+          <span>Continue</span>
+          <span>→</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       MAIN APP CONTAINER (hidden until auth + onboarding complete)
+       =================================================================== -->
+  <div id="main-app-container" class="app-container" style="display: none;">
     <!-- Top Header -->
     <header class="app-header">
       <div class="brand-wrapper">
         <div class="brand-icon" aria-hidden="true">🌸</div>
         <div class="brand-text">
           <h1>AifyCycle</h1>
-          <span class="brand-tagline">Dedicated to Agatha &amp; Aify • Personal Wellness</span>
+          <span class="brand-tagline">Period & Holistic Wellness Tracker</span>
         </div>
       </div>
 
       <div class="header-actions">
-        <span id="user-greeting" style="font-size: 0.88rem; font-weight: 600; color: var(--text-secondary); margin-right: 0.5rem;">Hello, Agatha ✨</span>
+        <span id="user-greeting" style="font-size: 0.88rem; font-weight: 600; color: var(--text-secondary); margin-right: 0.5rem;">Hello ✨</span>
         
         <button id="btn-quick-log" class="btn-quick-log" title="Log today's symptoms">
           <span>📝</span>
@@ -41,6 +185,10 @@
 
         <button id="btn-open-settings" class="btn-icon" title="Cycle &amp; App Settings" aria-label="Settings">
           <span>⚙️</span>
+        </button>
+
+        <button id="btn-logout" class="btn-icon" title="Logout" aria-label="Logout">
+          <span>🚪</span>
         </button>
       </div>
     </header>
@@ -58,6 +206,10 @@
       <button class="nav-tab" data-tab="syncing">
         <span>🌿</span>
         <span class="tab-text">Cycle Syncing</span>
+      </button>
+      <button class="nav-tab" data-tab="ai-coach">
+        <span>🤖</span>
+        <span class="tab-text">AI Coach</span>
       </button>
       <button class="nav-tab" data-tab="analytics">
         <span>📊</span>
@@ -134,11 +286,11 @@
           <!-- Aify's Care Note Card -->
           <div class="partner-care-card">
             <div class="card-header-flex">
-              <h3 class="card-title"><span>💌</span> Aify’s Care Note for Agatha</h3>
-              <span class="partner-badge">Partner Sync</span>
+              <h3 class="card-title"><span>💌</span> Wellness Note</h3>
+              <span class="partner-badge">AI Coach</span>
             </div>
             <p id="hero-partner-care-note" class="care-note-quote">
-              "Agatha's glow and charisma are at peak bloom today! Compliment her shine, plan a fun romantic dinner, and celebrate her magnetic energy."
+              "Your glow and charisma are at peak bloom today! Celebrate your magnetic energy with movement and nourishment."
             </p>
           </div>
 
@@ -268,7 +420,7 @@
         <!-- Partner Support Card -->
         <div class="sync-card" style="border-color: var(--border-accent); background: linear-gradient(145deg, rgba(255, 107, 139, 0.08), rgba(132, 94, 194, 0.06));">
           <div class="sync-card-icon" style="background: rgba(255, 199, 95, 0.18); color: var(--color-gold);">💖</div>
-          <h3>Aify's Care Tip</h3>
+          <h3>Wellness Tip</h3>
           <p id="sync-partner-tip" style="font-size: 0.92rem; color: var(--text-primary); line-height: 1.6; font-style: italic;">
             <!-- Populated by JS -->
           </p>
@@ -277,7 +429,46 @@
     </section>
 
     <!-- ===================================================================
-         VIEW 4: INSIGHTS & ANALYTICS
+         VIEW 4: AI COACH & ADVISOR
+         =================================================================== -->
+    <section id="view-ai-coach" class="view-panel">
+      <div class="ai-coach-container">
+        <!-- Chat Header -->
+        <div class="ai-coach-header">
+          <div class="ai-coach-header-left">
+            <div class="ai-coach-avatar">🤖</div>
+            <div>
+              <h2>Aify AI Coach</h2>
+              <span class="ai-coach-subtitle">Powered by Google Gemini • Your personal wellness advisor</span>
+            </div>
+          </div>
+          <button id="ai-chat-clear" class="btn-icon" title="Clear Chat History" aria-label="Clear chat">
+            <span>🗑️</span>
+          </button>
+        </div>
+
+        <!-- Suggested Questions -->
+        <div id="ai-suggested-questions" class="ai-suggested-questions">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Chat Messages -->
+        <div id="ai-chat-messages" class="ai-chat-messages">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Chat Input -->
+        <form id="ai-chat-form" class="ai-chat-input-bar">
+          <input type="text" id="ai-chat-input" class="ai-chat-input" placeholder="Ask about your cycle, symptoms, nutrition..." autocomplete="off" />
+          <button type="submit" id="ai-chat-send" class="btn-primary ai-chat-send-btn" title="Send message">
+            <span>➤</span>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         VIEW 5: INSIGHTS & ANALYTICS
          =================================================================== -->
     <section id="view-analytics" class="view-panel">
       <div class="analytics-metrics-grid">
@@ -396,7 +587,7 @@
       <!-- Journal Notes -->
       <div class="form-section">
         <label for="log-notes" class="form-label">Notes &amp; Journal</label>
-        <textarea id="log-notes" class="form-textarea" placeholder="How did you feel today? Any special moments with Aify or body observations?"></textarea>
+        <textarea id="log-notes" class="form-textarea" placeholder="How did you feel today? Any observations about your body or mood?"></textarea>
       </div>
 
       <!-- Modal Footer -->
@@ -419,12 +610,12 @@
 
       <div class="form-section">
         <label for="setting-username" class="form-label">Your Name</label>
-        <input type="text" id="setting-username" class="form-input" value="Agatha">
+        <input type="text" id="setting-username" class="form-input" value="User">
       </div>
 
       <div class="form-section">
         <label for="setting-partnername" class="form-label">Partner's Name</label>
-        <input type="text" id="setting-partnername" class="form-input" value="Aify">
+        <input type="text" id="setting-partnername" class="form-input" value="">
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">

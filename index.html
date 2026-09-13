@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="AifyCycle - An intelligent, modern, and beautifully designed menstrual cycle and holistic wellness tracker with AI-powered health coaching.">
   <title>AifyCycle • Period & Holistic Health Tracker</title>
 
-  <!-- Google Fonts: Outfit & Plus Jakarta Sans -->
+  <!-- Google Fonts: Inter — Apple SF Pro-like -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
   <!-- Core Stylesheet -->
   <link rel="stylesheet" href="css/styles.css">
@@ -21,12 +21,7 @@
        =================================================================== -->
   <div id="view-auth" class="auth-screen">
     <!-- Animated Background -->
-    <div class="auth-bg-effects">
-      <div class="auth-blob blob-1"></div>
-      <div class="auth-blob blob-2"></div>
-      <div class="auth-blob blob-3"></div>
-      <div class="auth-particles"></div>
-    </div>
+    <div class="auth-bg-effects"></div>
 
     <div class="auth-container">
       <!-- Brand -->
@@ -180,7 +175,7 @@
         </button>
 
         <button id="btn-theme-toggle" class="btn-icon" title="Toggle Theme" aria-label="Toggle Theme">
-          <span id="theme-toggle-icon">☀️</span>
+          <span id="theme-toggle-icon">🌙</span>
         </button>
 
         <button id="btn-open-settings" class="btn-icon" title="Cycle &amp; App Settings" aria-label="Settings">
@@ -208,8 +203,8 @@
         <span class="tab-text">Cycle Syncing</span>
       </button>
       <button class="nav-tab" data-tab="ai-coach">
-        <span>🤖</span>
-        <span class="tab-text">AI Coach</span>
+        <span>💬</span>
+        <span class="tab-text">Wellness Guide</span>
       </button>
       <button class="nav-tab" data-tab="analytics">
         <span>📊</span>
@@ -433,18 +428,24 @@
          =================================================================== -->
     <section id="view-ai-coach" class="view-panel">
       <div class="ai-coach-container">
-        <!-- Chat Header -->
         <div class="ai-coach-header">
           <div class="ai-coach-header-left">
-            <div class="ai-coach-avatar">🤖</div>
+            <div class="ai-coach-avatar">🌸</div>
             <div>
-              <h2>Aify AI Coach</h2>
-              <span class="ai-coach-subtitle">Powered by Google Gemini • Your personal wellness advisor</span>
+              <h2>Your Wellness Guide</h2>
+              <span class="ai-coach-subtitle">Personal cycle &amp; real-time adaptive agent</span>
             </div>
           </div>
-          <button id="ai-chat-clear" class="btn-icon" title="Clear Chat History" aria-label="Clear chat">
-            <span>🗑️</span>
-          </button>
+          <div class="ai-coach-header-right">
+            <button id="btn-agent-memory" class="btn-agent-memory" title="View what Aify has learned about you">
+              <span>🧠</span>
+              <span>Learned Memories</span>
+              <span id="agent-memory-count" class="memory-badge-count">3</span>
+            </button>
+            <button id="ai-chat-clear" class="btn-icon" title="Clear Chat History" aria-label="Clear chat">
+              <span>🗑️</span>
+            </button>
+          </div>
         </div>
 
         <!-- Suggested Questions -->
@@ -652,6 +653,56 @@
         <button type="button" class="btn-secondary btn-modal-cancel">Cancel</button>
         <button type="button" id="btn-save-settings" class="btn-primary">Save Changes</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       MODAL: AGENT MEMORY & LEARNED INSIGHTS
+       =================================================================== -->
+  <div id="agent-memory-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-memory-title">
+    <div class="modal-content" style="max-width: 560px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.65rem;">
+          <div style="width: 38px; height: 38px; border-radius: var(--radius-sm); background: var(--color-rose-bg); display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">🧠</div>
+          <div>
+            <h2 id="modal-memory-title" style="font-size: 1.12rem; font-weight: 700; color: var(--text-primary);">Aify's Learned Memory Bank</h2>
+            <p style="font-size: 0.76rem; color: var(--text-muted);">Personal patterns, habits, and preferences learned in real time</p>
+          </div>
+        </div>
+        <button type="button" id="btn-close-memory-modal" class="btn-close-modal" aria-label="Close modal">&times;</button>
+      </div>
+
+      <!-- Memory Filter Categories -->
+      <div class="memory-filters">
+        <button type="button" class="chip-select memory-filter-chip active" data-category="all">All</button>
+        <button type="button" class="chip-select memory-filter-chip" data-category="remedy_preference">🍵 Remedies</button>
+        <button type="button" class="chip-select memory-filter-chip" data-category="cycle_pattern">🌸 Patterns</button>
+        <button type="button" class="chip-select memory-filter-chip" data-category="lifestyle_habit">🏃‍♀️ Habits</button>
+        <button type="button" class="chip-select memory-filter-chip" data-category="sensitivity_trigger">⚠️ Triggers</button>
+      </div>
+
+      <!-- Memory List Container -->
+      <div id="agent-memory-list" class="agent-memory-list">
+        <!-- Populated by JavaScript -->
+      </div>
+
+      <!-- Add Memory Form -->
+      <form id="form-add-memory" class="form-add-memory">
+        <div style="font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.45rem;">
+          Teach Aify something new about your body or routine:
+        </div>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <input type="text" id="input-memory-fact" class="form-input" placeholder="e.g. Raspberry leaf tea relieves my cramps..." required style="flex: 1;" />
+          <select id="select-memory-cat" class="form-input" style="width: 125px; padding: 0.55rem 0.5rem; font-size: 0.78rem;">
+            <option value="remedy_preference">🍵 Remedy</option>
+            <option value="cycle_pattern">🌸 Pattern</option>
+            <option value="lifestyle_habit">🏃‍♀️ Habit</option>
+            <option value="sensitivity_trigger">⚠️ Trigger</option>
+            <option value="personal_goal">🎯 Goal</option>
+          </select>
+          <button type="submit" class="btn-primary" style="padding: 0.6rem 0.95rem; font-size: 0.82rem; white-space: nowrap;">Remember</button>
+        </div>
+      </form>
     </div>
   </div>
 

@@ -206,7 +206,7 @@ class AifyCycleApp {
   }
 
   toggleTheme() {
-    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
     const nextTheme = currentTheme === 'light' ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', nextTheme);
     storage.saveTheme(nextTheme);
@@ -215,7 +215,7 @@ class AifyCycleApp {
     if (themeIcon) {
       themeIcon.textContent = nextTheme === 'light' ? '🌙' : '☀️';
     }
-    ui.showToast(`Switched to ${nextTheme === 'light' ? 'Luminous Rose' : 'Velvet Dusk'} theme`, '🎨');
+    ui.showToast(`Switched to ${nextTheme === 'light' ? 'Light' : 'Dark'} mode`, '🎨');
   }
 
   renderAll() {
@@ -368,6 +368,17 @@ class AifyCycleApp {
   }
 
   attachEventListeners() {
+    // Real-Time Synchronization with AI Agent updates
+    window.addEventListener('aify:data-updated', (e) => {
+      console.log('🔄 Real-time data synchronization received from AI Coach:', e.detail);
+      this.renderAll();
+
+      if (e.detail && e.detail.summaries && e.detail.summaries.length > 0) {
+        const first = e.detail.summaries[0];
+        ui.showToast(`Aify updated: ${first.title} (${first.detail})`, first.icon || '✨');
+      }
+    });
+
     // Nav Tabs
     document.querySelectorAll('.nav-tab').forEach(tab => {
       tab.addEventListener('click', () => {

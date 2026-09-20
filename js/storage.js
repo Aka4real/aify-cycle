@@ -229,6 +229,18 @@ export class StorageService {
     this.init();
   }
 
+  /**
+   * GDPR Article 17: Right to Erasure ("Right to Be Forgotten")
+   * Completely purges all user data, profile, history, session, agent memories,
+   * client keys, and telemetry from the browser storage.
+   */
+  purgeAllUserData() {
+    Object.values(STORAGE_KEYS).forEach(key => localStorage.removeItem(key));
+    localStorage.removeItem('aifycycle_telemetry_v1');
+    localStorage.removeItem('aifycycle_audit_log_v1');
+    localStorage.removeItem('aifycycle_consent_v1');
+  }
+
   // --- Auth Session ---
 
   getAuthSession() {

@@ -10,6 +10,7 @@ import { ui } from './ui-components.js';
 import { AuthManager } from './auth.js';
 import { OnboardingWizard } from './onboarding.js';
 import { AICoach } from './ai-coach.js';
+import { analytics } from './analytics-tracker.js';
 
 class AifyCycleApp {
   constructor() {
@@ -28,8 +29,51 @@ class AifyCycleApp {
 
   init() {
     this.setupTheme();
+    this._initComplianceAndConsent();
     this._routeUser();
     console.log('🌸 AifyCycle Initialized successfully.');
+  }
+
+  /**
+   * Initialize Legal, Privacy & Compliance Consent
+   */
+  _initComplianceAndConsent() {
+    const consent = analytics.getConsent();
+    const banner = document.getElementById('privacy-consent-banner');
+    if (!consent && banner) {
+      banner.style.display = 'block';
+    }
+
+    const btnAccept = document.getElementById('btn-consent-accept');
+    const btnDecline = document.getElementById('btn-consent-decline');
+
+    if (btnAccept && banner) {
+      btnAccept.addEventListener('click', () => {
+        analytics.saveConsent({ analyticsAllowed: true });
+        banner.style.display = 'none';
+        ui.showToast('Privacy preferences saved', '🛡️');
+      });
+    }
+
+    if (btnDecline && banner) {
+      btnDecline.addEventListener('click', () => {
+        analytics.saveConsent({ analyticsAllowed: false });
+        banner.style.display = 'none';
+        ui.showToast('Analytics tracking declined', '🛡️');
+      });
+    }
+
+    // Attach global legal modal triggers
+    document.querySelectorAll('.btn-link-legal').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const modalId = btn.getAttribute('data-modal');
+        if (modalId) {
+          const targetModal = document.getElementById(modalId);
+          if (targetModal) targetModal.classList.add('active');
+        }
+      });
+    });
   }
 
   /**
@@ -220,35 +264,55 @@ class AifyCycleApp {
 
   async _refreshAiSettingsStatus() {
     const statusPill = document.getElementById('ai-settings-status');
-    const keyInput = document.getElementById('setting-gemini-key');
     if (!statusPill) return;
 
     statusPill.textContent = 'Checking...';
     statusPill.className = 'ai-status-pill';
 
     let serverConfigured = false;
+    let modelName = 'gemini-3.8-flash';
     try {
       const res = await fetch('/api/gemini/status');
       if (res.ok) {
         const data = await res.json();
         serverConfigured = Boolean(data.configured);
+        if (data.model) modelName = data.model;
       }
     } catch (e) {}
 
-    const clientKey = storage.getGeminiApiKey();
-    if (keyInput) {
-      keyInput.value = clientKey || '';
+    if (serverConfigured) {
+      statusPill.textContent = `✨ Gemini 3.8 Flash Active`;
+      statusPill.className = 'ai-status-pill pill-server';
+    } else {
+      statusPill.textContent = '🧠 Local Intelligence Active';
+      statusPill.className = 'ai-status-pill pill-local';
+    }
+  }
+
+  async loadCycleSyncingInsights(forceRefresh = false) {
+    const profile = storage.getProfile();
+    const logs = storage.getAllLogs();
+    const todayStatus = getCycleStatus(this.today, profile);
+
+    // Initial render with baseline immediately so there is never an empty screen
+    ui.renderCycleSyncingGuide(todayStatus);
+
+    if (!this.aiCoach) return;
+
+    if (forceRefresh) {
+      ui.renderCycleSyncingGuide(todayStatus, null, true);
     }
 
-    if (serverConfigured) {
-      statusPill.textContent = '🟢 Server Proxy Active';
-      statusPill.className = 'ai-status-pill pill-server';
-    } else if (clientKey) {
-      statusPill.textContent = '🟢 Client Key Active';
-      statusPill.className = 'ai-status-pill pill-client';
-    } else {
-      statusPill.textContent = '🟡 Local Intelligence Only';
-      statusPill.className = 'ai-status-pill pill-local';
+    try {
+      const insights = await this.aiCoach.generateCycleSyncingInsights(todayStatus, profile, logs, forceRefresh);
+      if (insights) {
+        ui.renderCycleSyncingGuide(todayStatus, insights, false);
+      } else {
+        ui.renderCycleSyncingGuide(todayStatus, null, false);
+      }
+    } catch (e) {
+      console.warn('Could not load Gemini cycle insights:', e);
+      ui.renderCycleSyncingGuide(todayStatus, null, false);
     }
   }
 
@@ -275,8 +339,8 @@ class AifyCycleApp {
       (dateKey) => this.openLoggerModalForDate(dateKey)
     );
 
-    // Render Syncing Guide
-    ui.renderCycleSyncingGuide(todayStatus);
+    // Render Syncing Guide with Gemini 3.8 Flash intelligence
+    this.loadCycleSyncingInsights(false);
 
     // Render Analytics
     ui.renderHistoryAnalytics(profile, logs);
@@ -284,6 +348,7 @@ class AifyCycleApp {
 
   switchTab(tabId) {
     this.currentView = tabId;
+    analytics.trackEvent('view', tabId);
 
     // Update tab bar buttons
     document.querySelectorAll('.nav-tab').forEach(tab => {
@@ -300,6 +365,11 @@ class AifyCycleApp {
     // If switching to calendar or analytics, refresh their layouts
     if (tabId === 'calendar' || tabId === 'analytics') {
       this.renderAll();
+    }
+
+    // If switching to cycle syncing, ensure Gemini insights are loaded
+    if (tabId === 'syncing') {
+      this.loadCycleSyncingInsights(false);
     }
 
     // If switching to AI coach, refresh suggestions
@@ -377,6 +447,8 @@ class AifyCycleApp {
     }
 
     storage.saveLog(targetDateKey, newLog);
+    analytics.trackEvent('symptom', 'logged', targetDateKey);
+    analytics.logAuditAction('SYMPTOMS_LOGGED', `Updated wellness & flow for ${targetDateKey}`);
     this.closeModal('logger-modal');
     this.renderAll();
     ui.showToast(`Logged for ${targetDateKey}!`, '💖');
@@ -396,6 +468,9 @@ class AifyCycleApp {
       symptoms: existingLog.symptoms || ['Cramps'],
       notes: existingLog.notes || 'Cycle day 1 started today.'
     });
+
+    analytics.trackEvent('cycle', 'period_start_updated', todayKey);
+    analytics.logAuditAction('PERIOD_START_RECORDED', `Cycle Day 1 recorded on ${todayKey}`);
 
     this.renderAll();
     ui.showToast('New cycle recorded starting today!', '🩸');
@@ -563,100 +638,11 @@ class AifyCycleApp {
       });
     }
 
-    // Toggle Gemini Key Visibility
-    const btnToggleKey = document.getElementById('btn-toggle-key-visibility');
-    const inputGeminiKey = document.getElementById('setting-gemini-key');
-    if (btnToggleKey && inputGeminiKey) {
-      btnToggleKey.addEventListener('click', () => {
-        const isPassword = inputGeminiKey.type === 'password';
-        inputGeminiKey.type = isPassword ? 'text' : 'password';
-        btnToggleKey.textContent = isPassword ? '🙈' : '👁️';
-      });
-    }
-
-    // Test Gemini Key / Server Proxy
-    const btnTestKey = document.getElementById('btn-test-gemini-key');
-    const testResultEl = document.getElementById('ai-test-result');
-    if (btnTestKey) {
-      btnTestKey.addEventListener('click', async () => {
-        btnTestKey.disabled = true;
-        btnTestKey.innerHTML = '<span>⏳</span> <span>Testing...</span>';
-        if (testResultEl) {
-          testResultEl.style.display = 'inline-block';
-          testResultEl.style.color = 'var(--text-muted)';
-          testResultEl.textContent = 'Connecting...';
-        }
-
-        const candidateKey = inputGeminiKey ? inputGeminiKey.value.trim() : '';
-        const testPayload = {
-          contents: [{ role: 'user', parts: [{ text: 'Hello, confirm you are working.' }] }],
-          generationConfig: { maxOutputTokens: 10 }
-        };
-
-        try {
-          let testSuccess = false;
-
-          // 1. If user typed a candidate key into input, test that directly
-          if (candidateKey) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${encodeURIComponent(candidateKey)}`;
-            const res = await fetch(url, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(testPayload)
-            });
-            if (!res.ok) {
-              const err = await res.json().catch(() => ({}));
-              throw new Error(err.error?.message || `HTTP ${res.status}`);
-            }
-            testSuccess = true;
-          } else {
-            // 2. Otherwise test server proxy
-            const res = await fetch('/api/gemini', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(testPayload)
-            });
-            if (!res.ok) {
-              const err = await res.json().catch(() => ({}));
-              if (err.error === 'NO_API_KEY') {
-                throw new Error('No key configured on server or in input.');
-              }
-              throw new Error(err.message || `Server Error ${res.status}`);
-            }
-            testSuccess = true;
-          }
-
-          if (testSuccess && testResultEl) {
-            testResultEl.style.color = 'var(--color-teal)';
-            testResultEl.textContent = '✅ Connected successfully to Gemini 3.8 Flash!';
-          }
-        } catch (err) {
-          if (testResultEl) {
-            testResultEl.style.color = 'var(--color-rose)';
-            testResultEl.textContent = `❌ ${err.message}`;
-          }
-        } finally {
-          btnTestKey.disabled = false;
-          btnTestKey.innerHTML = '<span>⚡</span> <span>Test Connection</span>';
-          this._refreshAiSettingsStatus();
-        }
-      });
-    }
-
-    // Clear Gemini Key
-    const btnClearKey = document.getElementById('btn-clear-gemini-key');
-    if (btnClearKey) {
-      btnClearKey.addEventListener('click', () => {
-        storage.clearGeminiApiKey();
-        if (inputGeminiKey) inputGeminiKey.value = '';
-        if (testResultEl) {
-          testResultEl.style.display = 'inline-block';
-          testResultEl.style.color = 'var(--text-muted)';
-          testResultEl.textContent = 'Key removed from local storage.';
-        }
-        this._refreshAiSettingsStatus();
-        this.aiCoach?.updateEngineBadge();
-        ui.showToast('Gemini client key cleared', '🗑️');
+    // Cycle Syncing: Refresh with Gemini 3.8 Flash
+    const btnRefreshSync = document.getElementById('btn-refresh-gemini-sync');
+    if (btnRefreshSync) {
+      btnRefreshSync.addEventListener('click', () => {
+        this.loadCycleSyncingInsights(true);
       });
     }
 
@@ -670,10 +656,9 @@ class AifyCycleApp {
         profile.periodLength = parseInt(document.getElementById('setting-periodlength').value, 10) || 5;
         profile.lastPeriodStart = document.getElementById('setting-lastperiod').value || formatDateKey(this.today);
 
-        // Save candidate Gemini Key to localStorage if entered
-        const enteredKey = inputGeminiKey ? inputGeminiKey.value.trim() : '';
-        if (enteredKey) {
-          storage.saveGeminiApiKey(enteredKey);
+        const aiEnabledCheckbox = document.getElementById('setting-aicoach-enabled');
+        if (aiEnabledCheckbox) {
+          profile.aiCoachEnabled = aiEnabledCheckbox.checked;
         }
 
         storage.saveProfile(profile);
@@ -696,7 +681,53 @@ class AifyCycleApp {
         a.download = `aifycycle-backup-${formatDateKey(new Date())}.json`;
         a.click();
         URL.revokeObjectURL(url);
+        analytics.trackEvent('backup', 'export');
+        analytics.logAuditAction('DATA_EXPORTED', 'User exported JSON data backup');
         ui.showToast('Data backup downloaded', '📁');
+      });
+    }
+
+    // Analytics Telemetry Export
+    const btnExportTelemetry = document.getElementById('btn-export-telemetry');
+    if (btnExportTelemetry) {
+      btnExportTelemetry.addEventListener('click', () => {
+        const report = analytics.exportComplianceReport();
+        const blob = new Blob([report], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `aifycycle-compliance-audit-${formatDateKey(new Date())}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        ui.showToast('Compliance report downloaded', '📄');
+      });
+    }
+
+    // Analytics Tracking Toggle in Settings
+    const toggleAnalytics = document.getElementById('setting-analytics-toggle');
+    if (toggleAnalytics) {
+      toggleAnalytics.checked = analytics.isTrackingEnabled();
+      toggleAnalytics.addEventListener('change', (e) => {
+        analytics.saveConsent({ analyticsAllowed: e.target.checked });
+        ui.showToast(`Anonymous analytics ${e.target.checked ? 'enabled' : 'disabled'}`, '🛡️');
+      });
+    }
+
+    // GDPR Right to Erasure: Complete Account & Data Wipe
+    const btnGdprWipe = document.getElementById('btn-gdpr-wipe');
+    if (btnGdprWipe) {
+      btnGdprWipe.addEventListener('click', () => {
+        const confirmed = confirm(
+          '⚠️ GDPR DATA ERASURE WARNING:\n\n' +
+          'This will permanently delete all your account credentials, menstrual cycle logs, symptom entries, AI chat history, learned health memories, API keys, and local analytics from this device.\n\n' +
+          'This action is irreversible. Do you wish to proceed?'
+        );
+
+        if (confirmed) {
+          storage.purgeAllUserData();
+          alert('All your personal data, cycle records, and sessions have been permanently erased from this device.');
+          window.location.reload();
+        }
       });
     }
 

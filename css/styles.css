@@ -131,9 +131,60 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Remove heavy ambient blobs */
-body::before, body::after {
-  display: none;
+/* Apple Luminous Ambient Aura Background */
+body {
+  position: relative;
+  min-height: 100vh;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: -12%;
+  right: -8%;
+  width: 58vw;
+  height: 58vw;
+  max-width: 720px;
+  max-height: 720px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(242, 165, 179, 0.32) 0%, rgba(245, 197, 163, 0.22) 40%, rgba(251, 247, 245, 0) 70%);
+  filter: blur(85px);
+  z-index: 0;
+  pointer-events: none;
+  animation: appleAmbientFloat 22s ease-in-out infinite alternate;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  bottom: -15%;
+  left: -10%;
+  width: 62vw;
+  height: 62vw;
+  max-width: 760px;
+  max-height: 760px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(168, 142, 196, 0.24) 0%, rgba(232, 120, 138, 0.16) 45%, rgba(251, 247, 245, 0) 70%);
+  filter: blur(95px);
+  z-index: 0;
+  pointer-events: none;
+  animation: appleAmbientFloat 28s ease-in-out infinite alternate-reverse;
+}
+
+[data-theme="dark"] body::before {
+  background: radial-gradient(circle, rgba(232, 120, 138, 0.2) 0%, rgba(168, 142, 196, 0.12) 45%, transparent 70%);
+  filter: blur(100px);
+}
+
+[data-theme="dark"] body::after {
+  background: radial-gradient(circle, rgba(122, 173, 207, 0.16) 0%, rgba(232, 120, 138, 0.1) 45%, transparent 70%);
+  filter: blur(100px);
+}
+
+@keyframes appleAmbientFloat {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-35px, 45px) scale(1.08); }
+  100% { transform: translate(35px, -25px) scale(0.95); }
 }
 
 /* ===================================================================
@@ -144,22 +195,31 @@ body::before, body::after {
   z-index: 1;
   max-width: var(--max-width);
   margin: 0 auto;
-  padding: 1rem 1.25rem 5rem;
+  padding: 1.25rem 1.25rem 5.5rem;
 }
 
 /* ===================================================================
-   Header — Clean, minimal bar
+   Header — Apple Frosted Glass Floating Bar
    =================================================================== */
 .app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.85rem 1.25rem;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-secondary);
+  padding: 0.95rem 1.4rem;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.75);
   border-radius: var(--radius-xl);
   margin-bottom: 1.5rem;
-  box-shadow: var(--shadow-card);
+  box-shadow: 0 10px 30px rgba(180, 140, 160, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transition: all var(--transition-smooth);
+}
+
+[data-theme="dark"] .app-header {
+  background: rgba(32, 28, 33, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .brand-wrapper {
@@ -800,104 +860,364 @@ body::before, body::after {
 }
 
 /* ===================================================================
-   Cycle Syncing & Wellness Insights
+   Cycle Syncing & Wellness Insights (Apple Glassmorphism + Gemini 3.8)
    =================================================================== */
 .syncing-hero {
-  background: var(--surface-tinted);
-  border: 1px solid var(--border-accent);
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.75);
   border-radius: var(--radius-xl);
-  padding: 1.75rem;
+  padding: 1.85rem 1.75rem;
   margin-bottom: 1.5rem;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.5rem;
-  box-shadow: var(--shadow-card);
+  flex-direction: column;
+  gap: 1.15rem;
+  box-shadow: 0 12px 36px rgba(180, 140, 160, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
   position: relative;
   overflow: hidden;
 }
 
-/* Remove ambient glow */
-.syncing-hero::after {
-  display: none;
+[data-theme="dark"] .syncing-hero {
+  background: rgba(32, 28, 33, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.syncing-hero-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.syncing-badge-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.apple-ai-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, rgba(232, 120, 138, 0.14) 0%, rgba(168, 142, 196, 0.14) 100%);
+  border: 1px solid rgba(232, 120, 138, 0.3);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-rose);
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.ai-sparkle-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-rose);
+  box-shadow: 0 0 8px var(--color-rose);
+  animation: pulseAiDot 2s infinite ease-in-out;
+}
+
+@keyframes pulseAiDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.75); }
+}
+
+.cycle-day-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.8rem;
+  border-radius: var(--radius-full);
+  background: rgba(180, 140, 160, 0.12);
+  border: 1px solid rgba(180, 140, 160, 0.18);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.btn-refresh-sync {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(232, 120, 138, 0.3);
+  border-radius: var(--radius-full);
+  padding: 0.45rem 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-rose);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(232, 120, 138, 0.12);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+[data-theme="dark"] .btn-refresh-sync {
+  background: rgba(45, 38, 44, 0.85);
+  border: 1px solid rgba(232, 120, 138, 0.4);
+}
+
+.btn-refresh-sync:hover {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 4px 14px rgba(232, 120, 138, 0.25);
+  background: rgba(255, 255, 255, 1);
+}
+
+.btn-refresh-sync:active {
+  transform: scale(0.97);
+}
+
+.btn-refresh-sync.loading .refresh-icon.spinning {
+  display: inline-block;
+  animation: spinIcon 1s linear infinite;
+}
+
+@keyframes spinIcon {
+  100% { transform: rotate(360deg); }
 }
 
 .syncing-hero-content h2 {
-  font-size: 1.45rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  margin-bottom: 0.4rem;
+  font-size: 1.55rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  margin-bottom: 0.35rem;
+  color: var(--text-primary);
 }
 
 .syncing-hero-content p {
   color: var(--text-secondary);
-  font-size: 0.88rem;
-  max-width: 560px;
-  line-height: 1.6;
+  font-size: 0.92rem;
+  max-width: 600px;
+  line-height: 1.55;
 }
 
+/* Dynamic Hormone Biomarker Bar */
+.sync-hormone-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(180, 140, 160, 0.15);
+}
+
+.hormone-pill, .energy-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(180, 140, 160, 0.15);
+  font-size: 0.8rem;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+[data-theme="dark"] .hormone-pill,
+[data-theme="dark"] .energy-pill {
+  background: rgba(45, 38, 44, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hormone-label, .energy-label {
+  font-weight: 700;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.hormone-value {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.energy-value {
+  color: var(--color-rose);
+  font-weight: 700;
+}
+
+/* Syncing 4 Pillars Grid */
 .syncing-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 2rem;
 }
 
 .sync-card {
-  background: var(--surface-card);
-  border: 1px solid var(--border-secondary);
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.75);
   border-radius: var(--radius-xl);
-  padding: 1.25rem;
-  box-shadow: var(--shadow-card);
-  transition: transform var(--transition-fast), border-color var(--transition-fast);
+  padding: 1.5rem;
+  box-shadow: 0 10px 30px rgba(180, 140, 160, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.32s cubic-bezier(0.16, 1, 0.3, 1), 
+              border-color 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme="dark"] .sync-card {
+  background: rgba(32, 28, 33, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .sync-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--border-accent);
+  transform: translateY(-3px) scale(1.008);
+  box-shadow: 0 18px 45px rgba(232, 120, 138, 0.14), inset 0 1px 0 #FFFFFF;
+  border-color: rgba(232, 120, 138, 0.4);
 }
 
-.sync-card-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-sm);
+.sync-card-highlight {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.8), rgba(242, 165, 179, 0.15)) !important;
+  border-color: rgba(232, 120, 138, 0.35) !important;
+}
+
+[data-theme="dark"] .sync-card-highlight {
+  background: linear-gradient(145deg, rgba(32, 28, 33, 0.8), rgba(232, 120, 138, 0.15)) !important;
+  border-color: rgba(232, 120, 138, 0.45) !important;
+}
+
+.sync-card-top {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 1.25rem;
+  justify-content: space-between;
   margin-bottom: 0.85rem;
 }
 
+.sync-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.sync-card-icon.nutrition {
+  background: rgba(0, 201, 167, 0.14);
+  color: var(--color-teal);
+}
+
+.sync-card-icon.workout {
+  background: rgba(255, 107, 139, 0.14);
+  color: var(--color-rose);
+}
+
+.sync-card-icon.mindset {
+  background: rgba(132, 94, 194, 0.14);
+  color: var(--color-fuchsia);
+}
+
+.sync-card-icon.wellness {
+  background: rgba(232, 195, 106, 0.16);
+  color: var(--color-gold);
+}
+
+.sync-card-ai-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+  background: rgba(232, 120, 138, 0.12);
+  color: var(--color-rose);
+  border: 1px solid rgba(232, 120, 138, 0.25);
+}
+
 .sync-card h3 {
-  font-size: 1rem;
-  font-weight: 600;
-  margin-bottom: 0.6rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+  color: var(--text-primary);
+}
+
+.sync-card-desc {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-bottom: 0.85rem;
 }
 
 .sync-list {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.6rem;
+  flex: 1;
 }
 
 .sync-list li {
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   color: var(--text-secondary);
   display: flex;
   align-items: flex-start;
-  gap: 0.45rem;
-  line-height: 1.45;
+  gap: 0.55rem;
+  line-height: 1.48;
 }
 
-.sync-list li::before {
-  content: '';
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--color-rose-soft);
+.sync-item-bullet {
+  font-size: 0.95rem;
   flex-shrink: 0;
-  margin-top: 0.45em;
+  margin-top: -0.05rem;
+}
+
+.sync-tip-box {
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(180, 140, 160, 0.12);
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  line-height: 1.55;
+  font-style: italic;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+[data-theme="dark"] .sync-tip-box {
+  background: rgba(45, 38, 44, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ai-scientific-pill {
+  font-size: 0.76rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  background: rgba(127, 176, 158, 0.12);
+  border: 1px solid rgba(127, 176, 158, 0.25);
+  border-radius: var(--radius-md);
+  padding: 0.65rem 0.85rem;
+  margin-top: 0.6rem;
+}
+
+/* Skeleton Loading Shimmer */
+.skeleton-shimmer {
+  background: linear-gradient(90deg, rgba(180, 140, 160, 0.12) 25%, rgba(180, 140, 160, 0.22) 50%, rgba(180, 140, 160, 0.12) 75%);
+  background-size: 200% 100%;
+  animation: appleShimmerWave 1.6s infinite ease-in-out;
+}
+
+@keyframes appleShimmerWave {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 /* ===================================================================
@@ -2718,3 +3038,625 @@ body::before, body::after {
     font-size: 0.95rem;
   }
 }
+
+/* ===================================================================
+   LEGAL, COMPLIANCE & PRIVACY CONSENT STYLES
+   =================================================================== */
+
+/* Consent Banner */
+.consent-banner {
+  position: fixed;
+  bottom: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 2.5rem);
+  max-width: 860px;
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1.5px solid var(--border-accent);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+  padding: 1.15rem 1.4rem;
+  z-index: 9999;
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.consent-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.consent-text {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  flex: 1;
+  min-width: 280px;
+}
+
+.consent-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.consent-text strong {
+  display: block;
+  font-size: 0.92rem;
+  color: var(--text-primary);
+  margin-bottom: 0.2rem;
+}
+
+.consent-text p {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.consent-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-shrink: 0;
+}
+
+/* Legal text link buttons */
+.btn-link-legal {
+  background: transparent;
+  border: none;
+  color: var(--color-rose);
+  font-size: inherit;
+  font-family: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  display: inline;
+}
+
+.btn-link-legal:hover {
+  color: var(--color-coral);
+}
+
+.auth-compliance-links {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 0.65rem;
+}
+
+/* Compliance Alert Box */
+.compliance-alert-box {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius-md);
+  margin-bottom: 1rem;
+}
+
+.compliance-alert-box.alert-danger {
+  background: rgba(255, 107, 139, 0.1);
+  border: 1.5px solid rgba(255, 107, 139, 0.4);
+  color: var(--text-primary);
+}
+
+.compliance-alert-box.alert-danger strong {
+  color: var(--color-rose);
+}
+
+.modal-scroll-body {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* Telemetry Dashboard */
+.telemetry-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+
+.telemetry-stat-box {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  transition: all var(--transition-fast);
+}
+
+.telemetry-stat-box:hover {
+  border-color: var(--border-accent);
+  transform: translateY(-1px);
+}
+
+.telemetry-stat-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.35rem;
+}
+
+.telemetry-stat-value {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.1;
+  margin-bottom: 0.2rem;
+}
+
+.telemetry-stat-sub {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+/* Telemetry Audit Log List */
+.telemetry-audit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 0.3rem;
+}
+
+.audit-log-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  transition: background var(--transition-fast);
+}
+
+.audit-log-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.audit-log-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-xs);
+  background: rgba(132, 94, 194, 0.14);
+  color: var(--color-fuchsia);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.audit-log-detail {
+  flex: 1;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.audit-log-time {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ===================================================================
+   APPLE GLASSMORPHISM MASTER DESIGN SYSTEM (visionOS / iOS 18 Aesthetic)
+   =================================================================== */
+
+/* 1. Universal Glass Cards & Surfaces */
+.cycle-dial-card,
+.daily-status-card,
+.quick-log-card,
+.metric-card,
+.ai-coach-container,
+.auth-card,
+.onboarding-container,
+.calendar-container,
+.compliance-summary-card,
+.settings-compliance-card,
+.consent-banner,
+.modal-content {
+  background: rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: blur(28px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  box-shadow: 0 12px 36px rgba(180, 140, 160, 0.08), 
+              0 2px 8px rgba(180, 140, 160, 0.04), 
+              inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
+  border-radius: var(--radius-xl);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1), 
+              border-color 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme="dark"] .cycle-dial-card,
+[data-theme="dark"] .daily-status-card,
+[data-theme="dark"] .quick-log-card,
+[data-theme="dark"] .metric-card,
+[data-theme="dark"] .ai-coach-container,
+[data-theme="dark"] .auth-card,
+[data-theme="dark"] .onboarding-container,
+[data-theme="dark"] .calendar-container,
+[data-theme="dark"] .compliance-summary-card,
+[data-theme="dark"] .settings-compliance-card,
+[data-theme="dark"] .consent-banner,
+[data-theme="dark"] .modal-content {
+  background: rgba(30, 26, 32, 0.78) !important;
+  backdrop-filter: blur(28px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45), 
+              0 2px 8px rgba(0, 0, 0, 0.2), 
+              inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Card Hover Lift & Glow */
+.daily-status-card:hover,
+.quick-log-card:hover,
+.metric-card:hover,
+.sync-card:hover {
+  transform: translateY(-3px) scale(1.008);
+  box-shadow: 0 18px 45px rgba(232, 120, 138, 0.13), inset 0 1px 0 #FFFFFF !important;
+  border-color: rgba(232, 120, 138, 0.35) !important;
+}
+
+[data-theme="dark"] .daily-status-card:hover,
+[data-theme="dark"] .quick-log-card:hover,
+[data-theme="dark"] .metric-card:hover,
+[data-theme="dark"] .sync-card:hover {
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(232, 120, 138, 0.45) !important;
+}
+
+/* 2. Apple Modals with Blurred Backdrop */
+.modal-overlay {
+  backdrop-filter: blur(20px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(160%) !important;
+  background: rgba(25, 20, 24, 0.45) !important;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modal-content {
+  border-radius: var(--radius-xl) !important;
+  padding: 1.85rem !important;
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
+  animation: appleModalPop 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes appleModalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* 3. Apple Intelligence Settings Panel */
+.apple-intelligence-panel {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.6), rgba(242, 165, 179, 0.08));
+  border-radius: var(--radius-lg);
+  padding: 1.15rem;
+  border: 1px solid rgba(232, 120, 138, 0.2);
+  margin-top: 1rem;
+}
+
+[data-theme="dark"] .apple-intelligence-panel {
+  background: linear-gradient(145deg, rgba(40, 34, 38, 0.7), rgba(232, 120, 138, 0.1));
+  border-color: rgba(232, 120, 138, 0.3);
+}
+
+.apple-ai-icon-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--color-rose) 0%, var(--color-lavender) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  font-size: 1rem;
+  box-shadow: 0 4px 12px rgba(232, 120, 138, 0.3);
+}
+
+.apple-ai-info-card {
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(180, 140, 160, 0.15);
+  padding: 0.95rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+[data-theme="dark"] .apple-ai-info-card {
+  background: rgba(45, 38, 44, 0.6);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.ai-feature-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
+.ai-check-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(0, 201, 167, 0.16);
+  color: var(--color-teal);
+  font-size: 0.72rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+.ai-feature-row strong {
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  display: block;
+  margin-bottom: 0.15rem;
+}
+
+.ai-feature-row p {
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* 4. Apple Glass Inputs & Form Fields */
+.form-input,
+.form-textarea {
+  background: rgba(255, 255, 255, 0.6) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  border: 1px solid rgba(180, 140, 160, 0.22) !important;
+  border-radius: var(--radius-md) !important;
+  padding: 0.7rem 0.95rem !important;
+  font-family: inherit !important;
+  font-size: 0.88rem !important;
+  color: var(--text-primary) !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+}
+
+[data-theme="dark"] .form-input,
+[data-theme="dark"] .form-textarea {
+  background: rgba(45, 38, 44, 0.6) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: var(--text-primary) !important;
+}
+
+.form-input:focus,
+.form-textarea:focus {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: var(--color-rose) !important;
+  box-shadow: 0 0 0 3px rgba(232, 120, 138, 0.18), inset 0 1px 2px rgba(0, 0, 0, 0.02) !important;
+  outline: none !important;
+}
+
+[data-theme="dark"] .form-input:focus,
+[data-theme="dark"] .form-textarea:focus {
+  background: rgba(55, 46, 52, 0.95) !important;
+  box-shadow: 0 0 0 3px rgba(232, 120, 138, 0.25) !important;
+}
+
+/* 5. Apple Buttons & Spring Interaction */
+.btn-primary {
+  background: linear-gradient(135deg, #E8788A 0%, #F2A5B3 100%) !important;
+  color: #FFFFFF !important;
+  border: none !important;
+  border-radius: var(--radius-full) !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 16px rgba(232, 120, 138, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1.5px) scale(1.02) !important;
+  box-shadow: 0 6px 22px rgba(232, 120, 138, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+}
+
+.btn-primary:active {
+  transform: scale(0.97) !important;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.7) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  border: 1px solid rgba(180, 140, 160, 0.22) !important;
+  border-radius: var(--radius-full) !important;
+  color: var(--text-primary) !important;
+  font-weight: 600 !important;
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+[data-theme="dark"] .btn-secondary {
+  background: rgba(45, 38, 44, 0.7) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: var(--color-rose) !important;
+  color: var(--color-rose) !important;
+  transform: translateY(-1px) scale(1.01) !important;
+}
+
+.btn-secondary:active {
+  transform: scale(0.97) !important;
+}
+
+/* 6. AI Coach Chat Bubbles & Bar Glassmorphism */
+.ai-coach-header {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 4px 16px rgba(180, 140, 160, 0.05);
+}
+
+[data-theme="dark"] .ai-coach-header {
+  background: rgba(45, 38, 44, 0.55);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.ai-message.assistant .ai-message-content {
+  background: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(18px) !important;
+  -webkit-backdrop-filter: blur(18px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.85) !important;
+  box-shadow: 0 6px 20px rgba(180, 140, 160, 0.06), inset 0 1px 0 #FFFFFF !important;
+  border-radius: 20px 20px 20px 4px !important;
+}
+
+[data-theme="dark"] .ai-message.assistant .ai-message-content {
+  background: rgba(45, 38, 45, 0.82) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+.ai-message.user .ai-message-content {
+  background: linear-gradient(135deg, var(--color-rose) 0%, #f095a5 100%) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 6px 20px rgba(232, 120, 138, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+  border-radius: 20px 20px 4px 20px !important;
+}
+
+.ai-chat-input-bar {
+  background: rgba(255, 255, 255, 0.75) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  border-radius: var(--radius-full) !important;
+  box-shadow: 0 8px 28px rgba(180, 140, 160, 0.09), inset 0 1px 0 #FFFFFF !important;
+  padding: 0.35rem 0.5rem 0.35rem 1.15rem !important;
+}
+
+[data-theme="dark"] .ai-chat-input-bar {
+  background: rgba(45, 38, 44, 0.8) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+}
+
+/* 7. Action Cards in Chat */
+.ai-action-card {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(232, 120, 138, 0.25) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: 0 6px 22px rgba(232, 120, 138, 0.12), inset 0 1px 0 #FFFFFF !important;
+}
+
+[data-theme="dark"] .ai-action-card {
+  background: rgba(45, 38, 44, 0.85) !important;
+  border-color: rgba(232, 120, 138, 0.35) !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+}
+
+/* 8. Calendar Day Grid Glass Cells */
+.calendar-day-cell {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(180, 140, 160, 0.12);
+  border-radius: var(--radius-md);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme="dark"] .calendar-day-cell {
+  background: rgba(45, 38, 44, 0.55);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.calendar-day-cell:hover {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: var(--color-rose);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 18px rgba(232, 120, 138, 0.15);
+}
+
+[data-theme="dark"] .calendar-day-cell:hover {
+  background: rgba(58, 48, 55, 0.9);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* 9. Timeline Rows */
+.timeline-row {
+  background: rgba(255, 255, 255, 0.6) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(180, 140, 160, 0.14) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: 0 4px 16px rgba(180, 140, 160, 0.05), inset 0 1px 0 #FFFFFF !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+[data-theme="dark"] .timeline-row {
+  background: rgba(42, 36, 42, 0.65) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+.timeline-row:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-accent) !important;
+  box-shadow: 0 8px 24px rgba(232, 120, 138, 0.12), inset 0 1px 0 #FFFFFF !important;
+}
+
+/* 10. Apple Smooth Scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(180, 140, 160, 0.25);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-rose-soft);
+}
+

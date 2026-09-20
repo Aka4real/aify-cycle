@@ -184,38 +184,117 @@ export class UIComponents {
   }
 
   /**
-   * Render Cycle Syncing Guide
+   * Render Cycle Syncing Guide (with Gemini 3.8 Flash Intelligence support)
    */
-  renderCycleSyncingGuide(status) {
+  renderCycleSyncingGuide(status, insights = null, isLoading = false) {
     const guide = CYCLE_SYNCING_GUIDE[status.phase.key];
     if (!guide) return;
 
     const phaseTitleEl = document.getElementById('sync-phase-title');
     const phaseTaglineEl = document.getElementById('sync-phase-tagline');
+    const cycleDayPill = document.getElementById('sync-cycle-day-pill');
+    const hormoneDescEl = document.getElementById('sync-hormone-desc');
+    const energyDescEl = document.getElementById('sync-energy-desc');
     const nutritionListEl = document.getElementById('sync-nutrition-list');
     const workoutListEl = document.getElementById('sync-workout-list');
     const mindsetListEl = document.getElementById('sync-mindset-list');
     const partnerNoteEl = document.getElementById('sync-partner-tip');
+    const scientificWhyEl = document.getElementById('sync-scientific-why');
+    const refreshBtn = document.getElementById('btn-refresh-gemini-sync');
 
-    if (phaseTitleEl) phaseTitleEl.textContent = `${status.phase.icon} ${guide.title}`;
-    if (phaseTaglineEl) phaseTaglineEl.textContent = status.phase.tagline;
+    if (cycleDayPill) {
+      cycleDayPill.textContent = `Day ${status.cycleDay} of ${status.cycleLength}`;
+    }
+
+    if (isLoading) {
+      if (refreshBtn) {
+        refreshBtn.classList.add('loading');
+        refreshBtn.innerHTML = `<span class="refresh-icon spinning">✨</span> <span class="refresh-text">Consulting Gemini 3.8...</span>`;
+      }
+      const skeletonItems = `
+        <li class="skeleton-shimmer" style="height: 16px; border-radius: 6px; margin-bottom: 6px;"></li>
+        <li class="skeleton-shimmer" style="height: 16px; border-radius: 6px; width: 85%; margin-bottom: 6px;"></li>
+        <li class="skeleton-shimmer" style="height: 16px; border-radius: 6px; width: 70%;"></li>
+      `;
+      if (nutritionListEl) nutritionListEl.innerHTML = skeletonItems;
+      if (workoutListEl) workoutListEl.innerHTML = skeletonItems;
+      if (mindsetListEl) mindsetListEl.innerHTML = skeletonItems;
+      if (partnerNoteEl) partnerNoteEl.innerHTML = `<span class="skeleton-shimmer" style="display:block; height: 18px; border-radius: 6px; width: 90%;"></span>`;
+      if (scientificWhyEl) scientificWhyEl.innerHTML = '';
+      return;
+    }
+
+    if (refreshBtn) {
+      refreshBtn.classList.remove('loading');
+      refreshBtn.innerHTML = `<span class="refresh-icon">✨</span> <span class="refresh-text">Refresh with Gemini</span>`;
+    }
+
+    // Default hormone description and energy capacity by phase if not returned by Gemini
+    const defaultHormones = {
+      menstrual: 'Estrogen & progesterone at lowest baseline • Uterine lining shedding',
+      follicular: 'FSH stimulates follicle recruitment • Estrogen steadily rising',
+      ovulatory: 'Estrogen peak • LH surge triggering follicle release',
+      luteal: 'Progesterone surge from corpus luteum • Thermogenic body temp rise'
+    };
+
+    const defaultEnergy = {
+      menstrual: 'Restorative Inward Energy (40-50%)',
+      follicular: 'Rising Creative Vitality (75-85%)',
+      ovulatory: 'Peak Dynamic Power (95-100%)',
+      luteal: 'Grounded Focused Energy (65-75%)'
+    };
+
+    if (phaseTitleEl) {
+      phaseTitleEl.textContent = `${status.phase.icon} ${insights?.title || guide.title}`;
+    }
+    if (phaseTaglineEl) {
+      phaseTaglineEl.textContent = insights?.tagline || status.phase.tagline;
+    }
+    if (hormoneDescEl) {
+      hormoneDescEl.textContent = insights?.hormoneSnapshot || defaultHormones[status.phase.key] || 'Natural endocrine rhythm in progress';
+    }
+    if (energyDescEl) {
+      energyDescEl.textContent = insights?.energyCapacity || defaultEnergy[status.phase.key] || 'Normal bio-rhythm energy';
+    }
+
+    // Render lists with rich formatting
+    const foods = (insights && Array.isArray(insights.foods) && insights.foods.length > 0) ? insights.foods : guide.foods;
+    const workouts = (insights && Array.isArray(insights.workouts) && insights.workouts.length > 0) ? insights.workouts : guide.workouts;
+    const mindset = (insights && Array.isArray(insights.mindset) && insights.mindset.length > 0) ? insights.mindset : guide.mindset;
 
     if (nutritionListEl) {
-      nutritionListEl.innerHTML = guide.foods.map(item => `<li>${item}</li>`).join('');
+      nutritionListEl.innerHTML = foods.map(item => `<li><span class="sync-item-bullet">🥑</span><span>${item}</span></li>`).join('');
     }
 
     if (workoutListEl) {
-      workoutListEl.innerHTML = guide.workouts.map(item => `<li>${item}</li>`).join('');
+      workoutListEl.innerHTML = workouts.map(item => `<li><span class="sync-item-bullet">⚡</span><span>${item}</span></li>`).join('');
     }
 
     if (mindsetListEl) {
-      mindsetListEl.innerHTML = guide.mindset.map(item => `<li>${item}</li>`).join('');
+      mindsetListEl.innerHTML = mindset.map(item => `<li><span class="sync-item-bullet">💡</span><span>${item}</span></li>`).join('');
     }
 
     if (partnerNoteEl) {
-      partnerNoteEl.textContent = guide.partnerTip;
+      partnerNoteEl.textContent = insights?.partnerTip || guide.partnerTip;
+    }
+
+    if (scientificWhyEl) {
+      if (insights?.scientificWhy) {
+        scientificWhyEl.innerHTML = `
+          <div class="ai-scientific-pill">
+            <span>🧬</span> <strong>Endocrine Rationale (Gemini 3.8):</strong> ${insights.scientificWhy}
+          </div>
+        `;
+      } else {
+        scientificWhyEl.innerHTML = `
+          <div class="ai-scientific-pill">
+            <span>🧬</span> <strong>Phase Biology:</strong> Tailored to support your natural hormone shifts during the ${status.phase.name}.
+          </div>
+        `;
+      }
     }
   }
+
 
   /**
    * Render History & Analytics Screen
@@ -266,6 +345,82 @@ export class UIComponents {
           </div>
         `;
         timelineListEl.appendChild(row);
+      });
+    }
+
+    // Render Data Privacy & Usage Telemetry section
+    this.renderTelemetryDashboard();
+  }
+
+  /**
+   * Render the Data Privacy & Usage Telemetry Dashboard
+   */
+  renderTelemetryDashboard() {
+    const aiQueriesEl = document.getElementById('telemetry-ai-queries');
+    const aiBreakdownEl = document.getElementById('telemetry-ai-breakdown');
+    const aiLatencyEl = document.getElementById('telemetry-ai-latency');
+    const storageKbEl = document.getElementById('telemetry-storage-kb');
+    const consentStatusEl = document.getElementById('telemetry-consent-status');
+    const auditListEl = document.getElementById('telemetry-audit-list');
+
+    // Dynamically retrieve summary from storage/tracker
+    let telemetry = {};
+    let auditLogs = [];
+    try {
+      const telRaw = localStorage.getItem('aifycycle_telemetry_v1');
+      telemetry = telRaw ? JSON.parse(telRaw) : {};
+      const auditRaw = localStorage.getItem('aifycycle_audit_log_v1');
+      auditLogs = auditRaw ? JSON.parse(auditRaw) : [];
+    } catch (e) {}
+
+    const totalQueries = telemetry.featureUsage?.aiCoachQueries || 0;
+    const liveQueries = telemetry.featureUsage?.aiLiveGeminiQueries || 0;
+    const localQueries = telemetry.featureUsage?.aiLocalQueries || 0;
+    const avgLatency = telemetry.aiPerformance?.avgResponseTimeMs || 0;
+
+    let totalStorageBytes = 0;
+    for (let key in localStorage) {
+      if (localStorage.hasOwnProperty(key)) {
+        totalStorageBytes += (key.length + (localStorage[key] || '').length) * 2;
+      }
+    }
+    const storageKb = (totalStorageBytes / 1024).toFixed(2);
+
+    let isConsentActive = true;
+    try {
+      const consentRaw = localStorage.getItem('aifycycle_consent_v1');
+      if (consentRaw) isConsentActive = JSON.parse(consentRaw).analyticsAllowed !== false;
+    } catch (e) {}
+
+    if (aiQueriesEl) aiQueriesEl.textContent = totalQueries;
+    if (aiBreakdownEl) aiBreakdownEl.textContent = `${liveQueries} Live • ${localQueries} Local`;
+    if (aiLatencyEl) aiLatencyEl.textContent = avgLatency > 0 ? `${avgLatency}ms` : '< 200ms';
+    if (storageKbEl) storageKbEl.textContent = `${storageKb} KB`;
+    if (consentStatusEl) {
+      consentStatusEl.textContent = isConsentActive ? 'Active' : 'Disabled';
+      consentStatusEl.style.color = isConsentActive ? 'var(--color-teal)' : 'var(--text-muted)';
+    }
+
+    if (auditListEl) {
+      auditListEl.innerHTML = '';
+      const recent = auditLogs.slice(0, 8);
+      if (recent.length === 0) {
+        auditListEl.innerHTML = '<p style="color: var(--text-muted); font-size: 0.8rem;">No audit records recorded yet.</p>';
+        return;
+      }
+
+      recent.forEach(log => {
+        const item = document.createElement('div');
+        item.className = 'audit-log-item';
+        const timeFormatted = new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const dateFormatted = new Date(log.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' });
+
+        item.innerHTML = `
+          <div class="audit-log-badge">${log.action}</div>
+          <div class="audit-log-detail">${log.detail}</div>
+          <div class="audit-log-time">${dateFormatted} ${timeFormatted}</div>
+        `;
+        auditListEl.appendChild(item);
       });
     }
   }

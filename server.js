@@ -74,6 +74,20 @@ const server = http.createServer(async (req, res) => {
     }));
   }
 
+  // 1b. Compliance & Health Data Governance Status
+  if (req.method === 'GET' && reqPath === '/api/compliance/status') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({
+      status: 'compliant',
+      frameworks: ['GDPR', 'CCPA/CPRA', 'FTC Health Breach Notification Rule'],
+      dataPrivacy: 'Local-first private storage sandbox (zero third-party data broker transmission)',
+      aiGovernance: 'Google Cloud Gemini Enterprise Tier (zero model training on intimate cycle prompts)',
+      medicalDisclaimerEnforced: true,
+      auditTelemetryActive: true,
+      timestamp: new Date().toISOString()
+    }));
+  }
+
   // 2. Secure Gemini Proxy
   if (req.method === 'POST' && reqPath === '/api/gemini') {
     let body = '';

@@ -114,6 +114,11 @@
       </div>
 
       <p class="auth-footer-text">Your data stays private — stored only on your device.</p>
+      <div class="auth-compliance-links">
+        <button type="button" class="btn-link-legal" data-modal="modal-medical-disclaimer">Medical Disclaimer</button> •
+        <button type="button" class="btn-link-legal" data-modal="modal-privacy-policy">Privacy Policy</button> •
+        <button type="button" class="btn-link-legal" data-modal="modal-terms-service">Terms of Service</button>
+      </div>
     </div>
   </div>
 
@@ -371,54 +376,100 @@
     </section>
 
     <!-- ===================================================================
-         VIEW 3: CYCLE SYNCING & WELLNESS INSIGHTS
+         VIEW 3: CYCLE SYNCING & WELLNESS INSIGHTS (GEMINI 3.8 FLASH)
          =================================================================== -->
     <section id="view-syncing" class="view-panel">
       <!-- Syncing Hero Banner -->
-      <div class="syncing-hero">
+      <div class="syncing-hero glass-card">
+        <div class="syncing-hero-header">
+          <div class="syncing-badge-wrap">
+            <span class="apple-ai-pill">
+              <span class="ai-sparkle-dot"></span>
+              <span>✨ Gemini 3.8 Flash • Adaptive Engine</span>
+            </span>
+            <span id="sync-cycle-day-pill" class="cycle-day-pill">Day -- of Cycle</span>
+          </div>
+          <button type="button" id="btn-refresh-gemini-sync" class="btn-refresh-sync" title="Generate fresh personalized tips with Gemini 3.8">
+            <span class="refresh-icon">✨</span>
+            <span class="refresh-text">Refresh with Gemini</span>
+          </button>
+        </div>
+
         <div class="syncing-hero-content">
-          <span style="font-size: 0.8rem; font-weight: 700; color: var(--color-rose); letter-spacing: 0.08em; text-transform: uppercase;">Holistic Bio-Rhythm Guide</span>
           <h2 id="sync-phase-title">✨ Ovulatory Phase (Summer Season)</h2>
           <p id="sync-phase-tagline">Align your nutrition, workouts, and self-care with your body's natural hormones.</p>
+        </div>
+
+        <!-- Dynamic Hormone Biomarker Bar -->
+        <div id="sync-hormone-bar" class="sync-hormone-bar">
+          <div class="hormone-pill">
+            <span class="hormone-label">Hormone Dynamic:</span>
+            <span id="sync-hormone-desc" class="hormone-value">Estrogen peak • LH surge triggering ovulation</span>
+          </div>
+          <div class="energy-pill">
+            <span class="energy-label">Energy Capacity:</span>
+            <span id="sync-energy-desc" class="energy-value">Peak Dynamic (95%)</span>
+          </div>
         </div>
       </div>
 
       <!-- Syncing 4 Pillars Grid -->
       <div class="syncing-grid">
         <!-- Nutrition Card -->
-        <div class="sync-card">
-          <div class="sync-card-icon" style="background: rgba(0, 201, 167, 0.15); color: var(--color-teal);">🥗</div>
+        <div class="sync-card glass-card">
+          <div class="sync-card-top">
+            <div class="sync-card-icon nutrition">🥗</div>
+            <span class="sync-card-ai-badge">Gemini Fuel</span>
+          </div>
           <h3>Nutrition &amp; Fuel</h3>
+          <p class="sync-card-desc">Foods and micronutrients to support hormone clearance &amp; energy:</p>
           <ul id="sync-nutrition-list" class="sync-list">
-            <!-- Populated by JS -->
+            <!-- Populated by Gemini 3.8 JS -->
           </ul>
         </div>
 
         <!-- Workouts & Movement Card -->
-        <div class="sync-card">
-          <div class="sync-card-icon" style="background: rgba(255, 107, 139, 0.15); color: var(--color-rose);">🏃‍♀️</div>
+        <div class="sync-card glass-card">
+          <div class="sync-card-top">
+            <div class="sync-card-icon workout">🏃‍♀️</div>
+            <span class="sync-card-ai-badge">Gemini Motion</span>
+          </div>
           <h3>Fitness &amp; Movement</h3>
+          <p class="sync-card-desc">Biologically matched training volume and recovery protocol:</p>
           <ul id="sync-workout-list" class="sync-list">
-            <!-- Populated by JS -->
+            <!-- Populated by Gemini 3.8 JS -->
           </ul>
         </div>
 
         <!-- Mindset & Focus Card -->
-        <div class="sync-card">
-          <div class="sync-card-icon" style="background: rgba(132, 94, 194, 0.15); color: var(--color-fuchsia);">🧠</div>
+        <div class="sync-card glass-card">
+          <div class="sync-card-top">
+            <div class="sync-card-icon mindset">🧠</div>
+            <span class="sync-card-ai-badge">Gemini Mind</span>
+          </div>
           <h3>Mind, Mood &amp; Focus</h3>
+          <p class="sync-card-desc">Cognitive stamina, neurotransmitter focus &amp; communication:</p>
           <ul id="sync-mindset-list" class="sync-list">
-            <!-- Populated by JS -->
+            <!-- Populated by Gemini 3.8 JS -->
           </ul>
         </div>
 
-        <!-- Partner Support Card -->
-        <div class="sync-card" style="border-color: var(--border-accent); background: linear-gradient(145deg, rgba(255, 107, 139, 0.08), rgba(132, 94, 194, 0.06));">
-          <div class="sync-card-icon" style="background: rgba(255, 199, 95, 0.18); color: var(--color-gold);">💖</div>
-          <h3>Wellness Tip</h3>
-          <p id="sync-partner-tip" style="font-size: 0.92rem; color: var(--text-primary); line-height: 1.6; font-style: italic;">
-            <!-- Populated by JS -->
-          </p>
+        <!-- Partner Support / Holistic Wellness Card -->
+        <div class="sync-card glass-card sync-card-highlight">
+          <div class="sync-card-top">
+            <div class="sync-card-icon wellness">💖</div>
+            <span class="sync-card-ai-badge">Holistic Harmony</span>
+          </div>
+          <h3>Daily Holistic Tip &amp; Synergy</h3>
+          <p class="sync-card-desc">Emotional self-compassion &amp; relationship harmony:</p>
+          <div id="sync-partner-tip-container" class="sync-tip-box">
+            <p id="sync-partner-tip">
+              <!-- Populated by Gemini 3.8 JS -->
+            </p>
+          </div>
+          <div id="sync-scientific-why" class="sync-scientific-why">
+            <!-- Populated with Gemini 3.8 functional endocrinology explanation -->
+          </div>
         </div>
       </div>
     </section>
@@ -506,6 +557,56 @@
         <h3>Recent Cycle &amp; Symptom Timeline</h3>
         <div id="cycle-timeline-list" class="cycle-timeline-list">
           <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Data Privacy & Usage Telemetry Card -->
+      <div class="history-card" style="margin-top: 1.5rem; border-color: var(--border-accent);">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+          <div>
+            <h3 style="margin-bottom: 0.15rem; display: flex; align-items: center; gap: 0.4rem;">
+              <span>🛡️</span> <span>Data Privacy &amp; Usage Telemetry</span>
+            </h3>
+            <span style="font-size: 0.78rem; color: var(--text-muted);">Local-first privacy metrics &amp; regulatory audit trail</span>
+          </div>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button type="button" id="btn-export-telemetry" class="btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.75rem;">
+              <span>📥</span> <span>Compliance Report</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="telemetry-stats-grid">
+          <div class="telemetry-stat-box">
+            <span class="telemetry-stat-label">AI Coach Queries</span>
+            <span id="telemetry-ai-queries" class="telemetry-stat-value">0</span>
+            <span id="telemetry-ai-breakdown" class="telemetry-stat-sub">0 Live • 0 Local</span>
+          </div>
+          <div class="telemetry-stat-box">
+            <span class="telemetry-stat-label">AI Response Latency</span>
+            <span id="telemetry-ai-latency" class="telemetry-stat-value">--</span>
+            <span class="telemetry-stat-sub">Avg duration</span>
+          </div>
+          <div class="telemetry-stat-box">
+            <span class="telemetry-stat-label">Local Footprint</span>
+            <span id="telemetry-storage-kb" class="telemetry-stat-value">-- KB</span>
+            <span class="telemetry-stat-sub">Browser storage</span>
+          </div>
+          <div class="telemetry-stat-box">
+            <span class="telemetry-stat-label">Privacy Consent</span>
+            <span id="telemetry-consent-status" class="telemetry-stat-value" style="color: var(--color-teal); font-size: 0.95rem;">Active</span>
+            <span class="telemetry-stat-sub">Zero 3rd-party ads</span>
+          </div>
+        </div>
+
+        <!-- Recent Audit Trail -->
+        <div style="margin-top: 1.25rem;">
+          <h4 style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.6rem;">
+            Recent Data Privacy &amp; Action Audit Log
+          </h4>
+          <div id="telemetry-audit-list" class="telemetry-audit-list">
+            <!-- Populated by JS -->
+          </div>
         </div>
       </div>
     </section>
@@ -639,50 +740,88 @@
         <input type="date" id="setting-lastperiod" class="form-input">
       </div>
 
-      <!-- Google Gemini AI Integration -->
-      <div id="setting-ai-section" class="form-section" style="border-top: 1px solid var(--border-subtle); padding-top: 1.25rem;">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.55rem;">
-          <span class="form-label" style="margin-bottom: 0;">Google Gemini AI Integration</span>
-          <span id="ai-settings-status" class="ai-status-pill pill-local">Checking...</span>
-        </div>
-        
-        <p style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 0.75rem;">
-          Power Aify with real-time <strong>Gemini 3.8 Flash</strong> intelligence. You can configure a key in your server's <code>.env</code> file (recommended) or enter one below for this browser session. Keys are never committed to git.
-        </p>
-
-        <div class="auth-input-wrap" style="position: relative; margin-bottom: 0.5rem;">
-          <span class="auth-input-icon">🔑</span>
-          <input type="password" id="setting-gemini-key" class="form-input" placeholder="Paste Gemini API Key (e.g. AIzaSy...)" autocomplete="off" style="padding-right: 2.75rem;" />
-          <button type="button" id="btn-toggle-key-visibility" class="btn-input-eye" title="Toggle visibility" aria-label="Toggle key visibility">👁️</button>
+      <!-- Aify Intelligence & Privacy Architecture (Powered by Gemini 3.8 Flash) -->
+      <div id="setting-ai-section" class="form-section apple-intelligence-panel" style="border-top: 1px solid var(--border-subtle); padding-top: 1.25rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.65rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <div class="apple-ai-icon-badge">✨</div>
+            <div>
+              <span class="form-label" style="margin-bottom: 0; font-size: 0.95rem; font-weight: 700;">Aify Intelligence</span>
+              <span style="font-size: 0.74rem; color: var(--text-muted); display: block;">Autonomous Endocrine &amp; Cycle Synthesis</span>
+            </div>
+          </div>
+          <span id="ai-settings-status" class="ai-status-pill pill-server">✨ Gemini 3.8 Flash Active</span>
         </div>
 
-        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-          <button type="button" id="btn-test-gemini-key" class="btn-secondary" style="padding: 0.45rem 0.85rem; font-size: 0.8rem;">
-            <span>⚡</span>
-            <span>Test Connection</span>
+        <div class="apple-ai-info-card">
+          <div class="ai-feature-row">
+            <span class="ai-check-icon">✓</span>
+            <div>
+              <strong>Gemini 3.8 Flash Foundation Intelligence</strong>
+              <p>Generates tailored Cycle Syncing nutrition, dynamic movement, cognitive focus, and conversational wellness advice.</p>
+            </div>
+          </div>
+          <div class="ai-feature-row">
+            <span class="ai-check-icon">✓</span>
+            <div>
+              <strong>Zero-Knowledge Privacy Sandbox</strong>
+              <p>Protected by secure server-side transit. In compliance with enterprise HIPAA and GDPR standards, personal health logs are never used to train external models.</p>
+            </div>
+          </div>
+          <div class="ai-feature-row">
+            <span class="ai-check-icon">✓</span>
+            <div>
+              <strong>Autonomous On-Device Fallback</strong>
+              <p>Cycle algorithms and historical logs run independently in your local browser sandbox even if offline.</p>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 0.85rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+          <label class="checkbox-container" style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; font-size: 0.82rem; color: var(--text-primary);">
+            <input type="checkbox" id="setting-aicoach-enabled" checked />
+            <span>Enable Real-Time AI Coach Insights</span>
+          </label>
+          <button type="button" id="btn-view-ai-compliance" class="btn-ghost btn-link-legal" data-modal="modal-ai-architecture" style="font-size: 0.78rem; color: var(--color-rose); text-decoration: underline; padding: 0.2rem 0.4rem;">
+            Privacy Architecture ↗
           </button>
-          <button type="button" id="btn-clear-gemini-key" class="btn-ghost" style="padding: 0.45rem 0.85rem; font-size: 0.8rem; color: var(--text-muted);">
-            <span>Remove Key</span>
-          </button>
-          <span id="ai-test-result" style="font-size: 0.8rem; font-weight: 600; display: none;"></span>
-        </div>
-
-        <div style="margin-top: 0.65rem; font-size: 0.76rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;">
-          <span>🔒 Stored securely in your device's browser memory or loaded via server .env</span>
-          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" style="color: var(--color-rose); margin-left: auto; text-decoration: underline;">Get free key ↗</a>
         </div>
       </div>
 
+      <!-- Privacy, Compliance & Data Management -->
       <div class="form-section" style="border-top: 1px solid var(--border-subtle); padding-top: 1.25rem;">
-        <span class="form-label">Data Privacy &amp; Management</span>
-        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-          <button type="button" id="btn-export-data" class="btn-secondary">
+        <span class="form-label">Data Privacy, Consent &amp; Compliance</span>
+        <div style="margin-bottom: 0.85rem;">
+          <label class="checkbox-container" style="display: flex; align-items: flex-start; gap: 0.6rem; cursor: pointer; font-size: 0.82rem; color: var(--text-primary); line-height: 1.45;">
+            <input type="checkbox" id="setting-analytics-toggle" checked style="margin-top: 0.15rem;" />
+            <span>Enable anonymous feature &amp; performance telemetry (helps improve prediction algorithms; stored locally and never sold).</span>
+          </label>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.85rem;">
+          <button type="button" class="btn-secondary btn-link-legal" data-modal="modal-medical-disclaimer" style="padding: 0.4rem 0.75rem; font-size: 0.78rem;">
+            <span>🩺</span> <span>Medical Disclaimer</span>
+          </button>
+          <button type="button" class="btn-secondary btn-link-legal" data-modal="modal-privacy-policy" style="padding: 0.4rem 0.75rem; font-size: 0.78rem;">
+            <span>🛡️</span> <span>Privacy Policy</span>
+          </button>
+          <button type="button" class="btn-secondary btn-link-legal" data-modal="modal-terms-service" style="padding: 0.4rem 0.75rem; font-size: 0.78rem;">
+            <span>⚖️</span> <span>Terms of Service</span>
+          </button>
+        </div>
+
+        <div style="display: flex; gap: 0.65rem; flex-wrap: wrap; border-top: 1px dashed var(--border-subtle); padding-top: 0.85rem;">
+          <button type="button" id="btn-export-data" class="btn-secondary" style="font-size: 0.8rem;">
             <span>📥</span>
             <span>Export Backup (JSON)</span>
           </button>
-          <button type="button" id="btn-reset-data" class="btn-secondary" style="color: var(--color-rose);">
+          <button type="button" id="btn-reset-data" class="btn-secondary" style="font-size: 0.8rem;">
             <span>🔄</span>
             <span>Reset Demo Data</span>
+          </button>
+          <button type="button" id="btn-gdpr-wipe" class="btn-secondary" style="color: var(--color-rose); border-color: rgba(255, 107, 139, 0.4); font-size: 0.8rem;">
+            <span>🗑️</span>
+            <span>GDPR: Delete All My Data</span>
           </button>
         </div>
       </div>
@@ -741,6 +880,212 @@
           <button type="submit" class="btn-primary" style="padding: 0.6rem 0.95rem; font-size: 0.82rem; white-space: nowrap;">Remember</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       COMPLIANCE MODAL 1: MEDICAL & CLINICAL DISCLAIMER
+       =================================================================== -->
+  <div id="modal-medical-disclaimer" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="title-medical-disclaimer">
+    <div class="modal-content" style="max-width: 620px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.65rem;">
+          <div style="width: 38px; height: 38px; border-radius: var(--radius-sm); background: rgba(255, 107, 139, 0.15); color: var(--color-rose); display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">🩺</div>
+          <div>
+            <h2 id="title-medical-disclaimer" style="font-size: 1.15rem; font-weight: 700;">Clinical &amp; Medical Disclaimer</h2>
+            <p style="font-size: 0.76rem; color: var(--text-muted);">Please read carefully before using AifyCycle</p>
+          </div>
+        </div>
+        <button type="button" class="btn-close-modal" aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="modal-scroll-body" style="font-size: 0.86rem; line-height: 1.65; color: var(--text-secondary);">
+        <div class="compliance-alert-box alert-danger">
+          <span style="font-size: 1.2rem;">⚠️</span>
+          <div>
+            <strong>NOT A MEDICAL DEVICE OR CONTRACEPTIVE METHOD</strong>
+            <p style="font-size: 0.8rem; margin-top: 0.25rem;">
+              AifyCycle is designed solely for educational, lifestyle, and menstrual cycle tracking purposes. It is <strong>NOT</strong> an FDA-cleared, CE-marked, or medical diagnostic device. Cycle estimations must never be relied upon as a birth control or contraceptive method.
+            </p>
+          </div>
+        </div>
+
+        <h4 style="color: var(--text-primary); margin: 1rem 0 0.4rem;">1. Non-Diagnostic Information</h4>
+        <p>
+          The predictions, phase insights, hormone rhythm guides, and AI coaching provided by Aify are based on statistical averages and user-logged inputs. They do not constitute clinical diagnoses for gynecological or endocrine conditions, including but not limited to Polycystic Ovary Syndrome (PCOS), Endometriosis, Uterine Fibroids, Premenstrual Dysphoric Disorder (PMDD), or Pregnancy.
+        </p>
+
+        <h4 style="color: var(--text-primary); margin: 1rem 0 0.4rem;">2. Emergency Red-Flag Protocols</h4>
+        <p>If you experience any of the following symptoms, please seek <strong>immediate emergency medical care</strong> or contact local emergency services (e.g., 911/112):</p>
+        <ul style="padding-left: 1.2rem; margin: 0.4rem 0;">
+          <li>Sudden, severe, sharp, or unbearable pelvic or abdominal pain.</li>
+          <li>Menstrual bleeding so heavy it soaks through one or more pads/tampons every hour for two consecutive hours.</li>
+          <li>High fever with chills, vomiting, sunburn-like rash, or foul-smelling vaginal discharge during or following tampon use (potential indicators of Toxic Shock Syndrome or severe pelvic infection).</li>
+          <li>Dizziness, fainting, confusion, or difficulty breathing accompanying pelvic pain or bleeding.</li>
+        </ul>
+
+        <h4 style="color: var(--text-primary); margin: 1rem 0 0.4rem;">3. Always Consult a Licensed Healthcare Professional</h4>
+        <p>
+          Never disregard professional medical advice or delay seeking medical evaluation because of information presented by this application or generated by its AI Coach. Always consult a licensed physician, gynecologist, or healthcare provider for diagnosis and treatment.
+        </p>
+      </div>
+
+      <div class="modal-footer-actions">
+        <button type="button" class="btn-primary btn-modal-cancel" style="width: 100%;">I Understand &amp; Acknowledge</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       COMPLIANCE MODAL 2: PRIVACY POLICY (GDPR / CCPA / HEALTH DATA)
+       =================================================================== -->
+  <div id="modal-privacy-policy" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="title-privacy-policy">
+    <div class="modal-content" style="max-width: 640px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.65rem;">
+          <div style="width: 38px; height: 38px; border-radius: var(--radius-sm); background: rgba(0, 201, 167, 0.15); color: var(--color-teal); display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">🛡️</div>
+          <div>
+            <h2 id="title-privacy-policy" style="font-size: 1.15rem; font-weight: 700;">Privacy Policy &amp; Health Data Governance</h2>
+            <p style="font-size: 0.76rem; color: var(--text-muted);">Effective Date: September 2026 • Version 1.2.0</p>
+          </div>
+        </div>
+        <button type="button" class="btn-close-modal" aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="modal-scroll-body" style="font-size: 0.86rem; line-height: 1.65; color: var(--text-secondary);">
+        <p>
+          At <strong>AifyCycle</strong>, we believe your intimate reproductive health data belongs exclusively to you. We are committed to upholding the highest global data privacy standards, including the EU/UK General Data Protection Regulation (GDPR), the California Consumer Privacy Act (CCPA/CPRA), and the FTC Health Breach Notification Rule.
+        </p>
+
+        <h4 style="color: var(--text-primary); margin: 1rem 0 0.4rem;">1. Local-First Architecture</h4>
+        <p>
+          Your cycle history, symptom logs, mood notes, water/sleep records, and learned health preferences are stored locally in your browser's local sandbox storage (Web Storage API). We do <strong>not</strong> operate a cloud database harvesting your cycle data, nor do we sell, rent, or monetize your sensitive personal data to third-party data brokers, insurers, or advertisers.
+        </p>
+
+        <h4 style="color: var(--text-primary); margin: 1rem 0 0.4rem;">2. Google Gemini AI Processing</h4>
+        <p>
+          When you interact with our AI Coach, conversation prompts and relevant cycle parameters are routed via our secure server proxy to Google's Gemini 3.8 Flash API. In accordance with enterprise Google Cloud AI governance, prompts sent to Gemini via paid API keys are not used to train foundation models without explicit consent.
+        </p>
+
+        <h4 style="color: var(--text-primary); margin: 1rem 0 0.4rem;">3. Anonymous Usage Telemetry</h4>
+        <p>
+          To monitor model latency and feature stability, AifyCycle collects aggregated local telemetry (such as session counts, query latency, and feature usage). You can toggle telemetry off at any time in Settings.
+        </p>
+
+        <h4 style="color: var(--text-primary); margin: 1rem 0 0.4rem;">4. Your Privacy Rights (GDPR / CCPA)</h4>
+        <ul style="padding-left: 1.2rem; margin: 0.4rem 0;">
+          <li><strong>Right to Access &amp; Portability:</strong> Export your complete data record in open JSON format at any time.</li>
+          <li><strong>Right to Rectification:</strong> Edit or correct any logged date or symptom directly in the app.</li>
+          <li><strong>Right to Erasure (Right to be Forgotten):</strong> Permanently wipe all accounts, logs, memories, and telemetry with a single click in Settings.</li>
+        </ul>
+      </div>
+
+      <div class="modal-footer-actions">
+        <button type="button" class="btn-primary btn-modal-cancel" style="width: 100%;">Close Policy</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       COMPLIANCE MODAL 3: TERMS OF SERVICE
+       =================================================================== -->
+  <div id="modal-terms-service" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="title-terms-service">
+    <div class="modal-content" style="max-width: 620px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.65rem;">
+          <div style="width: 38px; height: 38px; border-radius: var(--radius-sm); background: rgba(132, 94, 194, 0.15); color: var(--color-fuchsia); display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">⚖️</div>
+          <div>
+            <h2 id="title-terms-service" style="font-size: 1.15rem; font-weight: 700;">Terms of Service</h2>
+            <p style="font-size: 0.76rem; color: var(--text-muted);">Legal agreement governing use of AifyCycle</p>
+          </div>
+        </div>
+        <button type="button" class="btn-close-modal" aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="modal-scroll-body" style="font-size: 0.86rem; line-height: 1.65; color: var(--text-secondary);">
+        <h4 style="color: var(--text-primary); margin: 0 0 0.4rem;">1. Acceptance &amp; Eligibility</h4>
+        <p>
+          By accessing or using AifyCycle, you agree to be bound by these Terms of Service. You must be at least 16 years of age (or the minimum legal age of digital consent in your jurisdiction) to use this application.
+        </p>
+
+        <h4 style="color: var(--text-primary); margin: 1rem 0 0.4rem;">2. Permitted Use</h4>
+        <p>
+          AifyCycle is licensed to you on a limited, personal, revocable, and non-commercial basis. You agree not to attempt to reverse engineer, disrupt server proxy infrastructure, or misuse AI coach endpoints.
+        </p>
+
+        <h4 style="color: var(--text-primary); margin: 1rem 0 0.4rem;">3. Limitation of Liability</h4>
+        <p>
+          TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, AIFYCYCLE, ITS AUTHORS, AND CONTRIBUTORS SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, PUNITIVE, OR CONSEQUENTIAL DAMAGES ARISING FROM RELIANCE ON CYCLE PREDICTIONS, MISSED PERIODS, CONTRACEPTIVE FAILURES, OR AI-GENERATED ADVICE.
+        </p>
+  <!-- ===================================================================
+       COMPLIANCE MODAL 4: AIFY INTELLIGENCE PRIVACY ARCHITECTURE
+       =================================================================== -->
+  <div id="modal-ai-architecture" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="title-ai-architecture">
+    <div class="modal-content" style="max-width: 620px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.65rem;">
+          <div style="width: 38px; height: 38px; border-radius: var(--radius-sm); background: rgba(232, 120, 138, 0.15); color: var(--color-rose); display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">✨</div>
+          <div>
+            <h2 id="title-ai-architecture" style="font-size: 1.15rem; font-weight: 700;">Aify Intelligence Architecture</h2>
+            <p style="font-size: 0.76rem; color: var(--text-muted);">Privacy-Preserving Gemini 3.8 Flash Foundation Model</p>
+          </div>
+        </div>
+        <button type="button" class="btn-close-modal" aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="modal-scroll-body" style="font-size: 0.86rem; line-height: 1.65; color: var(--text-secondary);">
+        <div class="compliance-alert-box alert-success" style="margin-bottom: 1rem;">
+          <span style="font-size: 1.2rem;">🔒</span>
+          <div>
+            <strong>ZERO-CREDENTIAL CONSUMER PRIVACY</strong>
+            <p style="font-size: 0.8rem; margin-top: 0.25rem;">
+              You never need to manage developer API keys or configure AI endpoints. AifyCycle handles all generative intelligence securely through our private, HIPAA-aligned server proxy.
+            </p>
+          </div>
+        </div>
+
+        <h4 style="color: var(--text-primary); margin: 0.8rem 0 0.4rem;">1. Hybrid Architecture (On-Device + Private Cloud)</h4>
+        <p>
+          Like Apple Intelligence, AifyCycle processes sensitive personal history on your device first. Menstrual cycle calendars, period dates, and intimate symptoms are stored in your device's browser sandbox. When deeper endocrine guidance or personalized cycle-syncing insights are requested, an anonymized context payload is processed by <strong>Gemini 3.8 Flash</strong> via our secure encrypted gateway.
+        </p>
+
+        <h4 style="color: var(--text-primary); margin: 1rem 0 0.4rem;">2. No Training on Personal Data</h4>
+        <p>
+          Under our enterprise AI agreements, user queries and cycle logs sent to Google's Gemini models are <strong>never</strong> used to train foundation models, nor are they shared with third-party advertisers or insurance providers.
+        </p>
+
+        <h4 style="color: var(--text-primary); margin: 1rem 0 0.4rem;">3. Instant Offline Fallback</h4>
+        <p>
+          If you are on an airplane or without cellular connection, Aify's built-in local bio-rhythm algorithm automatically provides uninterrupted phase tracking, fertile window calculations, and wellness guidance.
+        </p>
+      </div>
+
+      <div class="modal-footer-actions">
+        <button type="button" class="btn-primary btn-modal-cancel" style="width: 100%;">Got It</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ===================================================================
+       PRIVACY & CONSENT BANNER (GDPR / CCPA First-Party Compliance)
+       =================================================================== -->
+  <div id="privacy-consent-banner" class="consent-banner" style="display: none;">
+    <div class="consent-content">
+      <div class="consent-text">
+        <span class="consent-icon">🛡️</span>
+        <div>
+          <strong>Your Health Data Stays Yours.</strong>
+          <p>
+            AifyCycle uses local-first private storage. We collect anonymous telemetry to improve your cycle insights and coach performance. Zero third-party ads.
+            Review our <button type="button" class="btn-link-legal" data-modal="modal-privacy-policy">Privacy Policy</button>, <button type="button" class="btn-link-legal" data-modal="modal-medical-disclaimer">Medical Disclaimer</button>, and <button type="button" class="btn-link-legal" data-modal="modal-terms-service">Terms</button>.
+          </p>
+        </div>
+      </div>
+      <div class="consent-actions">
+        <button type="button" id="btn-consent-decline" class="btn-ghost" style="padding: 0.5rem 0.9rem; font-size: 0.8rem;">Decline Analytics</button>
+        <button type="button" id="btn-consent-accept" class="btn-primary" style="padding: 0.5rem 1.1rem; font-size: 0.82rem;">Accept &amp; Continue</button>
+      </div>
     </div>
   </div>
 

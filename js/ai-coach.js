@@ -6,6 +6,7 @@
 
 import { storage } from './storage.js';
 import { getCycleStatus, formatDateKey, parseDateKey, addDays } from './cycle-engine.js';
+import { analytics } from './analytics-tracker.js';
 
 const BACKEND_PROXY_URL = '/api/gemini';
 const BACKEND_STATUS_URL = '/api/gemini/status';
@@ -59,7 +60,17 @@ Guidelines:
 - Provide evidence-based information while being warm and accessible
 - Use emojis naturally
 - Keep responses concise (2-3 paragraphs)
-- NEVER diagnose medical conditions — advise consulting a doctor when appropriate`;
+
+CRITICAL MEDICAL & LEGAL GUARDRAILS (FDA & COMPLIANCE):
+1. NON-DIAGNOSTIC & EDUCATIONAL ONLY: You are an educational and wellness lifestyle guide, NOT a doctor, gynecologist, or medical device. NEVER diagnose medical conditions (e.g. PCOS, endometriosis, fibroids, pelvic inflammatory disease, toxic shock syndrome, or pregnancy).
+2. CONTRACEPTION WARNING: If the user asks about using the app, fertility windows, or rhythm tracking for birth control or pregnancy prevention, EXPLICITLY state that cycle tracking predictions alone are NOT a fail-safe contraceptive method and cannot prevent unwanted pregnancy or sexually transmitted infections (STIs). Direct them to a healthcare provider for family planning options.
+3. EMERGENCY RED-FLAG PROTOCOLS: If the user mentions any of the following symptoms:
+   - Sudden, severe, sharp, or agonizing pelvic or abdominal pain (potential ectopic pregnancy, ovarian torsion, or appendicitis)
+   - Heavy hemorrhage soaking through one or more menstrual pads/tampons every hour for two or more consecutive hours
+   - High fever with chills, foul-smelling vaginal discharge, or flu-like symptoms during tampon use (potential Toxic Shock Syndrome or Pelvic Inflammatory Disease)
+   - Dizziness, fainting, extreme shortness of breath, or chest pain
+   IMMEDIATELY and prominently advise the user to seek URGENT EMERGENCY medical care or call emergency services (911/112/local emergency number). Do NOT downplay severe acute symptoms.
+4. MEDICATION DISCLAIMER: Do not prescribe or recommend prescription drugs or specific medical dosages. You may discuss gentle, evidence-based lifestyle comfort measures (e.g., heating pads, gentle hydration, magnesium-rich foods, chamomile tea) while recommending consulting a physician or pharmacist for medical treatments.`;
 
 const SUGGESTED_QUESTIONS = [
   { icon: '🩸', text: 'My period started today' },
@@ -184,6 +195,135 @@ export class AICoach {
 
     // Neither server nor client key is configured
     throw new Error('NO_GEMINI_KEY');
+  }
+
+  /**
+   * Generate dynamic personalized Cycle Syncing insights with Gemini 3.8 Flash
+   */
+  async generateCycleSyncingInsights(status, profile, logs = {}, forceRefresh = false) {
+    const phaseKey = status.phase.key;
+    const cycleDay = status.cycleDay;
+    const cacheKey = `aify_gemini_sync_${phaseKey}_day_${cycleDay}`;
+
+    // 1. Check local cache first unless user explicitly requested a refresh
+    if (!forceRefresh) {
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && Array.isArray(parsed.foods) && parsed.foods.length > 0) {
+            return parsed;
+          }
+        }
+      } catch (e) {
+        console.warn('Cache read error:', e);
+      }
+    }
+
+    // 2. Gather recent symptoms / moods from the last 5 days
+    const recentSymptoms = [];
+    const today = new Date();
+    for (let i = 0; i < 5; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const key = formatDateKey(d);
+      const dayLog = logs[key];
+      if (dayLog) {
+        if (dayLog.symptoms && dayLog.symptoms.length > 0) {
+          recentSymptoms.push(...dayLog.symptoms);
+        }
+        if (dayLog.moods && dayLog.moods.length > 0) {
+          recentSymptoms.push(...dayLog.moods);
+        }
+      }
+    }
+    const uniqueSymptoms = [...new Set(recentSymptoms)].join(', ');
+
+    // 3. Build system instruction & prompt for Gemini 3.8 Flash
+    const prompt = `You are a world-class board-certified reproductive endocrinologist, functional nutritionist, and holistic women's health coach powering AifyCycle.
+Generate personalized, scientific, highly actionable cycle-syncing recommendations for Day ${cycleDay} of the ${status.phase.name}.
+
+User Context:
+- User Name: ${profile.userName || 'User'}
+- Current Phase: ${status.phase.name} (${status.phase.tagline})
+- Current Day: Day ${cycleDay} of ${status.cycleLength}-day cycle
+- Menstrual Period Length: ${profile.periodLength} days
+- Recent Logged Symptoms & Moods: ${uniqueSymptoms || 'None reported (balanced)'}
+- Next Predicted Period: ${status.nextPeriodStart}
+
+Instructions:
+- Tailor nutrition specifically to the phase's hormonal demands (e.g. estrogen clearance in ovulation, progesterone support & magnesium in luteal, iron & warming foods in menstrual, light phytoestrogens in follicular).
+- Workouts must accurately reflect follicular/ovulatory energetic capacity vs luteal/menstrual restorative recovery.
+- Mindset & focus tips should offer neuro-cognitive and emotional rhythm advice.
+- Partner/wellness tip should offer warm empathy and communication synergy.
+- scientificWhy should give a concise 1-2 sentence medical explanation of why these choices align with this day's endocrine environment.
+
+Respond ONLY with a valid JSON object matching this schema:
+{
+  "title": "${status.phase.name} (Day ${cycleDay})",
+  "tagline": "${status.phase.tagline}",
+  "hormoneSnapshot": "Short 1-sentence hormone dynamic description",
+  "energyCapacity": "e.g. Peak Dynamic Power (95%) or Restorative Inward Energy (50%)",
+  "foods": [
+    "Food 1 with micronutrient benefit",
+    "Food 2 with micronutrient benefit",
+    "Food 3 with micronutrient benefit",
+    "Hydration / herbal infusion advice"
+  ],
+  "workouts": [
+    "Primary workout suggestion",
+    "Intensity & heart rate guidance",
+    "Active recovery / mobility tip"
+  ],
+  "mindset": [
+    "Cognitive focus / work recommendation",
+    "Social stamina / communication rhythm",
+    "Evening wind-down / circadian rhythm"
+  ],
+  "partnerTip": "Empathetic daily holistic care note or partner synergy advice",
+  "scientificWhy": "Concise medical-grade rationale based on estrogen/progesterone/LH balance for Day ${cycleDay}."
+}`;
+
+    const requestBody = {
+      contents: [{
+        role: 'user',
+        parts: [{ text: prompt }]
+      }],
+      generationConfig: {
+        temperature: 0.65,
+        maxOutputTokens: 1024,
+        responseMimeType: 'application/json'
+      }
+    };
+
+    try {
+      const data = await this._callGeminiApi(requestBody);
+      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      
+      let parsedJson = null;
+      try {
+        parsedJson = JSON.parse(rawText.trim());
+      } catch (jsonErr) {
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          parsedJson = JSON.parse(jsonMatch[0]);
+        }
+      }
+
+      if (parsedJson && Array.isArray(parsedJson.foods) && parsedJson.foods.length > 0) {
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify(parsedJson));
+        } catch (e) {}
+
+        analytics.trackEvent('cycle', 'gemini_syncing_generated', status.phase.key, { cycleDay });
+        analytics.logAuditAction('GEMINI_SYNC_GENERATED', `Gemini 3.8 wrote personalized insights for Day ${cycleDay}`);
+        return parsedJson;
+      }
+    } catch (err) {
+      console.warn('Gemini 3.8 Cycle Syncing generation bypassed or failed, using baseline guide:', err.message);
+    }
+
+    return null;
   }
 
   /**
@@ -580,6 +720,7 @@ export class AICoach {
     // 2. Run Instant Local Real-Time Semantic Parser
     const localActions = this._parseLocalActionsAndLearning(cleanUserMessage);
     let actionCard = this._executeActions(localActions, cleanUserMessage);
+    const startTime = Date.now();
 
     try {
       const userContext = this._buildUserContext();
@@ -639,6 +780,11 @@ export class AICoach {
       });
 
       this._saveChatHistory();
+
+      // Track successful live query telemetry
+      const latencyMs = Date.now() - startTime;
+      analytics.trackEvent('ai_coach', 'query_sent', 'chat_message', { mode: 'server', latencyMs });
+      analytics.logAuditAction('AI_QUERY_LIVE', `Gemini 3.8 Flash responded in ${latencyMs}ms`);
     } catch (error) {
       if (error.message === 'NO_GEMINI_KEY') {
         console.info('Aify: Running in local intelligent cycle mode.');
@@ -657,6 +803,10 @@ export class AICoach {
       });
 
       this._saveChatHistory();
+
+      // Track local fallback telemetry
+      analytics.trackEvent('ai_coach', 'query_sent', 'chat_message', { mode: 'local' });
+      analytics.logAuditAction('AI_QUERY_LOCAL', 'Local cycle intelligence responded');
     } finally {
       this.isLoading = false;
       this._hideTypingIndicator();
@@ -893,17 +1043,13 @@ export class AICoach {
       });
     }
 
-    // AI Engine status badge click -> open Settings to configure key
+    // AI Engine status badge click -> open Apple Intelligence Architecture Modal
     const engineBadge = document.getElementById('ai-engine-badge');
     if (engineBadge) {
       engineBadge.addEventListener('click', () => {
-        const btnSettings = document.getElementById('btn-open-settings');
-        if (btnSettings) {
-          btnSettings.click();
-          setTimeout(() => {
-            const aiSec = document.getElementById('setting-ai-section');
-            if (aiSec) aiSec.scrollIntoView({ behavior: 'smooth' });
-          }, 200);
+        const modal = document.getElementById('modal-ai-architecture');
+        if (modal) {
+          modal.classList.add('active');
         }
       });
     }

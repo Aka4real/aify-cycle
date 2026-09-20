@@ -218,6 +218,40 @@ class AifyCycleApp {
     ui.showToast(`Switched to ${nextTheme === 'light' ? 'Light' : 'Dark'} mode`, '🎨');
   }
 
+  async _refreshAiSettingsStatus() {
+    const statusPill = document.getElementById('ai-settings-status');
+    const keyInput = document.getElementById('setting-gemini-key');
+    if (!statusPill) return;
+
+    statusPill.textContent = 'Checking...';
+    statusPill.className = 'ai-status-pill';
+
+    let serverConfigured = false;
+    try {
+      const res = await fetch('/api/gemini/status');
+      if (res.ok) {
+        const data = await res.json();
+        serverConfigured = Boolean(data.configured);
+      }
+    } catch (e) {}
+
+    const clientKey = storage.getGeminiApiKey();
+    if (keyInput) {
+      keyInput.value = clientKey || '';
+    }
+
+    if (serverConfigured) {
+      statusPill.textContent = '🟢 Server Proxy Active';
+      statusPill.className = 'ai-status-pill pill-server';
+    } else if (clientKey) {
+      statusPill.textContent = '🟢 Client Key Active';
+      statusPill.className = 'ai-status-pill pill-client';
+    } else {
+      statusPill.textContent = '🟡 Local Intelligence Only';
+      statusPill.className = 'ai-status-pill pill-local';
+    }
+  }
+
   renderAll() {
     const profile = storage.getProfile();
     const logs = storage.getAllLogs();
@@ -521,7 +555,108 @@ class AifyCycleApp {
         document.getElementById('setting-cyclelength').value = profile.cycleLength || 28;
         document.getElementById('setting-periodlength').value = profile.periodLength || 5;
         document.getElementById('setting-lastperiod').value = profile.lastPeriodStart || formatDateKey(this.today);
+        
+        // Refresh Gemini AI settings
+        this._refreshAiSettingsStatus();
+
         settingsModal.classList.add('active');
+      });
+    }
+
+    // Toggle Gemini Key Visibility
+    const btnToggleKey = document.getElementById('btn-toggle-key-visibility');
+    const inputGeminiKey = document.getElementById('setting-gemini-key');
+    if (btnToggleKey && inputGeminiKey) {
+      btnToggleKey.addEventListener('click', () => {
+        const isPassword = inputGeminiKey.type === 'password';
+        inputGeminiKey.type = isPassword ? 'text' : 'password';
+        btnToggleKey.textContent = isPassword ? '🙈' : '👁️';
+      });
+    }
+
+    // Test Gemini Key / Server Proxy
+    const btnTestKey = document.getElementById('btn-test-gemini-key');
+    const testResultEl = document.getElementById('ai-test-result');
+    if (btnTestKey) {
+      btnTestKey.addEventListener('click', async () => {
+        btnTestKey.disabled = true;
+        btnTestKey.innerHTML = '<span>⏳</span> <span>Testing...</span>';
+        if (testResultEl) {
+          testResultEl.style.display = 'inline-block';
+          testResultEl.style.color = 'var(--text-muted)';
+          testResultEl.textContent = 'Connecting...';
+        }
+
+        const candidateKey = inputGeminiKey ? inputGeminiKey.value.trim() : '';
+        const testPayload = {
+          contents: [{ role: 'user', parts: [{ text: 'Hello, confirm you are working.' }] }],
+          generationConfig: { maxOutputTokens: 10 }
+        };
+
+        try {
+          let testSuccess = false;
+
+          // 1. If user typed a candidate key into input, test that directly
+          if (candidateKey) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${encodeURIComponent(candidateKey)}`;
+            const res = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(testPayload)
+            });
+            if (!res.ok) {
+              const err = await res.json().catch(() => ({}));
+              throw new Error(err.error?.message || `HTTP ${res.status}`);
+            }
+            testSuccess = true;
+          } else {
+            // 2. Otherwise test server proxy
+            const res = await fetch('/api/gemini', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(testPayload)
+            });
+            if (!res.ok) {
+              const err = await res.json().catch(() => ({}));
+              if (err.error === 'NO_API_KEY') {
+                throw new Error('No key configured on server or in input.');
+              }
+              throw new Error(err.message || `Server Error ${res.status}`);
+            }
+            testSuccess = true;
+          }
+
+          if (testSuccess && testResultEl) {
+            testResultEl.style.color = 'var(--color-teal)';
+            testResultEl.textContent = '✅ Connected successfully to Gemini 3.8 Flash!';
+          }
+        } catch (err) {
+          if (testResultEl) {
+            testResultEl.style.color = 'var(--color-rose)';
+            testResultEl.textContent = `❌ ${err.message}`;
+          }
+        } finally {
+          btnTestKey.disabled = false;
+          btnTestKey.innerHTML = '<span>⚡</span> <span>Test Connection</span>';
+          this._refreshAiSettingsStatus();
+        }
+      });
+    }
+
+    // Clear Gemini Key
+    const btnClearKey = document.getElementById('btn-clear-gemini-key');
+    if (btnClearKey) {
+      btnClearKey.addEventListener('click', () => {
+        storage.clearGeminiApiKey();
+        if (inputGeminiKey) inputGeminiKey.value = '';
+        if (testResultEl) {
+          testResultEl.style.display = 'inline-block';
+          testResultEl.style.color = 'var(--text-muted)';
+          testResultEl.textContent = 'Key removed from local storage.';
+        }
+        this._refreshAiSettingsStatus();
+        this.aiCoach?.updateEngineBadge();
+        ui.showToast('Gemini client key cleared', '🗑️');
       });
     }
 
@@ -535,9 +670,16 @@ class AifyCycleApp {
         profile.periodLength = parseInt(document.getElementById('setting-periodlength').value, 10) || 5;
         profile.lastPeriodStart = document.getElementById('setting-lastperiod').value || formatDateKey(this.today);
 
+        // Save candidate Gemini Key to localStorage if entered
+        const enteredKey = inputGeminiKey ? inputGeminiKey.value.trim() : '';
+        if (enteredKey) {
+          storage.saveGeminiApiKey(enteredKey);
+        }
+
         storage.saveProfile(profile);
         this.closeModal('settings-modal');
         this.renderAll();
+        this.aiCoach?.updateEngineBadge();
         ui.showToast('Profile and cycle settings updated!', '⚙️');
       });
     }

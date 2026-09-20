@@ -2,7 +2,37 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const PORT = 4180;
+// Safe .env loader (supports Node 20+ built-in loadEnvFile with graceful fallback)
+function loadEnv() {
+  try {
+    if (typeof process.loadEnvFile === 'function') {
+      process.loadEnvFile();
+    } else {
+      const envPath = path.join(__dirname, '.env');
+      if (fs.existsSync(envPath)) {
+        const lines = fs.readFileSync(envPath, 'utf8').split(/\r?\n/);
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith('#')) continue;
+          const idx = trimmed.indexOf('=');
+          if (idx > 0) {
+            const key = trimmed.slice(0, idx).trim();
+            const val = trimmed.slice(idx + 1).trim().replace(/^['"]|['"]$/g, '');
+            if (!process.env[key]) {
+              process.env[key] = val;
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {
+    // Non-fatal if .env does not exist
+  }
+}
+
+loadEnv();
+
+const PORT = parseInt(process.env.PORT, 10) || 4180;
 const PUBLIC_DIR = __dirname;
 
 const MIME_TYPES = {
@@ -16,11 +46,90 @@ const MIME_TYPES = {
   '.ico': 'image/x-icon'
 };
 
-const server = http.createServer((req, res) => {
-  let reqPath = req.url.split('?')[0];
-  if (reqPath === '/' || reqPath === '') reqPath = '/index.html';
+const server = http.createServer(async (req, res) => {
+  const [reqPath] = req.url.split('?');
 
-  const filePath = path.join(PUBLIC_DIR, reqPath);
+  // CORS headers for local API testing
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    return res.end();
+  }
+
+  // --- API Routes ---
+
+  const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash';
+
+  // 1. Status Check
+  if (req.method === 'GET' && reqPath === '/api/gemini/status') {
+    const isConfigured = Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim());
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({
+      configured: isConfigured,
+      model: GEMINI_MODEL,
+      mode: isConfigured ? 'server_proxy' : 'unconfigured'
+    }));
+  }
+
+  // 2. Secure Gemini Proxy
+  if (req.method === 'POST' && reqPath === '/api/gemini') {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk;
+      // Guard against oversized payload (> 2MB)
+      if (body.length > 2 * 1024 * 1024) {
+        res.writeHead(413, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'PAYLOAD_TOO_LARGE' }));
+        req.destroy();
+      }
+    });
+
+    req.on('end', async () => {
+      const apiKey = process.env.GEMINI_API_KEY?.trim();
+      if (!apiKey) {
+        res.writeHead(503, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({
+          error: 'NO_API_KEY',
+          message: 'No GEMINI_API_KEY configured in server environment or .env file.'
+        }));
+      }
+
+      try {
+        const parsedBody = JSON.parse(body || '{}');
+        const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+
+        const upstreamRes = await fetch(targetUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(parsedBody)
+        });
+
+        const data = await upstreamRes.json();
+        res.writeHead(upstreamRes.status, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(data));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          error: 'PROXY_ERROR',
+          message: err.message || 'Internal proxy error'
+        }));
+      }
+    });
+    return;
+  }
+
+  // --- Static Files Serving ---
+  let filePath = path.join(PUBLIC_DIR, reqPath === '/' || reqPath === '' ? '/index.html' : reqPath);
+
+  // Security check: prevent directory traversal
+  if (!filePath.startsWith(PUBLIC_DIR)) {
+    res.writeHead(403, { 'Content-Type': 'text/plain' });
+    return res.end('403 Forbidden');
+  }
+
   const ext = path.extname(filePath).toLowerCase();
   const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
@@ -30,7 +139,7 @@ const server = http.createServer((req, res) => {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
         res.end('404 Not Found');
       } else {
-        res.writeHead(500);
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
         res.end(`Server Error: ${err.code}`);
       }
     } else {
@@ -44,5 +153,8 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
+  const hasKey = Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim());
+  const model = process.env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash';
   console.log(`🌸 AifyCycle server running at http://localhost:${PORT}`);
+  console.log(`🤖 Gemini API Proxy: ${hasKey ? `Configured (Live ${model} ready)` : 'Not set in .env (Running in Local Mode)'}`);
 });

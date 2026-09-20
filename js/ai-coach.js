@@ -1,14 +1,14 @@
 /**
  * AifyCycle - AI Coach & Real-Time Adaptive Health Agent
- * Gemini 2.0 Flash-powered conversational AI menstrual health coach with
+ * Gemini 3.8 Flash-powered conversational AI menstrual health coach with
  * real-time cycle data updates, continuous learning memory, and instant synchronization.
  */
 
 import { storage } from './storage.js';
 import { getCycleStatus, formatDateKey, parseDateKey, addDays } from './cycle-engine.js';
 
-const GEMINI_API_KEY = 'AQ.Ab8RN6L7fUT0eesZFPulS1SS9LmzJ2vPCX9MjQ2TaHrY3b87UA';
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+const BACKEND_PROXY_URL = '/api/gemini';
+const BACKEND_STATUS_URL = '/api/gemini/status';
 
 const SYSTEM_INSTRUCTION = `You are "Aify", a warm, empathetic, and knowledgeable AI menstrual health coach inside the Aify Cycle app. Your personality is supportive, encouraging, and scientifically informed.
 
@@ -87,6 +87,103 @@ export class AICoach {
     this.renderChatUI();
     this.attachListeners();
     this._updateMemoryCountBadge();
+    this.updateEngineBadge();
+  }
+
+  /**
+   * Check connection status of Gemini backend proxy and client key
+   */
+  async checkGeminiStatus() {
+    // 1. Check server backend proxy
+    try {
+      const res = await fetch(BACKEND_STATUS_URL, { method: 'GET' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.configured) {
+          const modelTitle = data.model === 'gemini-3.8-flash' ? 'Gemini 3.8 Flash' : data.model;
+          return { mode: 'server', label: modelTitle, active: true };
+        }
+      }
+    } catch (e) {
+      // Backend not running or static mode
+    }
+
+    // 2. Check client-side stored key
+    const clientKey = storage.getGeminiApiKey();
+    if (clientKey) {
+      return { mode: 'client', label: 'Gemini 3.8 Flash (Client Key)', active: true };
+    }
+
+    // 3. Built-in Local Mode
+    return { mode: 'local', label: 'Local Intelligence', active: false };
+  }
+
+  /**
+   * Update the interactive AI engine badge in the chat header
+   */
+  async updateEngineBadge() {
+    const badgeEl = document.getElementById('ai-engine-badge');
+    if (!badgeEl) return;
+
+    const status = await this.checkGeminiStatus();
+    if (status.active) {
+      badgeEl.className = 'ai-engine-badge badge-active';
+      badgeEl.innerHTML = `<span class="engine-dot live"></span><span>✨ ${status.label}</span>`;
+      badgeEl.title = `Live ${status.label} connected. Click to configure API settings.`;
+    } else {
+      badgeEl.className = 'ai-engine-badge badge-local';
+      badgeEl.innerHTML = `<span class="engine-dot local"></span><span>🧠 Local Intelligence</span>`;
+      badgeEl.title = 'Running on local cycle intelligence. Click to connect Gemini 3.8 Flash API.';
+    }
+  }
+
+  /**
+   * Dispatch generation request to either backend proxy or client direct endpoint
+   */
+  async _callGeminiApi(requestBody) {
+    // Try backend proxy first
+    try {
+      const serverRes = await fetch(BACKEND_PROXY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (serverRes.ok) {
+        return await serverRes.json();
+      }
+
+      const errData = await serverRes.json().catch(() => ({}));
+      // If server returned NO_API_KEY, fallback to client key
+      if (errData.error !== 'NO_API_KEY') {
+        throw new Error(errData.message || `Server Proxy Error: ${serverRes.status}`);
+      }
+    } catch (serverErr) {
+      if (serverErr.message && !serverErr.message.includes('NO_API_KEY')) {
+        console.warn('Backend proxy call failed:', serverErr.message);
+      }
+    }
+
+    // Check client-side key
+    const clientKey = storage.getGeminiApiKey();
+    if (clientKey) {
+      const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${encodeURIComponent(clientKey)}`;
+      const clientRes = await fetch(targetUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!clientRes.ok) {
+        const errJson = await clientRes.json().catch(() => ({}));
+        throw new Error(errJson.error?.message || `Client API Error: ${clientRes.status}`);
+      }
+
+      return await clientRes.json();
+    }
+
+    // Neither server nor client key is configured
+    throw new Error('NO_GEMINI_KEY');
   }
 
   /**
@@ -515,17 +612,7 @@ export class AICoach {
         }
       };
 
-      const response = await fetch(GEMINI_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
-      });
-
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = await this._callGeminiApi(requestBody);
       const rawAiText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
       // 3. Parse Gemini output for structured action block
@@ -553,7 +640,11 @@ export class AICoach {
 
       this._saveChatHistory();
     } catch (error) {
-      console.warn('Gemini API call bypassed or failed; local intelligence responded:', error);
+      if (error.message === 'NO_GEMINI_KEY') {
+        console.info('Aify: Running in local intelligent cycle mode.');
+      } else {
+        console.warn('Gemini API call bypassed or failed; local intelligence responded:', error);
+      }
 
       // Local Fallback: Generates a warm, scientifically informed response immediately
       const fallbackText = this._generateEmpatheticLocalResponse(cleanUserMessage, actionCard);
@@ -636,6 +727,7 @@ export class AICoach {
     this._renderMessages();
     this._renderSuggestedQuestions();
     this._updateMemoryCountBadge();
+    this.updateEngineBadge();
   }
 
   /**
@@ -798,6 +890,21 @@ export class AICoach {
     if (memoryBtn) {
       memoryBtn.addEventListener('click', () => {
         this.openMemoryModal();
+      });
+    }
+
+    // AI Engine status badge click -> open Settings to configure key
+    const engineBadge = document.getElementById('ai-engine-badge');
+    if (engineBadge) {
+      engineBadge.addEventListener('click', () => {
+        const btnSettings = document.getElementById('btn-open-settings');
+        if (btnSettings) {
+          btnSettings.click();
+          setTimeout(() => {
+            const aiSec = document.getElementById('setting-ai-section');
+            if (aiSec) aiSec.scrollIntoView({ behavior: 'smooth' });
+          }, 200);
+        }
       });
     }
 

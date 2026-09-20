@@ -437,6 +437,10 @@
             </div>
           </div>
           <div class="ai-coach-header-right">
+            <button id="ai-engine-badge" class="ai-engine-badge badge-local" title="Click to view/configure Gemini AI Engine">
+              <span class="engine-dot local"></span>
+              <span>🧠 Local Mode</span>
+            </button>
             <button id="btn-agent-memory" class="btn-agent-memory" title="View what Aify has learned about you">
               <span>🧠</span>
               <span>Learned Memories</span>
@@ -633,6 +637,40 @@
       <div class="form-section">
         <label for="setting-lastperiod" class="form-label">Last Period Start Date</label>
         <input type="date" id="setting-lastperiod" class="form-input">
+      </div>
+
+      <!-- Google Gemini AI Integration -->
+      <div id="setting-ai-section" class="form-section" style="border-top: 1px solid var(--border-subtle); padding-top: 1.25rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.55rem;">
+          <span class="form-label" style="margin-bottom: 0;">Google Gemini AI Integration</span>
+          <span id="ai-settings-status" class="ai-status-pill pill-local">Checking...</span>
+        </div>
+        
+        <p style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 0.75rem;">
+          Power Aify with real-time <strong>Gemini 3.8 Flash</strong> intelligence. You can configure a key in your server's <code>.env</code> file (recommended) or enter one below for this browser session. Keys are never committed to git.
+        </p>
+
+        <div class="auth-input-wrap" style="position: relative; margin-bottom: 0.5rem;">
+          <span class="auth-input-icon">🔑</span>
+          <input type="password" id="setting-gemini-key" class="form-input" placeholder="Paste Gemini API Key (e.g. AIzaSy...)" autocomplete="off" style="padding-right: 2.75rem;" />
+          <button type="button" id="btn-toggle-key-visibility" class="btn-input-eye" title="Toggle visibility" aria-label="Toggle key visibility">👁️</button>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+          <button type="button" id="btn-test-gemini-key" class="btn-secondary" style="padding: 0.45rem 0.85rem; font-size: 0.8rem;">
+            <span>⚡</span>
+            <span>Test Connection</span>
+          </button>
+          <button type="button" id="btn-clear-gemini-key" class="btn-ghost" style="padding: 0.45rem 0.85rem; font-size: 0.8rem; color: var(--text-muted);">
+            <span>Remove Key</span>
+          </button>
+          <span id="ai-test-result" style="font-size: 0.8rem; font-weight: 600; display: none;"></span>
+        </div>
+
+        <div style="margin-top: 0.65rem; font-size: 0.76rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;">
+          <span>🔒 Stored securely in your device's browser memory or loaded via server .env</span>
+          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" style="color: var(--color-rose); margin-left: auto; text-decoration: underline;">Get free key ↗</a>
+        </div>
       </div>
 
       <div class="form-section" style="border-top: 1px solid var(--border-subtle); padding-top: 1.25rem;">

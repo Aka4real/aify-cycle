@@ -5,8 +5,8 @@ WORKDIR /app
 # Copy application files
 COPY . .
 
-# Expose port 4180
-ENV PORT=4180
-EXPOSE 4180
+# Standardize default port to 3000 (standard for Coolify, OpenShip, Render, VPS)
+ENV PORT=3000
+EXPOSE 3000 4180 80
 
 CMD ["node", "server.js"]

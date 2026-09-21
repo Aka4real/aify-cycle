@@ -32,7 +32,7 @@ function loadEnv() {
 
 loadEnv();
 
-const PORT = parseInt(process.env.PORT, 10) || 4180;
+const PORT = parseInt(process.env.PORT, 10) || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 const PUBLIC_DIR = __dirname;
 
@@ -47,7 +47,7 @@ const MIME_TYPES = {
   '.ico': 'image/x-icon'
 };
 
-const server = http.createServer(async (req, res) => {
+async function handleRequest(req, res) {
   const [reqPath] = req.url.split('?');
 
   // CORS headers for local API testing
@@ -176,15 +176,34 @@ const server = http.createServer(async (req, res) => {
       res.end(content);
     }
   });
-});
+}
+
+const server = http.createServer(handleRequest);
 
 if (require.main === module) {
   server.listen(PORT, HOST, () => {
     const hasKey = Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim());
     const model = process.env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash';
-    console.log(`🌸 AifyCycle server running at http://${HOST}:${PORT}`);
+    console.log(`🌸 AifyCycle primary server running at http://${HOST}:${PORT}`);
     console.log(`🤖 Gemini API Proxy: ${hasKey ? `Configured (Live ${model} ready)` : 'Not set in .env (Running in Local Mode)'}`);
   });
+
+  // Dual-port fallback listener:
+  // If PORT is 3000 (default) and process.env.PORT wasn't explicitly overridden,
+  // also bind to 4180 so existing sessions or older configurations work seamlessly.
+  if (!process.env.PORT && PORT === 3000) {
+    try {
+      const fallbackServer = http.createServer(handleRequest);
+      fallbackServer.on('error', (err) => {
+        // Non-fatal if 4180 is occupied by an existing local dev session
+      });
+      fallbackServer.listen(4180, HOST, () => {
+        console.log(`🌸 Dual-port fallback active at http://${HOST}:4180`);
+      });
+    } catch (e) {
+      // Non-fatal
+    }
+  }
 }
 
 module.exports = server;

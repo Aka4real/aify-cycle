@@ -62,7 +62,7 @@ async function handleRequest(req, res) {
 
   // --- API Routes ---
 
-  const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash';
+  const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash';
 
   // 1. Status Check
   if (req.method === 'GET' && reqPath === '/api/gemini/status') {
@@ -183,7 +183,7 @@ const server = http.createServer(handleRequest);
 if (require.main === module) {
   server.listen(PORT, HOST, () => {
     const hasKey = Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim());
-    const model = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash';
+    const model = process.env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash';
     console.log(`🌸 AifyCycle primary server running at http://${HOST}:${PORT}`);
     console.log(`🤖 Gemini API Proxy: ${hasKey ? `Configured (Live ${model} ready)` : 'Not set in .env (Running in Local Mode)'}`);
   });

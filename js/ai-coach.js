@@ -111,7 +111,7 @@ export class AICoach {
       if (res.ok) {
         const data = await res.json();
         if (data.configured) {
-          const modelTitle = data.model === 'gemini-2.5-flash' ? 'Gemini 2.5 Flash' : data.model;
+          const modelTitle = data.model === 'gemini-3.8-flash' ? 'Gemini 3.8 Flash' : data.model;
           return { mode: 'server', label: modelTitle, active: true };
         }
       }
@@ -178,7 +178,7 @@ export class AICoach {
     // Check client-side key
     const clientKey = storage.getGeminiApiKey();
     if (clientKey) {
-      const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(clientKey)}`;
+      const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${encodeURIComponent(clientKey)}`;
       const clientRes = await fetch(targetUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

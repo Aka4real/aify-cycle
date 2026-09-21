@@ -11,7 +11,7 @@ On **ALL** platforms, configure the following environment variable in the platfo
 | Variable | Required | Description | Example |
 | :--- | :--- | :--- | :--- |
 | `GEMINI_API_KEY` | **Yes** | Your Google Gemini API Key | `AIzaSy...` |
-| `GEMINI_MODEL` | No (Default: `gemini-2.5-flash`) | Gemini model version | `gemini-2.5-flash` |
+| `GEMINI_MODEL` | No (Default: `gemini-3.8-flash`) | Gemini model version | `gemini-3.8-flash` |
 | `PORT` | Auto (Default: `3000`) | Listening port | `3000` |
 
 > [!CAUTION]

@@ -9,7 +9,7 @@ module.exports = async (req, res) => {
     return res.status(204).end();
   }
 
-  const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash';
+  const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash';
   const isConfigured = Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim());
 
   return res.status(200).json({

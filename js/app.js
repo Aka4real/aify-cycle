@@ -270,7 +270,7 @@ class AifyCycleApp {
     statusPill.className = 'ai-status-pill';
 
     let serverConfigured = false;
-    let modelName = 'gemini-3.8-flash';
+    let modelName = 'gemini-2.5-flash';
     try {
       const res = await fetch('/api/gemini/status');
       if (res.ok) {

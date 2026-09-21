@@ -1,0 +1,9 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+.gemini
+*.md
+node_modules
+npm-debug.log

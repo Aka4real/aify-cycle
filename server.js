@@ -33,6 +33,7 @@ function loadEnv() {
 loadEnv();
 
 const PORT = parseInt(process.env.PORT, 10) || 4180;
+const HOST = process.env.HOST || '0.0.0.0';
 const PUBLIC_DIR = __dirname;
 
 const MIME_TYPES = {
@@ -150,8 +151,19 @@ const server = http.createServer(async (req, res) => {
   fs.readFile(filePath, (err, content) => {
     if (err) {
       if (err.code === 'ENOENT') {
-        res.writeHead(404, { 'Content-Type': 'text/plain' });
-        res.end('404 Not Found');
+        // SPA Fallback: Serve index.html for direct client-side navigation
+        const fallbackPath = path.join(PUBLIC_DIR, 'index.html');
+        fs.readFile(fallbackPath, (fallbackErr, fallbackContent) => {
+          if (fallbackErr) {
+            res.writeHead(404, { 'Content-Type': 'text/plain' });
+            return res.end('404 Not Found');
+          }
+          res.writeHead(200, {
+            'Content-Type': 'text/html; charset=utf-8',
+            'Cache-Control': 'no-cache'
+          });
+          res.end(fallbackContent);
+        });
       } else {
         res.writeHead(500, { 'Content-Type': 'text/plain' });
         res.end(`Server Error: ${err.code}`);
@@ -166,9 +178,13 @@ const server = http.createServer(async (req, res) => {
   });
 });
 
-server.listen(PORT, () => {
-  const hasKey = Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim());
-  const model = process.env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash';
-  console.log(`🌸 AifyCycle server running at http://localhost:${PORT}`);
-  console.log(`🤖 Gemini API Proxy: ${hasKey ? `Configured (Live ${model} ready)` : 'Not set in .env (Running in Local Mode)'}`);
-});
+if (require.main === module) {
+  server.listen(PORT, HOST, () => {
+    const hasKey = Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim());
+    const model = process.env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash';
+    console.log(`🌸 AifyCycle server running at http://${HOST}:${PORT}`);
+    console.log(`🤖 Gemini API Proxy: ${hasKey ? `Configured (Live ${model} ready)` : 'Not set in .env (Running in Local Mode)'}`);
+  });
+}
+
+module.exports = server;

@@ -13,8 +13,7 @@ const STORAGE_KEYS = {
   USERS: 'aifycycle_users_v1',
   ONBOARDING_DONE: 'aifycycle_onboarding_done_v1',
   CHAT_HISTORY: 'aifycycle_chat_history_v1',
-  AGENT_MEMORY: 'aifycycle_agent_memory_v1',
-  GEMINI_API_KEY: 'aifycycle_gemini_key_v1'
+  AGENT_MEMORY: 'aifycycle_agent_memory_v1'
 };
 
 /**
@@ -370,27 +369,6 @@ export class StorageService {
     this.saveAgentMemories([]);
   }
 
-  // --- Gemini API Key (Client-side / PWA mode) ---
-
-  getGeminiApiKey() {
-    try {
-      return localStorage.getItem(STORAGE_KEYS.GEMINI_API_KEY) || '';
-    } catch (e) {
-      return '';
-    }
-  }
-
-  saveGeminiApiKey(key) {
-    if (key && key.trim()) {
-      localStorage.setItem(STORAGE_KEYS.GEMINI_API_KEY, key.trim());
-    } else {
-      this.clearGeminiApiKey();
-    }
-  }
-
-  clearGeminiApiKey() {
-    localStorage.removeItem(STORAGE_KEYS.GEMINI_API_KEY);
-  }
 }
 
 export const storage = new StorageService();

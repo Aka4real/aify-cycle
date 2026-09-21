@@ -119,13 +119,7 @@ export class AICoach {
       // Backend not running or static mode
     }
 
-    // 2. Check client-side stored key
-    const clientKey = storage.getGeminiApiKey();
-    if (clientKey) {
-      return { mode: 'client', label: 'Gemini 3.8 Flash (Client Key)', active: true };
-    }
-
-    // 3. Built-in Local Mode
+    // 2. Built-in Local Mode
     return { mode: 'local', label: 'Local Intelligence', active: false };
   }
 
@@ -165,35 +159,14 @@ export class AICoach {
       }
 
       const errData = await serverRes.json().catch(() => ({}));
-      // If server returned NO_API_KEY, fallback to client key
-      if (errData.error !== 'NO_API_KEY') {
-        throw new Error(errData.message || `Server Proxy Error: ${serverRes.status}`);
-      }
+      throw new Error(errData.message || `Server Proxy Error: ${serverRes.status}`);
     } catch (serverErr) {
       if (serverErr.message && !serverErr.message.includes('NO_API_KEY')) {
         console.warn('Backend proxy call failed:', serverErr.message);
       }
     }
 
-    // Check client-side key
-    const clientKey = storage.getGeminiApiKey();
-    if (clientKey) {
-      const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${encodeURIComponent(clientKey)}`;
-      const clientRes = await fetch(targetUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
-      });
-
-      if (!clientRes.ok) {
-        const errJson = await clientRes.json().catch(() => ({}));
-        throw new Error(errJson.error?.message || `Client API Error: ${clientRes.status}`);
-      }
-
-      return await clientRes.json();
-    }
-
-    // Neither server nor client key is configured
+    // The API key is intentionally server-only and is never sent to the browser.
     throw new Error('NO_GEMINI_KEY');
   }
 

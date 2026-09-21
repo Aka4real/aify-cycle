@@ -10,7 +10,10 @@ module.exports = async (req, res) => {
     return res.status(204).end();
   }
 
-  const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash';
+  // Keep the deployed model explicit and normalize dashboard values such as "models/...".
+  const GEMINI_MODEL = (process.env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash')
+    .replace(/^models\//i, '')
+    .trim();
 
   // If GET request, return status
   if (req.method === 'GET') {
@@ -44,7 +47,7 @@ module.exports = async (req, res) => {
         parsedBody = {};
       }
 
-      const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+      const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
       const upstreamRes = await fetch(targetUrl, {
         method: 'POST',

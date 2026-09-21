@@ -4,6 +4,7 @@
   "description": "AifyCycle - Period & Holistic Health Tracker",
   "main": "server.js",
   "scripts": {
+    "dev": "node server.js",
     "start": "node server.js",
     "build": "echo 'Static assets ready'"
   },

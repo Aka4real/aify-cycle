@@ -152,7 +152,7 @@ export class AICoach {
    * Dispatch generation request to either backend proxy or client direct endpoint
    */
   async _callGeminiApi(requestBody) {
-    // Try backend proxy first
+    // 1. Try backend proxy first (Zero-credential secure gateway)
     try {
       const serverRes = await fetch(BACKEND_PROXY_URL, {
         method: 'POST',
@@ -160,37 +160,43 @@ export class AICoach {
         body: JSON.stringify(requestBody)
       });
 
+      const data = await serverRes.json().catch(() => ({}));
+
       if (serverRes.ok) {
-        return await serverRes.json();
+        if (data._aify_meta?.cascaded) {
+          console.info(`[Aify AI] Google demand spike handled: auto-cascaded to ${data._aify_meta.modelUsed}`);
+        }
+        return data;
       }
 
-      const errData = await serverRes.json().catch(() => ({}));
-      // If server returned NO_API_KEY, fallback to client key
-      if (errData.error !== 'NO_API_KEY') {
-        throw new Error(errData.message || `Server Proxy Error: ${serverRes.status}`);
+      // If server specifically reported no key configured on the backend
+      if (data.error === 'NO_API_KEY') {
+        // Fall through to client-side key check
+      } else {
+        throw new Error(data.message || data.error?.message || `Server Proxy Error: ${serverRes.status}`);
       }
     } catch (serverErr) {
-      if (serverErr.message && !serverErr.message.includes('NO_API_KEY')) {
-        console.warn('Backend proxy call failed:', serverErr.message);
+      // Check client-side key as fallback if server has no key or network failed
+      const clientKey = storage.getGeminiApiKey();
+      if (clientKey) {
+        console.warn('Backend proxy unavailable, falling back to direct client key:', serverErr.message);
+        const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${encodeURIComponent(clientKey)}`;
+        const clientRes = await fetch(targetUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (!clientRes.ok) {
+          const errJson = await clientRes.json().catch(() => ({}));
+          throw new Error(errJson.error?.message || `Client API Error: ${clientRes.status}`);
+        }
+
+        return await clientRes.json();
       }
-    }
 
-    // Check client-side key
-    const clientKey = storage.getGeminiApiKey();
-    if (clientKey) {
-      const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${encodeURIComponent(clientKey)}`;
-      const clientRes = await fetch(targetUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
-      });
-
-      if (!clientRes.ok) {
-        const errJson = await clientRes.json().catch(() => ({}));
-        throw new Error(errJson.error?.message || `Client API Error: ${clientRes.status}`);
-      }
-
-      return await clientRes.json();
+      // Re-throw server error if no client key is available
+      throw serverErr;
     }
 
     // Neither server nor client key is configured

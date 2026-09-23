@@ -47,6 +47,77 @@ const MIME_TYPES = {
   '.ico': 'image/x-icon'
 };
 
+/**
+ * Intelligent Multi-Model Cascade for Gemini
+ * Tries the primary model (default: gemini-3.8-flash).
+ * If Google returns 503 (demand spike/overload), 429 (rate limit), or 404 (unavailable),
+ * it seamlessly fails over to stable alternatives (gemini-3.6-flash, gemini-3.5-flash, gemini-2.5-flash)
+ * ensuring zero interruption, high availability, and continuous AI intelligence.
+ */
+async function callGeminiWithCascade(preferredModel, apiKey, requestBody) {
+  const cascadeQueue = [
+    preferredModel,
+    'gemini-3.6-flash',
+    'gemini-3.5-flash',
+    'gemini-2.5-flash'
+  ];
+  const uniqueModels = [...new Set(cascadeQueue.filter(Boolean))];
+
+  let lastResult = null;
+
+  for (const model of uniqueModels) {
+    try {
+      const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const upstreamRes = await fetch(targetUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+
+      const data = await upstreamRes.json();
+
+      if (upstreamRes.ok) {
+        return {
+          status: 200,
+          data: {
+            ...data,
+            _aify_meta: {
+              modelUsed: model,
+              requestedModel: preferredModel,
+              cascaded: model !== preferredModel
+            }
+          }
+        };
+      }
+
+      lastResult = { status: upstreamRes.status, data };
+
+      // If Google reports high demand (503), rate limit (429), or model unavailable (404), fail over to next model
+      if ([503, 429, 404].includes(upstreamRes.status)) {
+        console.warn(`[Aify AI Cascade] Model '${model}' returned HTTP ${upstreamRes.status} (${data.error?.message || 'Demand Spike'}). Failing over to next model in cascade...`);
+        continue;
+      }
+
+      // If it's a client bad request (e.g. 400), don't retry other models
+      return { status: upstreamRes.status, data };
+    } catch (err) {
+      console.warn(`[Aify AI Cascade] Network error for model '${model}':`, err.message);
+      lastResult = {
+        status: 500,
+        data: { error: 'PROXY_NETWORK_ERROR', message: err.message }
+      };
+    }
+  }
+
+  return lastResult || {
+    status: 503,
+    data: {
+      error: 'ALL_MODELS_UNAVAILABLE',
+      message: 'All Gemini models in cascade are currently experiencing high demand. Please try again shortly.'
+    }
+  };
+}
+
 async function handleRequest(req, res) {
   const [reqPath] = req.url.split('?');
 
@@ -71,6 +142,8 @@ async function handleRequest(req, res) {
     return res.end(JSON.stringify({
       configured: isConfigured,
       model: GEMINI_MODEL,
+      fallbackModels: ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'],
+      cascadeEnabled: true,
       mode: isConfigured ? 'server_proxy' : 'unconfigured'
     }));
   }
@@ -114,17 +187,9 @@ async function handleRequest(req, res) {
 
       try {
         const parsedBody = JSON.parse(body || '{}');
-        const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
-
-        const upstreamRes = await fetch(targetUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(parsedBody)
-        });
-
-        const data = await upstreamRes.json();
-        res.writeHead(upstreamRes.status, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(data));
+        const result = await callGeminiWithCascade(GEMINI_MODEL, apiKey, parsedBody);
+        res.writeHead(result.status, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result.data));
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({

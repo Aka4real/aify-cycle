@@ -307,6 +307,11 @@ class AifyCycleApp {
       const insights = await this.aiCoach.generateCycleSyncingInsights(todayStatus, profile, logs, forceRefresh);
       if (insights) {
         ui.renderCycleSyncingGuide(todayStatus, insights, false);
+        // Seamlessly update Hero Wellness Note with Gemini's personalized insight
+        const partnerNoteEl = document.getElementById('hero-partner-care-note');
+        if (partnerNoteEl && insights.partnerTip) {
+          partnerNoteEl.textContent = `"${insights.partnerTip}"`;
+        }
       } else {
         ui.renderCycleSyncingGuide(todayStatus, null, false);
       }

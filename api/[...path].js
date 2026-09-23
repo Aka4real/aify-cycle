@@ -1,4 +1,67 @@
-// api/[...path].js - Universal fallback serverless function for AifyCycle on Vercel
+/**
+ * Intelligent Multi-Model Cascade for Gemini
+ */
+async function callGeminiWithCascade(preferredModel, apiKey, requestBody) {
+  const cascadeQueue = [
+    preferredModel,
+    'gemini-3.6-flash',
+    'gemini-3.5-flash',
+    'gemini-2.5-flash'
+  ];
+  const uniqueModels = [...new Set(cascadeQueue.filter(Boolean))];
+
+  let lastResult = null;
+
+  for (const model of uniqueModels) {
+    try {
+      const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const upstreamRes = await fetch(targetUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+
+      const data = await upstreamRes.json();
+
+      if (upstreamRes.ok) {
+        return {
+          status: 200,
+          data: {
+            ...data,
+            _aify_meta: {
+              modelUsed: model,
+              requestedModel: preferredModel,
+              cascaded: model !== preferredModel
+            }
+          }
+        };
+      }
+
+      lastResult = { status: upstreamRes.status, data };
+
+      if ([503, 429, 404].includes(upstreamRes.status)) {
+        console.warn(`[Aify AI Cascade] Model '${model}' returned HTTP ${upstreamRes.status}. Failing over to next model in cascade...`);
+        continue;
+      }
+
+      return { status: upstreamRes.status, data };
+    } catch (err) {
+      console.warn(`[Aify AI Cascade] Network error for model '${model}':`, err.message);
+      lastResult = {
+        status: 500,
+        data: { error: 'PROXY_NETWORK_ERROR', message: err.message }
+      };
+    }
+  }
+
+  return lastResult || {
+    status: 503,
+    data: {
+      error: 'ALL_MODELS_UNAVAILABLE',
+      message: 'All Gemini models in cascade are currently experiencing high demand. Please try again shortly.'
+    }
+  };
+}
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -11,7 +74,9 @@ module.exports = async (req, res) => {
 
   const urlParts = (req.url || '').split('?');
   const reqPath = urlParts[0].toLowerCase();
-  const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash';
+  const GEMINI_MODEL = (process.env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash')
+    .replace(/^models\//i, '')
+    .trim();
 
   // Route 1: Gemini Status
   if (reqPath.includes('/gemini/status') || reqPath.endsWith('/status')) {
@@ -19,6 +84,8 @@ module.exports = async (req, res) => {
     return res.status(200).json({
       configured: isConfigured,
       model: GEMINI_MODEL,
+      fallbackModels: ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'],
+      cascadeEnabled: true,
       mode: isConfigured ? 'server_proxy' : 'unconfigured'
     });
   }
@@ -58,16 +125,8 @@ module.exports = async (req, res) => {
         parsedBody = {};
       }
 
-      const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
-
-      const upstreamRes = await fetch(targetUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(parsedBody)
-      });
-
-      const data = await upstreamRes.json();
-      return res.status(upstreamRes.status).json(data);
+      const result = await callGeminiWithCascade(GEMINI_MODEL, apiKey, parsedBody);
+      return res.status(result.status).json(result.data);
     } catch (err) {
       return res.status(500).json({
         error: 'PROXY_ERROR',

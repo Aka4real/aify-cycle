@@ -3,7 +3,7 @@
  */
 async function callGeminiWithCascade(preferredModel, apiKey, requestBody) {
   const cascadeQueue = [
-    preferredModel,
+    preferredModel || 'gemini-3.6-flash',
     'gemini-3.6-flash',
     'gemini-3.5-flash',
     'gemini-2.5-flash'
@@ -74,7 +74,7 @@ module.exports = async (req, res) => {
   }
 
   // Keep the deployed model explicit and normalize dashboard values such as "models/...".
-  const GEMINI_MODEL = (process.env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash')
+  const GEMINI_MODEL = (process.env.GEMINI_MODEL?.trim() || 'gemini-3.6-flash')
     .replace(/^models\//i, '')
     .trim();
 
@@ -84,7 +84,7 @@ module.exports = async (req, res) => {
     return res.status(200).json({
       configured: isConfigured,
       model: GEMINI_MODEL,
-      fallbackModels: ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'],
+      fallbackModels: ['gemini-3.5-flash', 'gemini-2.5-flash'],
       cascadeEnabled: true,
       mode: isConfigured ? 'server_proxy' : 'unconfigured'
     });

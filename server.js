@@ -51,14 +51,14 @@ const MIME_TYPES = {
 
 /**
  * Intelligent Multi-Model Cascade for Gemini
- * Tries the primary model (default: gemini-3.8-flash).
- * If Google returns 503 (demand spike/overload), 429 (rate limit), or 404 (unavailable),
- * it seamlessly fails over to stable alternatives (gemini-3.6-flash, gemini-3.5-flash, gemini-2.5-flash)
+ * Primary model: gemini-3.6-flash (ultra-fast, zero demand spike delays).
+ * If Google returns 503 (demand spike), 429 (rate limit), or 404 (unavailable),
+ * it seamlessly fails over to stable alternatives (gemini-3.5-flash, gemini-2.5-flash)
  * ensuring zero interruption, high availability, and continuous AI intelligence.
  */
 async function callGeminiWithCascade(preferredModel, apiKey, requestBody) {
   const cascadeQueue = [
-    preferredModel,
+    preferredModel || 'gemini-3.6-flash',
     'gemini-3.6-flash',
     'gemini-3.5-flash',
     'gemini-2.5-flash'
@@ -135,7 +135,9 @@ async function handleRequest(req, res) {
 
   // --- API Routes ---
 
-  const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash';
+  const GEMINI_MODEL = (process.env.GEMINI_MODEL?.trim() || 'gemini-3.6-flash')
+    .replace(/^models\//i, '')
+    .trim();
 
   // 1. Status Check
   if (req.method === 'GET' && reqPath === '/api/gemini/status') {
@@ -144,7 +146,7 @@ async function handleRequest(req, res) {
     return res.end(JSON.stringify({
       configured: isConfigured,
       model: GEMINI_MODEL,
-      fallbackModels: ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'],
+      fallbackModels: ['gemini-3.5-flash', 'gemini-2.5-flash'],
       cascadeEnabled: true,
       mode: isConfigured ? 'server_proxy' : 'unconfigured'
     }));
@@ -250,7 +252,7 @@ const server = http.createServer(handleRequest);
 if (require.main === module) {
   server.listen(PORT, HOST, () => {
     const hasKey = Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim());
-    const model = process.env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash';
+    const model = (process.env.GEMINI_MODEL?.trim() || 'gemini-3.6-flash').replace(/^models\//i, '').trim();
     console.log(`🌸 AifyCycle primary server running at http://${HOST}:${PORT}`);
     console.log(`🤖 Gemini API Proxy: ${hasKey ? `Configured (Live ${model} ready)` : 'Not set in .env (Running in Local Mode)'}`);
   });

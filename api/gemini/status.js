@@ -9,13 +9,15 @@ module.exports = async (req, res) => {
     return res.status(204).end();
   }
 
-  const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash';
+  const GEMINI_MODEL = (process.env.GEMINI_MODEL?.trim() || 'gemini-3.6-flash')
+    .replace(/^models\//i, '')
+    .trim();
   const isConfigured = Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim());
 
   return res.status(200).json({
     configured: isConfigured,
     model: GEMINI_MODEL,
-    fallbackModels: ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'],
+    fallbackModels: ['gemini-3.5-flash', 'gemini-2.5-flash'],
     cascadeEnabled: true,
     mode: isConfigured ? 'server_proxy' : 'unconfigured'
   });

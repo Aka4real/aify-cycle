@@ -270,7 +270,7 @@ class AifyCycleApp {
     statusPill.className = 'ai-status-pill';
 
     let serverConfigured = false;
-    let modelName = 'gemini-3.8-flash';
+    let modelName = 'gemini-3.6-flash';
     try {
       const res = await fetch('/api/gemini/status');
       if (res.ok) {
@@ -281,7 +281,8 @@ class AifyCycleApp {
     } catch (e) {}
 
     if (serverConfigured) {
-      statusPill.textContent = `✨ Gemini 3.8 Flash Active`;
+      const displayModel = modelName === 'gemini-3.6-flash' ? 'Gemini 3.6 Flash' : (modelName === 'gemini-3.8-flash' ? 'Gemini 3.6 Flash' : modelName);
+      statusPill.textContent = `✨ ${displayModel} Active`;
       statusPill.className = 'ai-status-pill pill-server';
     } else {
       statusPill.textContent = '🧠 Local Intelligence Active';
@@ -344,7 +345,7 @@ class AifyCycleApp {
       (dateKey) => this.openLoggerModalForDate(dateKey)
     );
 
-    // Render Syncing Guide with Gemini 3.8 Flash intelligence
+    // Render Syncing Guide with Gemini 3.6 Flash intelligence
     this.loadCycleSyncingInsights(false);
 
     // Render Analytics
@@ -643,7 +644,7 @@ class AifyCycleApp {
       });
     }
 
-    // Cycle Syncing: Refresh with Gemini 3.8 Flash
+    // Cycle Syncing: Refresh with Gemini 3.6 Flash
     const btnRefreshSync = document.getElementById('btn-refresh-gemini-sync');
     if (btnRefreshSync) {
       btnRefreshSync.addEventListener('click', () => {

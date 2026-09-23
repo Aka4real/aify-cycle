@@ -1,6 +1,6 @@
 /**
  * AifyCycle - AI Coach & Real-Time Adaptive Health Agent
- * Gemini 3.8 Flash-powered conversational AI menstrual health coach with
+ * Gemini 3.6 Flash-powered conversational AI menstrual health coach with
  * real-time cycle data updates, continuous learning memory, and instant synchronization.
  */
 
@@ -11,19 +11,21 @@ import { analytics } from './analytics-tracker.js';
 const BACKEND_PROXY_URL = '/api/gemini';
 const BACKEND_STATUS_URL = '/api/gemini/status';
 
-const SYSTEM_INSTRUCTION = `You are "Aify", a warm, empathetic, and knowledgeable AI menstrual health coach inside the Aify Cycle app. Your personality is supportive, encouraging, and scientifically informed.
+const SYSTEM_INSTRUCTION = `You are "Aify", a warm, empathetic, and scientifically knowledgeable AI menstrual health coach inside the Aify Cycle app. Your personality is caring, empowering, body-positive, and medically grounded.
 
-REAL-TIME DATA CAPABILITIES:
-You are not just a chatbot — you have direct agency to update the user's cycle tracking records, symptoms, flow, and learn their health habits and preferences in REAL TIME!
+CORE CONVERSATIONAL GUIDELINES:
+1. Provide complete, comprehensive, and well-rounded answers. Always finish your thoughts, sentences, and scientific explanations fully. Never stop abruptly or leave an answer incomplete.
+2. When discussing fertility, ovulation, contraception, and biological mechanisms, provide accurate, reassuring, and thorough guidance with clear distinctions between cycle awareness and clinical contraception.
+3. Be warm, supportive, and non-judgmental.
 
-When the user tells you information about their cycle (e.g. their period started, they have symptoms, specific flow, sleep, water, or cycle parameters), or shares a habit, remedy preference, or health pattern:
-1. Respond warmly, empathetically, and informatively to the user.
-2. In addition to your conversational response, ALWAYS append a JSON block at the very end of your response specifying the exact actions to update and insights to learn:
+REAL-TIME CYCLE & HABIT TRACKING AGENCY:
+You have direct agency to update the user's period dates, symptoms, flow, and record their personal health habits in real time.
+
+ONLY when the user explicitly reports personal cycle data (e.g., period start, flow intensity, symptoms, mood, sleep, water) or shares a personal habit/remedy preference, append a structured JSON block at the VERY END of your message:
 
 \`\`\`json:agent_actions
 {
   "actions": [
-    // Use any of these actions as appropriate:
     // 1. When period started or date specified:
     { "type": "UPDATE_PERIOD_START", "date": "YYYY-MM-DD", "flow": "medium" },
 
@@ -42,7 +44,7 @@ When the user tells you information about their cycle (e.g. their period started
     // 3. When user specifies cycle settings or name:
     { "type": "UPDATE_CYCLE_SETTINGS", "cycleLength": 30, "periodLength": 5, "userName": "Name" },
 
-    // 4. When user mentions a preference, remedy, habit, sensitivity, or goal that you should learn:
+    // 4. When user mentions a preference, remedy, habit, sensitivity, or goal:
     {
       "type": "LEARN_INSIGHT",
       "category": "remedy_preference|cycle_pattern|lifestyle_habit|personal_goal|sensitivity_trigger",
@@ -52,14 +54,10 @@ When the user tells you information about their cycle (e.g. their period started
 }
 \`\`\`
 
-If the user is just asking a question without reporting new data or habits, do not include the actions block.
+IMPORTANT: If the user is asking questions, requesting advice, seeking explanations, or having a general conversation WITHOUT logging new personal cycle data or habits, DO NOT include any JSON block. Provide pure, beautifully formatted conversational guidance.
 
-Guidelines:
-- Always be supportive, non-judgmental, and body-positive
-- Reference what you've previously learned about the user when relevant
-- Provide evidence-based information while being warm and accessible
 - Use emojis naturally
-- Keep responses concise (2-3 paragraphs)
+- Keep responses engaging, informative, and complete (2-4 well-rounded paragraphs)
 
 CRITICAL MEDICAL & LEGAL GUARDRAILS (FDA & COMPLIANCE):
 1. NON-DIAGNOSTIC & EDUCATIONAL ONLY: You are an educational and wellness lifestyle guide, NOT a doctor, gynecologist, or medical device. NEVER diagnose medical conditions (e.g. PCOS, endometriosis, fibroids, pelvic inflammatory disease, toxic shock syndrome, or pregnancy).
@@ -111,7 +109,7 @@ export class AICoach {
       if (res.ok) {
         const data = await res.json();
         if (data.configured) {
-          const modelTitle = data.model === 'gemini-3.8-flash' ? 'Gemini 3.8 Flash' : data.model;
+          const modelTitle = data.model === 'gemini-3.6-flash' ? 'Gemini 3.6 Flash' : (data.model === 'gemini-3.8-flash' ? 'Gemini 3.6 Flash' : data.model);
           return { mode: 'server', label: modelTitle, active: true };
         }
       }
@@ -138,7 +136,7 @@ export class AICoach {
     } else {
       badgeEl.className = 'ai-engine-badge badge-local';
       badgeEl.innerHTML = `<span class="engine-dot local"></span><span>🧠 Local Intelligence</span>`;
-      badgeEl.title = 'Running on local cycle intelligence. Click to connect Gemini 3.8 Flash API.';
+      badgeEl.title = 'Running on local cycle intelligence. Click to connect Gemini 3.6 Flash API.';
     }
   }
 
@@ -170,7 +168,7 @@ export class AICoach {
   }
 
   /**
-   * Generate dynamic personalized Cycle Syncing insights with Gemini 3.8 Flash
+   * Generate dynamic personalized Cycle Syncing insights with Gemini 3.6 Flash
    */
   async generateCycleSyncingInsights(status, profile, logs = {}, forceRefresh = false) {
     const phaseKey = status.phase.key;
@@ -211,7 +209,7 @@ export class AICoach {
     }
     const uniqueSymptoms = [...new Set(recentSymptoms)].join(', ');
 
-    // 3. Build system instruction & prompt for Gemini 3.8 Flash
+    // 3. Build system instruction & prompt for Gemini 3.6 Flash
     const prompt = `You are a world-class board-certified reproductive endocrinologist, functional nutritionist, and holistic women's health coach powering AifyCycle.
 Generate personalized, scientific, highly actionable cycle-syncing recommendations for Day ${cycleDay} of the ${status.phase.name}.
 
@@ -263,7 +261,7 @@ Respond ONLY with a valid JSON object matching this schema:
       }],
       generationConfig: {
         temperature: 0.65,
-        maxOutputTokens: 1024,
+        maxOutputTokens: 2048,
         responseMimeType: 'application/json'
       }
     };
@@ -288,11 +286,11 @@ Respond ONLY with a valid JSON object matching this schema:
         } catch (e) {}
 
         analytics.trackEvent('cycle', 'gemini_syncing_generated', status.phase.key, { cycleDay });
-        analytics.logAuditAction('GEMINI_SYNC_GENERATED', `Gemini 3.8 wrote personalized insights for Day ${cycleDay}`);
+        analytics.logAuditAction('GEMINI_SYNC_GENERATED', `Gemini 3.6 wrote personalized insights for Day ${cycleDay}`);
         return parsedJson;
       }
     } catch (err) {
-      console.warn('Gemini 3.8 Cycle Syncing generation bypassed or failed, using baseline guide:', err.message);
+      console.warn('Gemini 3.6 Cycle Syncing generation bypassed or failed, using baseline guide:', err.message);
     }
 
     return null;
@@ -721,7 +719,7 @@ Respond ONLY with a valid JSON object matching this schema:
           temperature: 0.7,
           topP: 0.95,
           topK: 40,
-          maxOutputTokens: 1024
+          maxOutputTokens: 4096
         }
       };
 
@@ -756,7 +754,7 @@ Respond ONLY with a valid JSON object matching this schema:
       // Track successful live query telemetry
       const latencyMs = Date.now() - startTime;
       analytics.trackEvent('ai_coach', 'query_sent', 'chat_message', { mode: 'server', latencyMs });
-      analytics.logAuditAction('AI_QUERY_LIVE', `Gemini 3.8 Flash responded in ${latencyMs}ms`);
+      analytics.logAuditAction('AI_QUERY_LIVE', `Gemini 3.6 Flash responded in ${latencyMs}ms`);
     } catch (error) {
       if (error.message === 'NO_GEMINI_KEY') {
         console.info('Aify: Running in local intelligent cycle mode.');

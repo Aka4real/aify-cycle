@@ -184,7 +184,7 @@ export class UIComponents {
   }
 
   /**
-   * Render Cycle Syncing Guide (with Gemini 3.8 Flash Intelligence support)
+   * Render Cycle Syncing Guide (with Gemini 3.6 Flash Intelligence support)
    */
   renderCycleSyncingGuide(status, insights = null, isLoading = false) {
     const guide = CYCLE_SYNCING_GUIDE[status.phase.key];
@@ -209,7 +209,7 @@ export class UIComponents {
     if (isLoading) {
       if (refreshBtn) {
         refreshBtn.classList.add('loading');
-        refreshBtn.innerHTML = `<span class="refresh-icon spinning">✨</span> <span class="refresh-text">Consulting Gemini 3.8...</span>`;
+        refreshBtn.innerHTML = `<span class="refresh-icon spinning">✨</span> <span class="refresh-text">Consulting Gemini 3.6...</span>`;
       }
       const skeletonItems = `
         <li class="skeleton-shimmer" style="height: 16px; border-radius: 6px; margin-bottom: 6px;"></li>
@@ -282,7 +282,7 @@ export class UIComponents {
       if (insights?.scientificWhy) {
         scientificWhyEl.innerHTML = `
           <div class="ai-scientific-pill">
-            <span>🧬</span> <strong>Endocrine Rationale (Gemini 3.8):</strong> ${insights.scientificWhy}
+            <span>🧬</span> <strong>Endocrine Rationale (Gemini 3.6):</strong> ${insights.scientificWhy}
           </div>
         `;
       } else {

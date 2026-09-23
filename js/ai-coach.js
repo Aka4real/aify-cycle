@@ -119,13 +119,7 @@ export class AICoach {
       // Backend not running or static mode
     }
 
-    // 2. Check client-side stored key
-    const clientKey = storage.getGeminiApiKey();
-    if (clientKey) {
-      return { mode: 'client', label: 'Gemini 3.8 Flash (Client Key)', active: true };
-    }
-
-    // 3. Built-in Local Mode
+    // 2. Built-in Local Mode
     return { mode: 'local', label: 'Local Intelligence', active: false };
   }
 
@@ -149,58 +143,30 @@ export class AICoach {
   }
 
   /**
-   * Dispatch generation request to either backend proxy or client direct endpoint
+   * Dispatch generation request to backend proxy (Zero-credential secure gateway)
+   * The API key is strictly server-only and is never sent to or stored in the browser.
    */
   async _callGeminiApi(requestBody) {
-    // 1. Try backend proxy first (Zero-credential secure gateway)
-    try {
-      const serverRes = await fetch(BACKEND_PROXY_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
-      });
+    const serverRes = await fetch(BACKEND_PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody)
+    });
 
-      const data = await serverRes.json().catch(() => ({}));
+    const data = await serverRes.json().catch(() => ({}));
 
-      if (serverRes.ok) {
-        if (data._aify_meta?.cascaded) {
-          console.info(`[Aify AI] Google demand spike handled: auto-cascaded to ${data._aify_meta.modelUsed}`);
-        }
-        return data;
+    if (serverRes.ok) {
+      if (data._aify_meta?.cascaded) {
+        console.info(`[Aify AI] Google demand spike handled: auto-cascaded to ${data._aify_meta.modelUsed}`);
       }
-
-      // If server specifically reported no key configured on the backend
-      if (data.error === 'NO_API_KEY') {
-        // Fall through to client-side key check
-      } else {
-        throw new Error(data.message || data.error?.message || `Server Proxy Error: ${serverRes.status}`);
-      }
-    } catch (serverErr) {
-      // Check client-side key as fallback if server has no key or network failed
-      const clientKey = storage.getGeminiApiKey();
-      if (clientKey) {
-        console.warn('Backend proxy unavailable, falling back to direct client key:', serverErr.message);
-        const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${encodeURIComponent(clientKey)}`;
-        const clientRes = await fetch(targetUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestBody)
-        });
-
-        if (!clientRes.ok) {
-          const errJson = await clientRes.json().catch(() => ({}));
-          throw new Error(errJson.error?.message || `Client API Error: ${clientRes.status}`);
-        }
-
-        return await clientRes.json();
-      }
-
-      // Re-throw server error if no client key is available
-      throw serverErr;
+      return data;
     }
 
-    // Neither server nor client key is configured
-    throw new Error('NO_GEMINI_KEY');
+    if (data.error === 'NO_API_KEY') {
+      throw new Error('NO_GEMINI_KEY');
+    }
+
+    throw new Error(data.message || data.error?.message || `Server Proxy Error: ${serverRes.status}`);
   }
 
   /**

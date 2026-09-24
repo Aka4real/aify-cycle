@@ -31,6 +31,24 @@ class AifyCycleApp {
   init() {
     this.setupTheme();
     this._initComplianceAndConsent();
+
+    // Register auth redirect callback for OAuth return
+    this.auth.setOnAuthRedirectCallback(() => {
+      this._routeUser();
+    });
+
+    // Check if returning from Supabase OAuth redirect with access token or code
+    if (window.location.hash.includes('access_token') || window.location.search.includes('code=')) {
+      supabaseService.init().then(() => {
+        this.auth.checkSession().then(user => {
+          if (user) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+            this._routeUser();
+          }
+        });
+      });
+    }
+
     this._routeUser();
     console.log('🌸 AifyCycle Initialized successfully.');
   }
@@ -191,6 +209,54 @@ class AifyCycleApp {
             submitBtn.disabled = false;
             submitBtn.textContent = origText;
           }
+        }
+      });
+    }
+
+    // Google OAuth Sign In
+    const btnGoogle = document.getElementById('btn-oauth-google');
+    if (btnGoogle) {
+      btnGoogle.addEventListener('click', async () => {
+        btnGoogle.disabled = true;
+        const span = btnGoogle.querySelector('span');
+        const origText = span ? span.textContent : '';
+        if (span) span.textContent = 'Connecting with Google...';
+
+        try {
+          const res = await this.auth.signInWithOAuth('google');
+          if (res.redirecting) return; // Supabase redirecting to Google
+          if (res.success) {
+            this._routeUser();
+          } else {
+            this._showAuthErrors([res.error]);
+          }
+        } finally {
+          btnGoogle.disabled = false;
+          if (span) span.textContent = origText;
+        }
+      });
+    }
+
+    // Apple OAuth Sign In
+    const btnApple = document.getElementById('btn-oauth-apple');
+    if (btnApple) {
+      btnApple.addEventListener('click', async () => {
+        btnApple.disabled = true;
+        const span = btnApple.querySelector('span');
+        const origText = span ? span.textContent : '';
+        if (span) span.textContent = 'Connecting with Apple...';
+
+        try {
+          const res = await this.auth.signInWithOAuth('apple');
+          if (res.redirecting) return; // Supabase redirecting to Apple
+          if (res.success) {
+            this._routeUser();
+          } else {
+            this._showAuthErrors([res.error]);
+          }
+        } finally {
+          btnApple.disabled = false;
+          if (span) span.textContent = origText;
         }
       });
     }

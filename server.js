@@ -166,6 +166,19 @@ async function handleRequest(req, res) {
     }));
   }
 
+  // 1c. Supabase Public Config
+  if (req.method === 'GET' && reqPath === '/api/supabase/config') {
+    const supabaseUrl = process.env.SUPABASE_URL?.trim() || '';
+    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY?.trim() || '';
+    const isConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({
+      configured: isConfigured,
+      url: supabaseUrl,
+      anonKey: supabaseAnonKey
+    }));
+  }
+
   // 2. Secure Gemini Proxy
   if (req.method === 'POST' && reqPath === '/api/gemini') {
     let body = '';

@@ -131,38 +131,65 @@ class AifyCycleApp {
 
     // Login form submit
     if (loginForm) {
-      loginForm.addEventListener('submit', (e) => {
+      loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const email = document.getElementById('login-email').value;
         const password = document.getElementById('login-password').value;
+        const submitBtn = loginForm.querySelector('button[type="submit"]');
+        const origText = submitBtn ? submitBtn.textContent : '';
 
-        const result = this.auth.login({ email, password });
-        if (result.success) {
-          this._routeUser();
-        } else {
-          this._showAuthErrors(result.errors);
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Connecting...';
+        }
+
+        try {
+          const result = await this.auth.login({ email, password });
+          if (result.success) {
+            this._routeUser();
+          } else {
+            this._showAuthErrors(result.errors);
+          }
+        } finally {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = origText;
+          }
         }
       });
     }
 
     // Signup form submit
     if (signupForm) {
-      signupForm.addEventListener('submit', (e) => {
+      signupForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const name = document.getElementById('signup-name').value;
         const email = document.getElementById('signup-email').value;
         const password = document.getElementById('signup-password').value;
         const dateOfBirth = document.getElementById('signup-dob').value || null;
+        const submitBtn = signupForm.querySelector('button[type="submit"]');
+        const origText = submitBtn ? submitBtn.textContent : '';
 
-        const result = this.auth.signup({ name, email, password, dateOfBirth });
-        if (result.success) {
-          // Set user name in profile
-          const profile = storage.getProfile();
-          profile.userName = name.trim();
-          storage.saveProfile(profile);
-          this._routeUser();
-        } else {
-          this._showAuthErrors(result.errors);
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Creating Account...';
+        }
+
+        try {
+          const result = await this.auth.signup({ name, email, password, dateOfBirth });
+          if (result.success) {
+            const profile = storage.getProfile();
+            profile.userName = name.trim();
+            storage.saveProfile(profile);
+            this._routeUser();
+          } else {
+            this._showAuthErrors(result.errors);
+          }
+        } finally {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = origText;
+          }
         }
       });
     }
@@ -170,8 +197,9 @@ class AifyCycleApp {
     // Guest login
     const guestBtn = document.getElementById('btn-guest-login');
     if (guestBtn) {
-      guestBtn.addEventListener('click', () => {
-        this.auth.guestLogin();
+      guestBtn.addEventListener('click', async () => {
+        guestBtn.disabled = true;
+        await this.auth.guestLogin();
         this._routeUser();
       });
     }

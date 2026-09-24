@@ -103,6 +103,18 @@ module.exports = async (req, res) => {
     });
   }
 
+  // Route 2b: Supabase Public Config
+  if (reqPath.includes('/supabase/config')) {
+    const supabaseUrl = process.env.SUPABASE_URL?.trim() || '';
+    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY?.trim() || '';
+    const isConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+    return res.status(200).json({
+      configured: isConfigured,
+      url: supabaseUrl,
+      anonKey: supabaseAnonKey
+    });
+  }
+
   // Route 3: Gemini Generation Proxy
   if (req.method === 'POST' && reqPath.includes('/gemini')) {
     const apiKey = process.env.GEMINI_API_KEY?.trim();

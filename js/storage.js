@@ -4,6 +4,7 @@
  */
 
 import { formatDateKey, addDays } from './cycle-engine.js';
+import { supabaseService } from './supabase-client.js';
 
 const STORAGE_KEYS = {
   PROFILE: 'aifycycle_profile_v1',
@@ -135,6 +136,11 @@ export class StorageService {
       this.saveAllLogs(defaultLogs);
       this.saveAgentMemories(defaultMemories);
     }
+
+    // Asynchronously connect Supabase if configured and reconcile with cloud
+    supabaseService.init().then(() => {
+      this.syncFromCloud();
+    }).catch(() => {});
   }
 
   getProfile() {
@@ -149,6 +155,7 @@ export class StorageService {
 
   saveProfile(profile) {
     localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
+    this._syncProfileToCloud(profile);
   }
 
   getAllLogs() {
@@ -178,6 +185,7 @@ export class StorageService {
       updatedAt: new Date().toISOString()
     };
     this.saveAllLogs(logs);
+    this._syncLogToCloud(dateKey, logs[dateKey]);
     return logs[dateKey];
   }
 
@@ -186,6 +194,7 @@ export class StorageService {
     if (logs[dateKey]) {
       delete logs[dateKey];
       this.saveAllLogs(logs);
+      this._deleteLogFromCloud(dateKey);
     }
   }
 
@@ -233,11 +242,21 @@ export class StorageService {
    * Completely purges all user data, profile, history, session, agent memories,
    * client keys, and telemetry from the browser storage.
    */
-  purgeAllUserData() {
+  async purgeAllUserData() {
     Object.values(STORAGE_KEYS).forEach(key => localStorage.removeItem(key));
     localStorage.removeItem('aifycycle_telemetry_v1');
     localStorage.removeItem('aifycycle_audit_log_v1');
     localStorage.removeItem('aifycycle_consent_v1');
+
+    // Purge cloud data if Supabase connected
+    const client = supabaseService.getClient();
+    if (client) {
+      try {
+        await client.rpc('delete_user_data');
+      } catch (e) {
+        console.warn('Cloud purge notice:', e.message);
+      }
+    }
   }
 
   // --- Auth Session ---
@@ -355,6 +374,7 @@ export class StorageService {
 
     memories.unshift(newMemory);
     this.saveAgentMemories(memories);
+    this._syncMemoryToCloud(newMemory);
     return newMemory;
   }
 
@@ -362,6 +382,7 @@ export class StorageService {
     const memories = this.getAgentMemories();
     const filtered = memories.filter(m => m.id !== id);
     this.saveAgentMemories(filtered);
+    this._deleteMemoryFromCloud(id);
     return filtered;
   }
 
@@ -369,6 +390,217 @@ export class StorageService {
     this.saveAgentMemories([]);
   }
 
+  // =========================================================================
+  // SUPABASE HYBRID SYNC & CLOUD CONTINUITY ENGINE
+  // =========================================================================
+
+  /**
+   * Reconcile local storage with Supabase cloud records
+   */
+  async syncFromCloud() {
+    const client = supabaseService.getClient();
+    if (!client) return { success: false, reason: 'unconfigured' };
+
+    try {
+      const { data: { user } } = await client.auth.getUser();
+      if (!user) return { success: false, reason: 'not_authenticated' };
+
+      // 1. Fetch Profile
+      const { data: profileRow } = await client.from('profiles').select('*').eq('id', user.id).single();
+      if (profileRow) {
+        const localProfile = this.getProfile();
+        this.saveProfile({
+          ...localProfile,
+          userName: profileRow.user_name || localProfile.userName,
+          partnerName: profileRow.partner_name || localProfile.partnerName,
+          cycleLength: profileRow.cycle_length || localProfile.cycleLength,
+          periodLength: profileRow.period_length || localProfile.periodLength,
+          lastPeriodStart: profileRow.last_period_start || localProfile.lastPeriodStart,
+          reminderEnabled: profileRow.reminder_enabled !== false,
+          notifications: profileRow.notifications || localProfile.notifications
+        });
+      }
+
+      // 2. Fetch Daily Logs
+      const { data: logRows } = await client.from('cycle_logs').select('*').eq('user_id', user.id);
+      if (logRows && logRows.length > 0) {
+        const currentLogs = this.getAllLogs();
+        logRows.forEach(row => {
+          const key = row.date_key;
+          currentLogs[key] = {
+            flow: row.flow,
+            symptoms: row.symptoms || [],
+            moods: row.moods || [],
+            waterGlasses: row.water_glasses || 0,
+            sleepHours: Number(row.sleep_hours || 0),
+            notes: row.notes || '',
+            updatedAt: row.updated_at
+          };
+        });
+        localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(currentLogs));
+      }
+
+      // 3. Fetch Learned AI Memories
+      const { data: memRows } = await client.from('ai_memories').select('*').eq('user_id', user.id);
+      if (memRows && memRows.length > 0) {
+        const cloudMems = memRows.map(r => ({
+          id: r.id,
+          category: r.category,
+          fact: r.fact,
+          source: r.source,
+          confidence: r.confidence,
+          createdAt: r.created_at
+        }));
+        this.saveAgentMemories(cloudMems);
+      }
+
+      console.info('✨ AifyCycle: Supabase cloud data synchronized with local store.');
+      return { success: true };
+    } catch (e) {
+      console.warn('[Supabase Sync] Sync from cloud deferred:', e.message);
+      return { success: false, error: e.message };
+    }
+  }
+
+  /**
+   * Upload all local logs, profile, and memories to Supabase
+   */
+  async uploadLocalToCloud() {
+    const client = supabaseService.getClient();
+    if (!client) return { success: false };
+
+    try {
+      const { data: { user } } = await client.auth.getUser();
+      if (!user) return { success: false };
+
+      // Upload profile
+      await this._syncProfileToCloud(this.getProfile());
+
+      // Upload daily logs
+      const logs = this.getAllLogs();
+      const logEntries = Object.entries(logs).map(([dateKey, log]) => ({
+        user_id: user.id,
+        date_key: dateKey,
+        flow: log.flow || null,
+        symptoms: log.symptoms || [],
+        moods: log.moods || [],
+        water_glasses: log.waterGlasses || 0,
+        sleep_hours: log.sleepHours || 0.0,
+        notes: log.notes || null,
+        updated_at: log.updatedAt || new Date().toISOString()
+      }));
+
+      if (logEntries.length > 0) {
+        await client.from('cycle_logs').upsert(logEntries, { onConflict: 'user_id,date_key' });
+      }
+
+      // Upload agent memories
+      const memories = this.getAgentMemories();
+      const memEntries = memories.map(m => ({
+        user_id: user.id,
+        category: m.category || 'general',
+        fact: m.fact,
+        source: m.source || 'Chat conversation',
+        confidence: m.confidence || 'high'
+      }));
+
+      if (memEntries.length > 0) {
+        await client.from('ai_memories').upsert(memEntries);
+      }
+
+      return { success: true };
+    } catch (e) {
+      console.warn('[Supabase Sync] Upload to cloud error:', e.message);
+      return { success: false, error: e.message };
+    }
+  }
+
+  async _syncProfileToCloud(profile) {
+    const client = supabaseService.getClient();
+    if (!client) return;
+    try {
+      const { data: { user } } = await client.auth.getUser();
+      if (!user) return;
+      await client.from('profiles').upsert({
+        id: user.id,
+        user_name: profile.userName || 'User',
+        partner_name: profile.partnerName || 'Partner',
+        cycle_length: profile.cycleLength || 28,
+        period_length: profile.periodLength || 5,
+        last_period_start: profile.lastPeriodStart || new Date().toISOString().split('T')[0],
+        reminder_enabled: profile.reminderEnabled !== false,
+        notifications: profile.notifications || {},
+        updated_at: new Date().toISOString()
+      });
+    } catch (e) {
+      // Quiet background failure
+    }
+  }
+
+  async _syncLogToCloud(dateKey, logEntry) {
+    const client = supabaseService.getClient();
+    if (!client) return;
+    try {
+      const { data: { user } } = await client.auth.getUser();
+      if (!user) return;
+      await client.from('cycle_logs').upsert({
+        user_id: user.id,
+        date_key: dateKey,
+        flow: logEntry.flow || null,
+        symptoms: logEntry.symptoms || [],
+        moods: logEntry.moods || [],
+        water_glasses: logEntry.waterGlasses || 0,
+        sleep_hours: logEntry.sleepHours || 0.0,
+        notes: logEntry.notes || null,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id,date_key' });
+    } catch (e) {
+      // Quiet background failure
+    }
+  }
+
+  async _deleteLogFromCloud(dateKey) {
+    const client = supabaseService.getClient();
+    if (!client) return;
+    try {
+      const { data: { user } } = await client.auth.getUser();
+      if (!user) return;
+      await client.from('cycle_logs').delete().match({ user_id: user.id, date_key: dateKey });
+    } catch (e) {
+      // Quiet background failure
+    }
+  }
+
+  async _syncMemoryToCloud(memory) {
+    const client = supabaseService.getClient();
+    if (!client) return;
+    try {
+      const { data: { user } } = await client.auth.getUser();
+      if (!user) return;
+      await client.from('ai_memories').upsert({
+        user_id: user.id,
+        category: memory.category || 'general',
+        fact: memory.fact,
+        source: memory.source || 'Chat conversation',
+        confidence: memory.confidence || 'high',
+        updated_at: new Date().toISOString()
+      });
+    } catch (e) {
+      // Quiet background failure
+    }
+  }
+
+  async _deleteMemoryFromCloud(id) {
+    const client = supabaseService.getClient();
+    if (!client) return;
+    try {
+      const { data: { user } } = await client.auth.getUser();
+      if (!user) return;
+      await client.from('ai_memories').delete().match({ user_id: user.id, id });
+    } catch (e) {
+      // Quiet background failure
+    }
+  }
 }
 
 export const storage = new StorageService();

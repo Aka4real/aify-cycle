@@ -12,10 +12,12 @@ On **ALL** platforms, configure the following environment variable in the platfo
 | :--- | :--- | :--- | :--- |
 | `GEMINI_API_KEY` | **Yes** | Your Google Gemini API Key | `AIzaSy...` |
 | `GEMINI_MODEL` | No (Default: `gemini-3.6-flash`) | Gemini model version | `gemini-3.6-flash` |
+| `SUPABASE_URL` | Optional | Supabase Project URL for cloud backup & sync | `https://xyz.supabase.co` |
+| `SUPABASE_ANON_KEY` | Optional | Supabase Public Anon Key | `eyJhbGciOi...` |
 | `PORT` | Auto (Default: `3000`) | Listening port | `3000` |
 
 > [!CAUTION]
-> Never commit `.env` or your raw `GEMINI_API_KEY` to GitHub. Always inject it via the hosting dashboard.
+> Never commit `.env` or your raw secret keys to GitHub. Always inject them via the hosting dashboard.
 
 ---
 

@@ -318,6 +318,28 @@ export class StorageService {
     // Keep last 50 messages to avoid localStorage bloat
     const trimmed = history.slice(-50);
     localStorage.setItem(STORAGE_KEYS.CHAT_HISTORY, JSON.stringify(trimmed));
+    if (trimmed.length > 0) {
+      const lastMsg = trimmed[trimmed.length - 1];
+      this._syncChatMessageToCloud(lastMsg);
+    }
+  }
+
+  async _syncChatMessageToCloud(msg) {
+    const client = supabaseService.getClient();
+    if (!client || !msg) return;
+    try {
+      const { data: { user } } = await client.auth.getUser();
+      if (!user) return;
+      await client.from('ai_chat_history').insert({
+        user_id: user.id,
+        role: msg.role === 'assistant' ? 'assistant' : 'user',
+        content: msg.content || '',
+        action_card: msg.actionCard || null,
+        created_at: msg.timestamp || new Date().toISOString()
+      });
+    } catch (e) {
+      // Quiet background failure
+    }
   }
 
   // --- Agent Memory & Continuous Learning System ---
@@ -454,6 +476,23 @@ export class StorageService {
         this.saveAgentMemories(cloudMems);
       }
 
+      // 4. Fetch AI Chat History
+      const { data: chatRows } = await client
+        .from('ai_chat_history')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(50);
+      if (chatRows && chatRows.length > 0) {
+        const cloudChats = chatRows.map(r => ({
+          role: r.role,
+          content: r.content,
+          actionCard: r.action_card || null,
+          timestamp: r.created_at
+        }));
+        localStorage.setItem(STORAGE_KEYS.CHAT_HISTORY, JSON.stringify(cloudChats));
+      }
+
       console.info('✨ AifyCycle: Supabase cloud data synchronized with local store.');
       return { success: true };
     } catch (e) {
@@ -506,6 +545,19 @@ export class StorageService {
 
       if (memEntries.length > 0) {
         await client.from('ai_memories').upsert(memEntries);
+      }
+
+      // Upload recent AI chat messages
+      const chats = this.getChatHistory();
+      if (chats && chats.length > 0) {
+        const chatEntries = chats.slice(-30).map(c => ({
+          user_id: user.id,
+          role: c.role === 'assistant' ? 'assistant' : 'user',
+          content: c.content || '',
+          action_card: c.actionCard || null,
+          created_at: c.timestamp || new Date().toISOString()
+        }));
+        await client.from('ai_chat_history').insert(chatEntries);
       }
 
       return { success: true };

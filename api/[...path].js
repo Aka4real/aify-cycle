@@ -73,6 +73,7 @@ module.exports = async (req, res) => {
   }
 
   const urlParts = (req.url || '').split('?');
+  const reqPath = (urlParts[0] || '').toLowerCase();
   // Keep the deployed model explicit and normalize dashboard values such as "models/...".
   const GEMINI_MODEL = (process.env.GEMINI_MODEL?.trim() || 'gemini-3.6-flash')
     .replace(/^models\//i, '')

@@ -11,6 +11,7 @@ import { AuthManager } from './auth.js';
 import { OnboardingWizard } from './onboarding.js';
 import { AICoach } from './ai-coach.js';
 import { analytics } from './analytics-tracker.js';
+import { supabaseService } from './supabase-client.js';
 
 class AifyCycleApp {
   constructor() {
@@ -314,6 +315,41 @@ class AifyCycleApp {
       statusPill.className = 'ai-status-pill pill-server';
     } else {
       statusPill.textContent = '🧠 Local Intelligence Active';
+      statusPill.className = 'ai-status-pill pill-local';
+    }
+  }
+
+  async _refreshSupabaseSettingsStatus() {
+    const statusPill = document.getElementById('supabase-settings-status');
+    const urlInput = document.getElementById('setting-supabase-url');
+    const anonKeyInput = document.getElementById('setting-supabase-anonkey');
+
+    // Pre-populate custom credentials if saved locally
+    try {
+      const savedConfig = localStorage.getItem('aifycycle_supabase_config_v1');
+      if (savedConfig) {
+        const parsed = JSON.parse(savedConfig);
+        if (urlInput && !urlInput.value) urlInput.value = parsed.url || '';
+        if (anonKeyInput && !anonKeyInput.value) anonKeyInput.value = parsed.anonKey || '';
+      }
+    } catch (e) {}
+
+    if (!statusPill) return;
+
+    statusPill.textContent = 'Checking...';
+    statusPill.className = 'ai-status-pill';
+
+    try {
+      await supabaseService.init();
+      if (supabaseService.hasConfig()) {
+        statusPill.textContent = '☁️ Cloud Sync Active';
+        statusPill.className = 'ai-status-pill pill-server';
+      } else {
+        statusPill.textContent = '📱 Local-First Sandbox';
+        statusPill.className = 'ai-status-pill pill-local';
+      }
+    } catch (e) {
+      statusPill.textContent = '📱 Local-First Sandbox';
       statusPill.className = 'ai-status-pill pill-local';
     }
   }
@@ -665,10 +701,96 @@ class AifyCycleApp {
         document.getElementById('setting-periodlength').value = profile.periodLength || 5;
         document.getElementById('setting-lastperiod').value = profile.lastPeriodStart || formatDateKey(this.today);
         
-        // Refresh Gemini AI settings
+        // Refresh Gemini AI settings & Supabase cloud sync status
         this._refreshAiSettingsStatus();
+        this._refreshSupabaseSettingsStatus();
 
         settingsModal.classList.add('active');
+      });
+    }
+
+    // Supabase Custom Config Drawer Toggle
+    const btnToggleCustomSupabase = document.getElementById('btn-toggle-custom-supabase');
+    const supabaseDrawer = document.getElementById('supabase-custom-config-drawer');
+    if (btnToggleCustomSupabase && supabaseDrawer) {
+      btnToggleCustomSupabase.addEventListener('click', () => {
+        const isClosed = supabaseDrawer.style.display === 'none' || !supabaseDrawer.style.display;
+        supabaseDrawer.style.display = isClosed ? 'block' : 'none';
+        btnToggleCustomSupabase.textContent = isClosed ? 'Hide Custom Credentials ✕' : 'Configure Custom Credentials ⚙️';
+      });
+    }
+
+    // Save Custom Supabase Credentials
+    const btnSaveSupabaseConfig = document.getElementById('btn-save-supabase-config');
+    if (btnSaveSupabaseConfig) {
+      btnSaveSupabaseConfig.addEventListener('click', async () => {
+        const url = document.getElementById('setting-supabase-url')?.value.trim();
+        const anonKey = document.getElementById('setting-supabase-anonkey')?.value.trim();
+        if (!url || !anonKey) {
+          ui.showToast('Please provide both Supabase URL and Anon Key', '⚠️');
+          return;
+        }
+
+        btnSaveSupabaseConfig.disabled = true;
+        btnSaveSupabaseConfig.textContent = 'Connecting...';
+        try {
+          await supabaseService.setCustomConfig(url, anonKey);
+          await storage.uploadLocalToCloud();
+          await this._refreshSupabaseSettingsStatus();
+          ui.showToast('Supabase connected! Cloud sync active.', '🚀');
+        } catch (e) {
+          ui.showToast('Failed to connect to Supabase: ' + e.message, '⚠️');
+        } finally {
+          btnSaveSupabaseConfig.disabled = false;
+          btnSaveSupabaseConfig.textContent = 'Save & Connect';
+        }
+      });
+    }
+
+    // Clear Custom Supabase Credentials
+    const btnClearSupabaseConfig = document.getElementById('btn-clear-supabase-config');
+    if (btnClearSupabaseConfig) {
+      btnClearSupabaseConfig.addEventListener('click', async () => {
+        await supabaseService.setCustomConfig(null, null);
+        const urlInput = document.getElementById('setting-supabase-url');
+        const anonKeyInput = document.getElementById('setting-supabase-anonkey');
+        if (urlInput) urlInput.value = '';
+        if (anonKeyInput) anonKeyInput.value = '';
+        await this._refreshSupabaseSettingsStatus();
+        ui.showToast('Custom credentials removed. Returned to local mode.', 'ℹ️');
+      });
+    }
+
+    // Supabase Manual Sync Now
+    const btnSyncNow = document.getElementById('btn-supabase-sync-now');
+    if (btnSyncNow) {
+      btnSyncNow.addEventListener('click', async () => {
+        const icon = document.getElementById('sync-spinner-icon');
+        const text = document.getElementById('sync-button-text');
+        btnSyncNow.disabled = true;
+        if (text) text.textContent = 'Syncing...';
+        if (icon) icon.style.display = 'inline-block';
+
+        try {
+          await supabaseService.init();
+          if (!supabaseService.hasConfig()) {
+            ui.showToast('Local storage is up to date (no cloud configured)', '📱');
+            return;
+          }
+          const upRes = await storage.uploadLocalToCloud();
+          const downRes = await storage.syncFromCloud();
+          if (upRes.success || downRes.success) {
+            this.renderAll();
+            ui.showToast('All cycle records & memories synchronized with Supabase!', '☁️');
+          } else {
+            ui.showToast('Sync check complete. Local-first storage active.', 'ℹ️');
+          }
+        } catch (e) {
+          ui.showToast('Cloud sync error: ' + e.message, '⚠️');
+        } finally {
+          btnSyncNow.disabled = false;
+          if (text) text.textContent = 'Sync Now';
+        }
       });
     }
 

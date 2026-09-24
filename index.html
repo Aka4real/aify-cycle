@@ -815,6 +815,54 @@
         </div>
       </div>
 
+      <!-- Supabase Cloud Backup & Synchronization -->
+      <div id="setting-supabase-section" class="form-section apple-intelligence-panel" style="border-top: 1px solid var(--border-subtle); padding-top: 1.25rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.65rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <div class="apple-ai-icon-badge" style="background: linear-gradient(135deg, #3ECF8E 0%, #1E824C 100%); color: white;">☁️</div>
+            <div>
+              <span class="form-label" style="margin-bottom: 0; font-size: 0.95rem; font-weight: 700;">Supabase Cloud Sync</span>
+              <span style="font-size: 0.74rem; color: var(--text-muted); display: block;">Multi-Device Continuity &amp; Encrypted Backup</span>
+            </div>
+          </div>
+          <span id="supabase-settings-status" class="ai-status-pill pill-local">📱 Local-First Sandbox</span>
+        </div>
+
+        <p style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.45; margin-bottom: 0.85rem;">
+          Your cycle records and symptoms operate at instant 0ms latency in your browser. When connected to Supabase, your logs and learned memories automatically synchronize with your private PostgreSQL cloud database.
+        </p>
+
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.85rem;">
+          <button type="button" id="btn-supabase-sync-now" class="btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 0.4rem;">
+            <span id="sync-spinner-icon">🔄</span>
+            <span id="sync-button-text">Sync Now</span>
+          </button>
+          <button type="button" id="btn-toggle-custom-supabase" class="btn-ghost" style="padding: 0.4rem 0.75rem; font-size: 0.8rem; color: var(--color-teal); text-decoration: underline;">
+            Configure Custom Credentials ⚙️
+          </button>
+        </div>
+
+        <!-- Collapsible Custom Credentials Drawer -->
+        <div id="supabase-custom-config-drawer" style="display: none; background: var(--bg-card-subtle, rgba(0,0,0,0.03)); border: 1px solid var(--border-subtle); border-radius: var(--radius-md, 8px); padding: 0.85rem; margin-top: 0.5rem;">
+          <div class="form-section" style="margin-bottom: 0.65rem;">
+            <label for="setting-supabase-url" class="form-label" style="font-size: 0.78rem;">Supabase Project URL</label>
+            <input type="url" id="setting-supabase-url" class="form-input" placeholder="https://your-project.supabase.co" style="font-size: 0.82rem; padding: 0.45rem 0.65rem;">
+          </div>
+          <div class="form-section" style="margin-bottom: 0.65rem;">
+            <label for="setting-supabase-anonkey" class="form-label" style="font-size: 0.78rem;">Supabase Public Anon Key</label>
+            <input type="password" id="setting-supabase-anonkey" class="form-input" placeholder="eyJhbGciOiJIUzI1NiIsIn..." style="font-size: 0.82rem; padding: 0.45rem 0.65rem;">
+          </div>
+          <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+            <button type="button" id="btn-clear-supabase-config" class="btn-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.65rem;">
+              Disconnect / Reset
+            </button>
+            <button type="button" id="btn-save-supabase-config" class="btn-primary" style="font-size: 0.78rem; padding: 0.35rem 0.75rem;">
+              Save &amp; Connect
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Privacy, Compliance & Data Management -->
       <div class="form-section" style="border-top: 1px solid var(--border-subtle); padding-top: 1.25rem;">
         <span class="form-label">Data Privacy, Consent &amp; Compliance</span>

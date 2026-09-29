@@ -40,7 +40,7 @@ export class AuthManager {
         };
         this._createSession(this.currentUser);
         // Automatically sync cloud logs down to local cache
-        await storage.syncFromCloud().catch(() => {});
+        await storage.syncFromCloud().catch(() => { });
 
         // Reconcile user name with profile
         const profile = storage.getProfile();
@@ -83,10 +83,10 @@ export class AuthManager {
             createdAt: session.user.created_at
           };
           this._createSession(this.currentUser);
-          await storage.syncFromCloud().catch(() => {});
+          await storage.syncFromCloud().catch(() => { });
           return this.currentUser;
         }
-      } catch (e) {}
+      } catch (e) { }
     }
     return this.currentUser;
   }
@@ -152,7 +152,7 @@ export class AuthManager {
           storage.saveProfile(profile);
 
           // Upload any pre-existing local logs to their new account
-          await storage.uploadLocalToCloud().catch(() => {});
+          await storage.uploadLocalToCloud().catch(() => { });
 
           return { success: true, user };
         }
@@ -214,7 +214,7 @@ export class AuthManager {
             createdAt: data.user.created_at
           };
           this._createSession(user);
-          await storage.syncFromCloud().catch(() => {});
+          await storage.syncFromCloud().catch(() => { });
           return { success: true, user };
         }
       } catch (err) {
@@ -340,7 +340,7 @@ export class AuthManager {
     if (client) {
       try {
         await client.auth.signOut();
-      } catch (e) {}
+      } catch (e) { }
     }
 
     this.isAuthenticated = false;

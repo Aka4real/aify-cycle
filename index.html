@@ -349,15 +349,18 @@
 
           <!-- Quick Action Buttons -->
           <div class="quick-actions-card">
-            <h3 class="card-title" style="margin-bottom: 0.4rem;"><span>⚡</span> Quick Logging</h3>
+            <h3 class="card-title" style="margin-bottom: 0.4rem;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-gold);"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+              <span>Quick Logging</span>
+            </h3>
             <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.75rem;">Keep your predictions accurate with one tap.</p>
             <div class="quick-action-row">
               <button id="btn-period-start-today" class="btn-secondary" title="Mark period started today">
-                <span>🩸</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="color: var(--color-rose);"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
                 <span>Period Started</span>
               </button>
               <button onclick="document.getElementById('btn-quick-log').click()" class="btn-primary" title="Open logger modal">
-                <span>✨</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
                 <span>Log Symptoms</span>
               </button>
             </div>
@@ -380,9 +383,13 @@
           </div>
 
           <div class="calendar-nav-buttons">
-            <button id="btn-cal-prev" class="btn-icon" title="Previous Month" aria-label="Previous Month">◀</button>
-            <button id="btn-cal-today" class="btn-secondary" style="padding: 0.45rem 0.9rem; font-size: 0.8rem;">Today</button>
-            <button id="btn-cal-next" class="btn-icon" title="Next Month" aria-label="Next Month">▶</button>
+            <button id="btn-cal-prev" class="btn-icon" title="Previous Month" aria-label="Previous Month">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </button>
+            <button id="btn-cal-today" class="btn-secondary" style="padding: 0.45rem 0.95rem; font-size: 0.8rem; font-weight: 600;">Today</button>
+            <button id="btn-cal-next" class="btn-icon" title="Next Month" aria-label="Next Month">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
           </div>
         </div>
 

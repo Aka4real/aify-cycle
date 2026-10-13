@@ -33,10 +33,10 @@
   <meta name="twitter:description" content="An intelligent, modern, and beautifully designed menstrual cycle and holistic wellness tracker with AI-powered health coaching.">
   <meta name="twitter:image" content="/og-image.jpg">
 
-  <!-- Google Fonts: Inter — Apple SF Pro-like -->
+  <!-- Google Fonts: Plus Jakarta Sans & Outfit (Luxury Apple/Linear typography) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet">
 
   <!-- Core Stylesheet -->
   <link rel="stylesheet" href="css/styles.css">
@@ -222,10 +222,13 @@
       </div>
 
       <div class="header-actions">
-        <span id="user-greeting" style="font-size: 0.88rem; font-weight: 600; color: var(--text-secondary); margin-right: 0.5rem;">Hello ✨</span>
+        <div class="user-greeting-chip">
+          <span class="user-avatar-indicator"></span>
+          <span id="user-greeting">Hello ✨</span>
+        </div>
         
         <button id="btn-quick-log" class="btn-quick-log" title="Log today's symptoms">
-          <span>📝</span>
+          <svg class="btn-action-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
           <span>Log Today</span>
         </button>
 
@@ -234,11 +237,11 @@
         </button>
 
         <button id="btn-open-settings" class="btn-icon" title="Cycle &amp; App Settings" aria-label="Settings">
-          <span>⚙️</span>
+          <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
         </button>
 
         <button id="btn-logout" class="btn-icon" title="Logout" aria-label="Logout">
-          <span>🚪</span>
+          <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
         </button>
       </div>
     </header>
@@ -246,23 +249,23 @@
     <!-- Navigation Tabs -->
     <nav class="nav-tab-bar" aria-label="Main Navigation">
       <button class="nav-tab active" data-tab="dial">
-        <span>🔄</span>
+        <svg class="tab-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 3a9 9 0 0 1 9 9"></path><polyline points="12 8 12 12 14 14"></polyline></svg>
         <span class="tab-text">Cycle Dial</span>
       </button>
       <button class="nav-tab" data-tab="calendar">
-        <span>📅</span>
+        <svg class="tab-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
         <span class="tab-text">Calendar</span>
       </button>
       <button class="nav-tab" data-tab="syncing">
-        <span>🌿</span>
+        <svg class="tab-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"></path><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"></path></svg>
         <span class="tab-text">Cycle Syncing</span>
       </button>
       <button class="nav-tab" data-tab="ai-coach">
-        <span>💬</span>
+        <svg class="tab-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
         <span class="tab-text">Wellness Guide</span>
       </button>
       <button class="nav-tab" data-tab="analytics">
-        <span>📊</span>
+        <svg class="tab-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
         <span class="tab-text">Insights</span>
       </button>
     </nav>
@@ -673,77 +676,79 @@
         <button class="btn-close-modal" aria-label="Close modal">&times;</button>
       </div>
 
-      <!-- Date selector -->
-      <div class="form-section">
-        <label for="log-date-input" class="form-label">Log Date</label>
-        <input type="date" id="log-date-input" class="form-input" style="max-width: 220px;">
-      </div>
-
-      <!-- Menstrual Flow -->
-      <div class="form-section">
-        <span class="form-label">Menstrual Flow</span>
-        <div class="chips-grid">
-          <button type="button" class="chip-select flow-chip" data-value="none">None</button>
-          <button type="button" class="chip-select flow-chip" data-value="spotting">🌸 Spotting</button>
-          <button type="button" class="chip-select flow-chip" data-value="light">💧 Light</button>
-          <button type="button" class="chip-select flow-chip" data-value="medium">🩸 Medium</button>
-          <button type="button" class="chip-select flow-chip" data-value="heavy">🌊 Heavy</button>
+      <div class="modal-scroll-body">
+        <!-- Date selector -->
+        <div class="form-section">
+          <label for="log-date-input" class="form-label">Log Date</label>
+          <input type="date" id="log-date-input" class="form-input" style="max-width: 220px;">
         </div>
-      </div>
 
-      <!-- Physical Symptoms -->
-      <div class="form-section">
-        <span class="form-label">Physical Symptoms</span>
-        <div class="chips-grid">
-          <button type="button" class="chip-select symptom-chip" data-value="Cramps">⚡ Cramps</button>
-          <button type="button" class="chip-select symptom-chip" data-value="Tender Breasts">🌸 Tender Breasts</button>
-          <button type="button" class="chip-select symptom-chip" data-value="Headache">💆 Headache</button>
-          <button type="button" class="chip-select symptom-chip" data-value="Bloating">🎈 Bloating</button>
-          <button type="button" class="chip-select symptom-chip" data-value="Acne">✨ Acne / Breakouts</button>
-          <button type="button" class="chip-select symptom-chip" data-value="Lower Back Pain">🦴 Lower Back Pain</button>
-          <button type="button" class="chip-select symptom-chip" data-value="Fatigue">😴 Fatigue</button>
-          <button type="button" class="chip-select symptom-chip" data-value="Nausea">🍃 Nausea</button>
+        <!-- Menstrual Flow -->
+        <div class="form-section">
+          <span class="form-label">Menstrual Flow</span>
+          <div class="chips-grid">
+            <button type="button" class="chip-select flow-chip" data-value="none">None</button>
+            <button type="button" class="chip-select flow-chip" data-value="spotting">🌸 Spotting</button>
+            <button type="button" class="chip-select flow-chip" data-value="light">💧 Light</button>
+            <button type="button" class="chip-select flow-chip" data-value="medium">🩸 Medium</button>
+            <button type="button" class="chip-select flow-chip" data-value="heavy">🌊 Heavy</button>
+          </div>
         </div>
-      </div>
 
-      <!-- Mood & Emotions -->
-      <div class="form-section">
-        <span class="form-label">Mood &amp; Energy</span>
-        <div class="chips-grid">
-          <button type="button" class="chip-select mood-chip" data-value="Calm">🕊️ Calm</button>
-          <button type="button" class="chip-select mood-chip" data-value="Happy">☀️ Happy</button>
-          <button type="button" class="chip-select mood-chip" data-value="High Energy">⚡ High Energy</button>
-          <button type="button" class="chip-select mood-chip" data-value="Romantic">💖 Romantic</button>
-          <button type="button" class="chip-select mood-chip" data-value="Sensitive">🥺 Sensitive</button>
-          <button type="button" class="chip-select mood-chip" data-value="Anxious">🌪️ Anxious</button>
-          <button type="button" class="chip-select mood-chip" data-value="Irritable">🔥 Irritable</button>
-          <button type="button" class="chip-select mood-chip" data-value="Low Energy">🔋 Low Energy</button>
+        <!-- Physical Symptoms -->
+        <div class="form-section">
+          <span class="form-label">Physical Symptoms</span>
+          <div class="chips-grid">
+            <button type="button" class="chip-select symptom-chip" data-value="Cramps">⚡ Cramps</button>
+            <button type="button" class="chip-select symptom-chip" data-value="Tender Breasts">🌸 Tender Breasts</button>
+            <button type="button" class="chip-select symptom-chip" data-value="Headache">💆 Headache</button>
+            <button type="button" class="chip-select symptom-chip" data-value="Bloating">🎈 Bloating</button>
+            <button type="button" class="chip-select symptom-chip" data-value="Acne">✨ Acne / Breakouts</button>
+            <button type="button" class="chip-select symptom-chip" data-value="Lower Back Pain">🦴 Lower Back Pain</button>
+            <button type="button" class="chip-select symptom-chip" data-value="Fatigue">😴 Fatigue</button>
+            <button type="button" class="chip-select symptom-chip" data-value="Nausea">🍃 Nausea</button>
+          </div>
         </div>
-      </div>
 
-      <!-- Water & Hydration -->
-      <div class="form-section">
-        <span class="form-label">Water Intake</span>
-        <div class="stepper-control">
-          <button type="button" id="btn-water-minus" class="btn-stepper" aria-label="Decrease water">−</button>
-          <span id="log-water-val" class="stepper-value">8 glasses</span>
-          <button type="button" id="btn-water-plus" class="btn-stepper" aria-label="Increase water">+</button>
+        <!-- Mood & Emotions -->
+        <div class="form-section">
+          <span class="form-label">Mood &amp; Energy</span>
+          <div class="chips-grid">
+            <button type="button" class="chip-select mood-chip" data-value="Calm">🕊️ Calm</button>
+            <button type="button" class="chip-select mood-chip" data-value="Happy">☀️ Happy</button>
+            <button type="button" class="chip-select mood-chip" data-value="High Energy">⚡ High Energy</button>
+            <button type="button" class="chip-select mood-chip" data-value="Romantic">💖 Romantic</button>
+            <button type="button" class="chip-select mood-chip" data-value="Sensitive">🥺 Sensitive</button>
+            <button type="button" class="chip-select mood-chip" data-value="Anxious">🌪️ Anxious</button>
+            <button type="button" class="chip-select mood-chip" data-value="Irritable">🔥 Irritable</button>
+            <button type="button" class="chip-select mood-chip" data-value="Low Energy">🔋 Low Energy</button>
+          </div>
         </div>
-      </div>
 
-      <!-- Sleep Hours -->
-      <div class="form-section">
-        <span class="form-label">Sleep Hours</span>
-        <div class="range-container">
-          <input type="range" id="log-sleep-slider" class="range-slider" min="4" max="12" step="0.5" value="8">
-          <span id="log-sleep-val" class="range-value">8h</span>
+        <!-- Water & Hydration -->
+        <div class="form-section">
+          <span class="form-label">Water Intake</span>
+          <div class="stepper-control">
+            <button type="button" id="btn-water-minus" class="btn-stepper" aria-label="Decrease water">−</button>
+            <span id="log-water-val" class="stepper-value">8 glasses</span>
+            <button type="button" id="btn-water-plus" class="btn-stepper" aria-label="Increase water">+</button>
+          </div>
         </div>
-      </div>
 
-      <!-- Journal Notes -->
-      <div class="form-section">
-        <label for="log-notes" class="form-label">Notes &amp; Journal</label>
-        <textarea id="log-notes" class="form-textarea" placeholder="How did you feel today? Any observations about your body or mood?"></textarea>
+        <!-- Sleep Hours -->
+        <div class="form-section">
+          <span class="form-label">Sleep Hours</span>
+          <div class="range-container">
+            <input type="range" id="log-sleep-slider" class="range-slider" min="4" max="12" step="0.5" value="8">
+            <span id="log-sleep-val" class="range-value">8h</span>
+          </div>
+        </div>
+
+        <!-- Journal Notes -->
+        <div class="form-section">
+          <label for="log-notes" class="form-label">Notes &amp; Journal</label>
+          <textarea id="log-notes" class="form-textarea" placeholder="How did you feel today? Any observations about your body or mood?"></textarea>
+        </div>
       </div>
 
       <!-- Modal Footer -->
@@ -764,163 +769,165 @@
         <button class="btn-close-modal" aria-label="Close modal">&times;</button>
       </div>
 
-      <div class="form-section">
-        <label for="setting-username" class="form-label">Your Name</label>
-        <input type="text" id="setting-username" class="form-input" value="User">
-      </div>
-
-      <div class="form-section">
-        <label for="setting-partnername" class="form-label">Partner's Name</label>
-        <input type="text" id="setting-partnername" class="form-input" value="">
-      </div>
-
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+      <div class="modal-scroll-body">
         <div class="form-section">
-          <label for="setting-cyclelength" class="form-label">Average Cycle Length (Days)</label>
-          <input type="number" id="setting-cyclelength" class="form-input" min="20" max="45" value="28">
+          <label for="setting-username" class="form-label">Your Name</label>
+          <input type="text" id="setting-username" class="form-input" value="User">
         </div>
+
         <div class="form-section">
-          <label for="setting-periodlength" class="form-label">Average Period (Days)</label>
-          <input type="number" id="setting-periodlength" class="form-input" min="2" max="10" value="5">
+          <label for="setting-partnername" class="form-label">Partner's Name</label>
+          <input type="text" id="setting-partnername" class="form-input" value="">
         </div>
-      </div>
 
-      <div class="form-section">
-        <label for="setting-lastperiod" class="form-label">Last Period Start Date</label>
-        <input type="date" id="setting-lastperiod" class="form-input">
-      </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-section">
+            <label for="setting-cyclelength" class="form-label">Average Cycle Length (Days)</label>
+            <input type="number" id="setting-cyclelength" class="form-input" min="20" max="45" value="28">
+          </div>
+          <div class="form-section">
+            <label for="setting-periodlength" class="form-label">Average Period (Days)</label>
+            <input type="number" id="setting-periodlength" class="form-input" min="2" max="10" value="5">
+          </div>
+        </div>
 
-      <!-- Aify Intelligence & Privacy Architecture (Powered by Gemini 3.6 Flash) -->
-      <div id="setting-ai-section" class="form-section apple-intelligence-panel" style="border-top: 1px solid var(--border-subtle); padding-top: 1.25rem;">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.65rem;">
-          <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <div class="apple-ai-icon-badge">✨</div>
-            <div>
-              <span class="form-label" style="margin-bottom: 0; font-size: 0.95rem; font-weight: 700;">Aify Intelligence</span>
-              <span style="font-size: 0.74rem; color: var(--text-muted); display: block;">Autonomous Endocrine &amp; Cycle Synthesis</span>
+        <div class="form-section">
+          <label for="setting-lastperiod" class="form-label">Last Period Start Date</label>
+          <input type="date" id="setting-lastperiod" class="form-input">
+        </div>
+
+        <!-- Aify Intelligence & Privacy Architecture (Powered by Gemini 3.6 Flash) -->
+        <div id="setting-ai-section" class="form-section apple-intelligence-panel" style="border-top: 1px solid var(--border-subtle); padding-top: 1.25rem;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.65rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <div class="apple-ai-icon-badge">✨</div>
+              <div>
+                <span class="form-label" style="margin-bottom: 0; font-size: 0.95rem; font-weight: 700;">Aify Intelligence</span>
+                <span style="font-size: 0.74rem; color: var(--text-muted); display: block;">Autonomous Endocrine &amp; Cycle Synthesis</span>
+              </div>
+            </div>
+            <span id="ai-settings-status" class="ai-status-pill pill-server">✨ Gemini 3.6 Flash Active</span>
+          </div>
+
+          <div class="apple-ai-info-card">
+            <div class="ai-feature-row">
+              <span class="ai-check-icon">✓</span>
+              <div>
+                <strong>Gemini 3.6 Flash Foundation Intelligence</strong>
+                <p>Generates tailored Cycle Syncing nutrition, dynamic movement, cognitive focus, and conversational wellness advice.</p>
+              </div>
+            </div>
+            <div class="ai-feature-row">
+              <span class="ai-check-icon">✓</span>
+              <div>
+                <strong>Zero-Knowledge Privacy Sandbox</strong>
+                <p>Protected by secure server-side transit. In compliance with enterprise HIPAA and GDPR standards, personal health logs are never used to train external models.</p>
+              </div>
+            </div>
+            <div class="ai-feature-row">
+              <span class="ai-check-icon">✓</span>
+              <div>
+                <strong>Autonomous On-Device Fallback</strong>
+                <p>Cycle algorithms and historical logs run independently in your local browser sandbox even if offline.</p>
+              </div>
             </div>
           </div>
-          <span id="ai-settings-status" class="ai-status-pill pill-server">✨ Gemini 3.6 Flash Active</span>
-        </div>
 
-        <div class="apple-ai-info-card">
-          <div class="ai-feature-row">
-            <span class="ai-check-icon">✓</span>
-            <div>
-              <strong>Gemini 3.6 Flash Foundation Intelligence</strong>
-              <p>Generates tailored Cycle Syncing nutrition, dynamic movement, cognitive focus, and conversational wellness advice.</p>
-            </div>
-          </div>
-          <div class="ai-feature-row">
-            <span class="ai-check-icon">✓</span>
-            <div>
-              <strong>Zero-Knowledge Privacy Sandbox</strong>
-              <p>Protected by secure server-side transit. In compliance with enterprise HIPAA and GDPR standards, personal health logs are never used to train external models.</p>
-            </div>
-          </div>
-          <div class="ai-feature-row">
-            <span class="ai-check-icon">✓</span>
-            <div>
-              <strong>Autonomous On-Device Fallback</strong>
-              <p>Cycle algorithms and historical logs run independently in your local browser sandbox even if offline.</p>
-            </div>
-          </div>
-        </div>
-
-        <div style="margin-top: 0.85rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
-          <label class="checkbox-container" style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; font-size: 0.82rem; color: var(--text-primary);">
-            <input type="checkbox" id="setting-aicoach-enabled" checked />
-            <span>Enable Real-Time AI Coach Insights</span>
-          </label>
-          <button type="button" id="btn-view-ai-compliance" class="btn-ghost btn-link-legal" data-modal="modal-ai-architecture" style="font-size: 0.78rem; color: var(--color-rose); text-decoration: underline; padding: 0.2rem 0.4rem;">
-            Privacy Architecture ↗
-          </button>
-        </div>
-      </div>
-
-      <!-- Supabase Cloud Backup & Synchronization -->
-      <div id="setting-supabase-section" class="form-section apple-intelligence-panel" style="border-top: 1px solid var(--border-subtle); padding-top: 1.25rem;">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.65rem;">
-          <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <div class="apple-ai-icon-badge" style="background: linear-gradient(135deg, #3ECF8E 0%, #1E824C 100%); color: white;">☁️</div>
-            <div>
-              <span class="form-label" style="margin-bottom: 0; font-size: 0.95rem; font-weight: 700;">Supabase Cloud Sync</span>
-              <span style="font-size: 0.74rem; color: var(--text-muted); display: block;">Multi-Device Continuity &amp; Encrypted Backup</span>
-            </div>
-          </div>
-          <span id="supabase-settings-status" class="ai-status-pill pill-local">📱 Local-First Sandbox</span>
-        </div>
-
-        <p style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.45; margin-bottom: 0.85rem;">
-          Your cycle records and symptoms operate at instant 0ms latency in your browser. When connected to Supabase, your logs and learned memories automatically synchronize with your private PostgreSQL cloud database.
-        </p>
-
-        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.85rem;">
-          <button type="button" id="btn-supabase-sync-now" class="btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 0.4rem;">
-            <span id="sync-spinner-icon">🔄</span>
-            <span id="sync-button-text">Sync Now</span>
-          </button>
-          <button type="button" id="btn-toggle-custom-supabase" class="btn-ghost" style="padding: 0.4rem 0.75rem; font-size: 0.8rem; color: var(--color-teal); text-decoration: underline;">
-            Configure Custom Credentials ⚙️
-          </button>
-        </div>
-
-        <!-- Collapsible Custom Credentials Drawer -->
-        <div id="supabase-custom-config-drawer" style="display: none; background: var(--bg-card-subtle, rgba(0,0,0,0.03)); border: 1px solid var(--border-subtle); border-radius: var(--radius-md, 8px); padding: 0.85rem; margin-top: 0.5rem;">
-          <div class="form-section" style="margin-bottom: 0.65rem;">
-            <label for="setting-supabase-url" class="form-label" style="font-size: 0.78rem;">Supabase Project URL</label>
-            <input type="url" id="setting-supabase-url" class="form-input" placeholder="https://your-project.supabase.co" style="font-size: 0.82rem; padding: 0.45rem 0.65rem;">
-          </div>
-          <div class="form-section" style="margin-bottom: 0.65rem;">
-            <label for="setting-supabase-anonkey" class="form-label" style="font-size: 0.78rem;">Supabase Public Anon Key</label>
-            <input type="password" id="setting-supabase-anonkey" class="form-input" placeholder="eyJhbGciOiJIUzI1NiIsIn..." style="font-size: 0.82rem; padding: 0.45rem 0.65rem;">
-          </div>
-          <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-            <button type="button" id="btn-clear-supabase-config" class="btn-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.65rem;">
-              Disconnect / Reset
-            </button>
-            <button type="button" id="btn-save-supabase-config" class="btn-primary" style="font-size: 0.78rem; padding: 0.35rem 0.75rem;">
-              Save &amp; Connect
+          <div style="margin-top: 0.85rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+            <label class="checkbox-container" style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; font-size: 0.82rem; color: var(--text-primary);">
+              <input type="checkbox" id="setting-aicoach-enabled" checked />
+              <span>Enable Real-Time AI Coach Insights</span>
+            </label>
+            <button type="button" id="btn-view-ai-compliance" class="btn-ghost btn-link-legal" data-modal="modal-ai-architecture" style="font-size: 0.78rem; color: var(--color-rose); text-decoration: underline; padding: 0.2rem 0.4rem;">
+              Privacy Architecture ↗
             </button>
           </div>
         </div>
-      </div>
 
-      <!-- Privacy, Compliance & Data Management -->
-      <div class="form-section" style="border-top: 1px solid var(--border-subtle); padding-top: 1.25rem;">
-        <span class="form-label">Data Privacy, Consent &amp; Compliance</span>
-        <div style="margin-bottom: 0.85rem;">
-          <label class="checkbox-container" style="display: flex; align-items: flex-start; gap: 0.6rem; cursor: pointer; font-size: 0.82rem; color: var(--text-primary); line-height: 1.45;">
-            <input type="checkbox" id="setting-analytics-toggle" checked style="margin-top: 0.15rem;" />
-            <span>Enable anonymous feature &amp; performance telemetry (helps improve prediction algorithms; stored locally and never sold).</span>
-          </label>
+        <!-- Supabase Cloud Backup & Synchronization -->
+        <div id="setting-supabase-section" class="form-section apple-intelligence-panel" style="border-top: 1px solid var(--border-subtle); padding-top: 1.25rem;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.65rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <div class="apple-ai-icon-badge" style="background: linear-gradient(135deg, #3ECF8E 0%, #1E824C 100%); color: white;">☁️</div>
+              <div>
+                <span class="form-label" style="margin-bottom: 0; font-size: 0.95rem; font-weight: 700;">Supabase Cloud Sync</span>
+                <span style="font-size: 0.74rem; color: var(--text-muted); display: block;">Multi-Device Continuity &amp; Encrypted Backup</span>
+              </div>
+            </div>
+            <span id="supabase-settings-status" class="ai-status-pill pill-local">📱 Local-First Sandbox</span>
+          </div>
+
+          <p style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.45; margin-bottom: 0.85rem;">
+            Your cycle records and symptoms operate at instant 0ms latency in your browser. When connected to Supabase, your logs and learned memories automatically synchronize with your private PostgreSQL cloud database.
+          </p>
+
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.85rem;">
+            <button type="button" id="btn-supabase-sync-now" class="btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 0.4rem;">
+              <span id="sync-spinner-icon">🔄</span>
+              <span id="sync-button-text">Sync Now</span>
+            </button>
+            <button type="button" id="btn-toggle-custom-supabase" class="btn-ghost" style="padding: 0.4rem 0.75rem; font-size: 0.8rem; color: var(--color-teal); text-decoration: underline;">
+              Configure Custom Credentials ⚙️
+            </button>
+          </div>
+
+          <!-- Collapsible Custom Credentials Drawer -->
+          <div id="supabase-custom-config-drawer" style="display: none; background: var(--bg-card-subtle, rgba(0,0,0,0.03)); border: 1px solid var(--border-subtle); border-radius: var(--radius-md, 8px); padding: 0.85rem; margin-top: 0.5rem;">
+            <div class="form-section" style="margin-bottom: 0.65rem;">
+              <label for="setting-supabase-url" class="form-label" style="font-size: 0.78rem;">Supabase Project URL</label>
+              <input type="url" id="setting-supabase-url" class="form-input" placeholder="https://your-project.supabase.co" style="font-size: 0.82rem; padding: 0.45rem 0.65rem;">
+            </div>
+            <div class="form-section" style="margin-bottom: 0.65rem;">
+              <label for="setting-supabase-anonkey" class="form-label" style="font-size: 0.78rem;">Supabase Public Anon Key</label>
+              <input type="password" id="setting-supabase-anonkey" class="form-input" placeholder="eyJhbGciOiJIUzI1NiIsIn..." style="font-size: 0.82rem; padding: 0.45rem 0.65rem;">
+            </div>
+            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+              <button type="button" id="btn-clear-supabase-config" class="btn-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.65rem;">
+                Disconnect / Reset
+              </button>
+              <button type="button" id="btn-save-supabase-config" class="btn-primary" style="font-size: 0.78rem; padding: 0.35rem 0.75rem;">
+                Save &amp; Connect
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.85rem;">
-          <button type="button" class="btn-secondary btn-link-legal" data-modal="modal-medical-disclaimer" style="padding: 0.4rem 0.75rem; font-size: 0.78rem;">
-            <span>🩺</span> <span>Medical Disclaimer</span>
-          </button>
-          <button type="button" class="btn-secondary btn-link-legal" data-modal="modal-privacy-policy" style="padding: 0.4rem 0.75rem; font-size: 0.78rem;">
-            <span>🛡️</span> <span>Privacy Policy</span>
-          </button>
-          <button type="button" class="btn-secondary btn-link-legal" data-modal="modal-terms-service" style="padding: 0.4rem 0.75rem; font-size: 0.78rem;">
-            <span>⚖️</span> <span>Terms of Service</span>
-          </button>
-        </div>
+        <!-- Privacy, Compliance & Data Management -->
+        <div class="form-section" style="border-top: 1px solid var(--border-subtle); padding-top: 1.25rem;">
+          <span class="form-label">Data Privacy, Consent &amp; Compliance</span>
+          <div style="margin-bottom: 0.85rem;">
+            <label class="checkbox-container" style="display: flex; align-items: flex-start; gap: 0.6rem; cursor: pointer; font-size: 0.82rem; color: var(--text-primary); line-height: 1.45;">
+              <input type="checkbox" id="setting-analytics-toggle" checked style="margin-top: 0.15rem;" />
+              <span>Enable anonymous feature &amp; performance telemetry (helps improve prediction algorithms; stored locally and never sold).</span>
+            </label>
+          </div>
 
-        <div style="display: flex; gap: 0.65rem; flex-wrap: wrap; border-top: 1px dashed var(--border-subtle); padding-top: 0.85rem;">
-          <button type="button" id="btn-export-data" class="btn-secondary" style="font-size: 0.8rem;">
-            <span>📥</span>
-            <span>Export Backup (JSON)</span>
-          </button>
-          <button type="button" id="btn-reset-data" class="btn-secondary" style="font-size: 0.8rem;">
-            <span>🔄</span>
-            <span>Reset Demo Data</span>
-          </button>
-          <button type="button" id="btn-gdpr-wipe" class="btn-secondary" style="color: var(--color-rose); border-color: rgba(255, 107, 139, 0.4); font-size: 0.8rem;">
-            <span>🗑️</span>
-            <span>GDPR: Delete All My Data</span>
-          </button>
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.85rem;">
+            <button type="button" class="btn-secondary btn-link-legal" data-modal="modal-medical-disclaimer" style="padding: 0.4rem 0.75rem; font-size: 0.78rem;">
+              <span>🩺</span> <span>Medical Disclaimer</span>
+            </button>
+            <button type="button" class="btn-secondary btn-link-legal" data-modal="modal-privacy-policy" style="padding: 0.4rem 0.75rem; font-size: 0.78rem;">
+              <span>🛡️</span> <span>Privacy Policy</span>
+            </button>
+            <button type="button" class="btn-secondary btn-link-legal" data-modal="modal-terms-service" style="padding: 0.4rem 0.75rem; font-size: 0.78rem;">
+              <span>⚖️</span> <span>Terms of Service</span>
+            </button>
+          </div>
+
+          <div style="display: flex; gap: 0.65rem; flex-wrap: wrap; border-top: 1px dashed var(--border-subtle); padding-top: 0.85rem;">
+            <button type="button" id="btn-export-data" class="btn-secondary" style="font-size: 0.8rem;">
+              <span>📥</span>
+              <span>Export Backup (JSON)</span>
+            </button>
+            <button type="button" id="btn-reset-data" class="btn-secondary" style="font-size: 0.8rem;">
+              <span>🔄</span>
+              <span>Reset Demo Data</span>
+            </button>
+            <button type="button" id="btn-gdpr-wipe" class="btn-secondary" style="color: var(--color-rose); border-color: rgba(255, 107, 139, 0.4); font-size: 0.8rem;">
+              <span>🗑️</span>
+              <span>GDPR: Delete All My Data</span>
+            </button>
+          </div>
         </div>
       </div>
 

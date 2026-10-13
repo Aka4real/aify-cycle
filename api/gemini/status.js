@@ -1,5 +1,8 @@
 // api/gemini/status.js - Vercel Serverless Function for Gemini Status Check
 
+const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
+const FALLBACK_GEMINI_MODELS = ['gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -9,7 +12,7 @@ module.exports = async (req, res) => {
     return res.status(204).end();
   }
 
-  const GEMINI_MODEL = (process.env.GEMINI_MODEL?.trim() || 'gemini-3.6-flash')
+  const GEMINI_MODEL = (process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL)
     .replace(/^models\//i, '')
     .trim();
   const isConfigured = Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim());
@@ -17,7 +20,7 @@ module.exports = async (req, res) => {
   return res.status(200).json({
     configured: isConfigured,
     model: GEMINI_MODEL,
-    fallbackModels: ['gemini-3.5-flash', 'gemini-2.5-flash'],
+    fallbackModels: FALLBACK_GEMINI_MODELS,
     cascadeEnabled: true,
     mode: isConfigured ? 'server_proxy' : 'unconfigured'
   });

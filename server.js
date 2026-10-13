@@ -49,19 +49,33 @@ const MIME_TYPES = {
   '.webmanifest': 'application/manifest+json'
 };
 
+const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
+const FALLBACK_GEMINI_MODELS = ['gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
+
+// Sensitive files and internal paths that must NEVER be served over HTTP
+const BLOCKED_FILENAMES = new Set([
+  'server.js',
+  'dockerfile',
+  '.dockerignore',
+  'package.json',
+  'package-lock.json',
+  'pnpm-lock.yaml',
+  'vercel.json',
+  'supabase_setup.md',
+  'deployment.md'
+]);
+
 /**
  * Intelligent Multi-Model Cascade for Gemini
- * Primary model: gemini-3.6-flash (ultra-fast, zero demand spike delays).
+ * Primary model: gemini-3.8-flash (ultra-fast, zero demand spike delays).
  * If Google returns 503 (demand spike), 429 (rate limit), or 404 (unavailable),
- * it seamlessly fails over to stable alternatives (gemini-3.5-flash, gemini-2.5-flash)
- * ensuring zero interruption, high availability, and continuous AI intelligence.
+ * it seamlessly fails over to stable alternatives ensuring zero interruption.
  */
 async function callGeminiWithCascade(preferredModel, apiKey, requestBody) {
   const cascadeQueue = [
-    preferredModel || 'gemini-3.6-flash',
-    'gemini-3.6-flash',
-    'gemini-3.5-flash',
-    'gemini-2.5-flash'
+    preferredModel || DEFAULT_GEMINI_MODEL,
+    DEFAULT_GEMINI_MODEL,
+    ...FALLBACK_GEMINI_MODELS
   ];
   const uniqueModels = [...new Set(cascadeQueue.filter(Boolean))];
 
@@ -96,7 +110,7 @@ async function callGeminiWithCascade(preferredModel, apiKey, requestBody) {
 
       // If Google reports high demand (503), rate limit (429), or model unavailable (404), fail over to next model
       if ([503, 429, 404].includes(upstreamRes.status)) {
-        console.warn(`[Aify AI Cascade] Model '${model}' returned HTTP ${upstreamRes.status} (${data.error?.message || 'Demand Spike'}). Failing over to next model in cascade...`);
+        console.warn(`[Aify AI Cascade] Model '${model}' returned HTTP ${upstreamRes.status} (${data.error?.message || 'Unavailable'}). Failing over to next model in cascade...`);
         continue;
       }
 
@@ -135,7 +149,7 @@ async function handleRequest(req, res) {
 
   // --- API Routes ---
 
-  const GEMINI_MODEL = (process.env.GEMINI_MODEL?.trim() || 'gemini-3.6-flash')
+  const GEMINI_MODEL = (process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL)
     .replace(/^models\//i, '')
     .trim();
 
@@ -146,7 +160,7 @@ async function handleRequest(req, res) {
     return res.end(JSON.stringify({
       configured: isConfigured,
       model: GEMINI_MODEL,
-      fallbackModels: ['gemini-3.5-flash', 'gemini-2.5-flash'],
+      fallbackModels: FALLBACK_GEMINI_MODELS,
       cascadeEnabled: true,
       mode: isConfigured ? 'server_proxy' : 'unconfigured'
     }));
@@ -218,10 +232,37 @@ async function handleRequest(req, res) {
     return;
   }
 
-  // --- Static Files Serving ---
-  let filePath = path.join(PUBLIC_DIR, reqPath === '/' || reqPath === '' ? '/index.html' : reqPath);
+  // Strict API route isolation: any unmatched /api/* route must return JSON 404, never index.html
+  if (reqPath.startsWith('/api/')) {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ error: 'NOT_FOUND', path: reqPath }));
+  }
 
-  // Security check: prevent directory traversal
+  // --- Static Files Serving & Security Hardening ---
+
+  // 1. Block dotfiles (.env, .git, .dockerignore, etc.)
+  const segments = reqPath.split('/').filter(Boolean);
+  if (segments.some(seg => seg.startsWith('.'))) {
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    return res.end('404 Not Found');
+  }
+
+  // 2. Block sensitive files & internal directories
+  const baseName = path.basename(reqPath).toLowerCase();
+  if (BLOCKED_FILENAMES.has(baseName) || reqPath.startsWith('/supabase/')) {
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    return res.end('404 Not Found');
+  }
+
+  // 3. Resolve path safely to prevent directory traversal
+  const normalizedReqPath = path.normalize(reqPath).replace(/^(\.\.[\/\\])+/, '');
+  const relativePath = normalizedReqPath === '/' || normalizedReqPath === '' || normalizedReqPath === '\\'
+    ? 'index.html'
+    : normalizedReqPath.replace(/^[\/\\]+/, '');
+
+  const filePath = path.resolve(PUBLIC_DIR, relativePath);
+
+  // Security check: ensure path stays strictly within PUBLIC_DIR
   if (!filePath.startsWith(PUBLIC_DIR)) {
     res.writeHead(403, { 'Content-Type': 'text/plain' });
     return res.end('403 Forbidden');
@@ -233,7 +274,7 @@ async function handleRequest(req, res) {
   fs.readFile(filePath, (err, content) => {
     if (err) {
       if (err.code === 'ENOENT') {
-        // SPA Fallback: Serve index.html for direct client-side navigation
+        // SPA Fallback: Serve index.html for direct client-side navigation only
         const fallbackPath = path.join(PUBLIC_DIR, 'index.html');
         fs.readFile(fallbackPath, (fallbackErr, fallbackContent) => {
           if (fallbackErr) {
@@ -262,25 +303,33 @@ async function handleRequest(req, res) {
 
 const server = http.createServer(handleRequest);
 
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`\n[AifyCycle Server Error] Port ${PORT} is already in use by another process.`);
+    console.error(`Please stop the existing process or set a different PORT in .env (e.g., PORT=3000).\n`);
+  } else {
+    console.error('[AifyCycle Server Error]', err);
+  }
+});
+
 if (require.main === module) {
   server.listen(PORT, HOST, () => {
     const hasKey = Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim());
-    const model = (process.env.GEMINI_MODEL?.trim() || 'gemini-3.6-flash').replace(/^models\//i, '').trim();
-    console.log(`🌸 AifyCycle primary server running at http://${HOST}:${PORT}`);
-    console.log(`🤖 Gemini API Proxy: ${hasKey ? `Configured (Live ${model} ready)` : 'Not set in .env (Running in Local Mode)'}`);
+    const model = (process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL).replace(/^models\//i, '').trim();
+    console.log(`\n🚀 AifyCycle primary server running at http://${HOST}:${PORT}`);
+    console.log(`📡 Gemini API Proxy: ${hasKey ? `Configured (Live ${model} ready with cascade)` : 'Not set in .env (Local Mode)'}`);
+    console.log(`🛡️  Security Shield: Active (Dotfiles and sensitive configs protected)\n`);
   });
 
   // Dual-port fallback listener:
-  // If PORT is 3000 (default) and process.env.PORT wasn't explicitly overridden,
-  // also bind to 4180 so existing sessions or older configurations work seamlessly.
   if (!process.env.PORT && PORT === 3000) {
     try {
       const fallbackServer = http.createServer(handleRequest);
-      fallbackServer.on('error', (err) => {
-        // Non-fatal if 4180 is occupied by an existing local dev session
+      fallbackServer.on('error', () => {
+        // Non-fatal if 4180 is occupied
       });
       fallbackServer.listen(4180, HOST, () => {
-        console.log(`🌸 Dual-port fallback active at http://${HOST}:4180`);
+        console.log(`🚀 Dual-port fallback active at http://${HOST}:4180`);
       });
     } catch (e) {
       // Non-fatal

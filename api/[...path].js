@@ -1,12 +1,14 @@
 /**
  * Intelligent Multi-Model Cascade for Gemini
  */
+const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
+const FALLBACK_GEMINI_MODELS = ['gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
+
 async function callGeminiWithCascade(preferredModel, apiKey, requestBody) {
   const cascadeQueue = [
-    preferredModel || 'gemini-3.6-flash',
-    'gemini-3.6-flash',
-    'gemini-3.5-flash',
-    'gemini-2.5-flash'
+    preferredModel || DEFAULT_GEMINI_MODEL,
+    DEFAULT_GEMINI_MODEL,
+    ...FALLBACK_GEMINI_MODELS
   ];
   const uniqueModels = [...new Set(cascadeQueue.filter(Boolean))];
 
@@ -74,8 +76,7 @@ module.exports = async (req, res) => {
 
   const urlParts = (req.url || '').split('?');
   const reqPath = (urlParts[0] || '').toLowerCase();
-  // Keep the deployed model explicit and normalize dashboard values such as "models/...".
-  const GEMINI_MODEL = (process.env.GEMINI_MODEL?.trim() || 'gemini-3.6-flash')
+  const GEMINI_MODEL = (process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL)
     .replace(/^models\//i, '')
     .trim();
 
@@ -85,7 +86,7 @@ module.exports = async (req, res) => {
     return res.status(200).json({
       configured: isConfigured,
       model: GEMINI_MODEL,
-      fallbackModels: ['gemini-3.5-flash', 'gemini-2.5-flash'],
+      fallbackModels: FALLBACK_GEMINI_MODELS,
       cascadeEnabled: true,
       mode: isConfigured ? 'server_proxy' : 'unconfigured'
     });

@@ -39,7 +39,48 @@ To allow users to track their cycles immediately as a Guest without friction:
 
 ---
 
-### Step 4: Configure Environment Variables
+### Step 4: Configure Google & Apple OAuth Providers
+
+If your users click **Continue with Google** or **Sign in with Apple**, Supabase requires external providers to be enabled. Otherwise, Supabase will return `{"code":400,"error_code":"validation_failed","msg":"Unsupported provider: provider is not enabled"}`.
+
+#### A. Google OAuth Setup
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
+2. Create or select a project, then navigate to **APIs & Services** ➔ **Credentials**.
+3. Click **Create Credentials** ➔ **OAuth client ID** ➔ Application type: **Web application**.
+4. In **Authorized redirect URIs**, add your Supabase Auth callback URL:
+   ```text
+   https://<your-supabase-domain>/auth/v1/callback
+   ```
+   *(For self-hosted Supabase, e.g., `https://supabasestudio.195.88.87.151.sslip.io/auth/v1/callback`)*
+5. Copy the **Client ID** and **Client Secret**.
+6. In **Supabase Studio / Dashboard**:
+   - Go to **Authentication** ➔ **Providers** ➔ **Google**.
+   - Toggle **Google Enabled** to **ON**.
+   - Paste your **Client ID** and **Client Secret**.
+   - Click **Save**.
+
+#### B. Apple OAuth Setup
+1. In the [Apple Developer Account](https://developer.apple.com/account/resources/identifiers/list), configure a **Services ID** with **Sign In with Apple**.
+2. Add your Supabase callback URL (`https://<your-supabase-domain>/auth/v1/callback`) to the **Return URLs**.
+3. Generate a private key (`.p8`), note your **Key ID**, **Team ID**, and **Services ID**.
+4. In **Supabase Studio / Dashboard**:
+   - Go to **Authentication** ➔ **Providers** ➔ **Apple**.
+   - Toggle **Apple Enabled** to **ON**, paste credentials, and click **Save**.
+
+#### C. URL Configuration (Allowed Redirect URLs)
+1. In Supabase Dashboard, go to **Authentication** ➔ **URL Configuration**.
+2. Set **Site URL** to your domain (e.g. `https://aifycycle.mooo.com`).
+3. Under **Redirect URLs**, add wildcard redirect paths:
+   ```text
+   https://aifycycle.mooo.com/**
+   http://localhost:3000/**
+   http://localhost:4180/**
+   ```
+4. Click **Save**.
+
+---
+
+### Step 5: Configure Environment Variables
 
 1. In Supabase Dashboard, navigate to **Project Settings** (gear icon) ➔ **API**.
 2. Find:

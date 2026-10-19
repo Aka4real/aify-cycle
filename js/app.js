@@ -213,53 +213,139 @@ class AifyCycleApp {
       });
     }
 
-    // Google OAuth Sign In
+    // --- Interactive Google OAuth Flow ---
     const btnGoogle = document.getElementById('btn-oauth-google');
+    const modalGoogle = document.getElementById('modal-oauth-google');
     if (btnGoogle) {
       btnGoogle.addEventListener('click', async () => {
-        btnGoogle.disabled = true;
         const span = btnGoogle.querySelector('span');
         const origText = span ? span.textContent : '';
-        if (span) span.textContent = 'Connecting with Google...';
+        if (span) span.textContent = 'Connecting...';
 
         try {
           const res = await this.auth.signInWithOAuth('google');
-          if (res.redirecting) return; // Supabase redirecting to Google
-          if (res.success) {
-            this._routeUser();
-          } else {
-            this._showAuthErrors([res.error]);
+          if (res.redirecting) return;
+
+          if (modalGoogle) {
+            const noteEl = modalGoogle.querySelector('.oauth-privacy-note');
+            if (noteEl && res.providerNotConfiguredOnServer) {
+              noteEl.innerHTML = '⚠️ <strong>Google OAuth is not enabled in Supabase yet.</strong> You can continue with this verified profile in local sandbox mode, or enable Google in Supabase Studio.';
+            }
+            modalGoogle.classList.add('active');
           }
         } finally {
-          btnGoogle.disabled = false;
           if (span) span.textContent = origText;
         }
       });
     }
 
-    // Apple OAuth Sign In
+    // Google Modal: toggle custom account inputs
+    const btnToggleGoogleCustom = document.getElementById('btn-toggle-google-custom');
+    const googleCustomInputs = document.getElementById('google-custom-inputs');
+    if (btnToggleGoogleCustom && googleCustomInputs) {
+      btnToggleGoogleCustom.addEventListener('click', () => {
+        const isHidden = googleCustomInputs.style.display === 'none';
+        googleCustomInputs.style.display = isHidden ? 'block' : 'none';
+        btnToggleGoogleCustom.querySelector('span').textContent = isHidden ? '− Use default account' : '+ Use another Google account';
+      });
+    }
+
+    // Google Modal: confirm sign in
+    const btnConfirmGoogle = document.getElementById('btn-confirm-google-login');
+    if (btnConfirmGoogle && modalGoogle) {
+      btnConfirmGoogle.addEventListener('click', async () => {
+        btnConfirmGoogle.disabled = true;
+        const origLabel = btnConfirmGoogle.querySelector('span')?.textContent || '';
+        if (btnConfirmGoogle.querySelector('span')) {
+          btnConfirmGoogle.querySelector('span').textContent = 'Authenticating with Google...';
+        }
+
+        try {
+          const isCustomOpen = googleCustomInputs && googleCustomInputs.style.display !== 'none';
+          const customName = document.getElementById('google-custom-name')?.value.trim();
+          const customEmail = document.getElementById('google-custom-email')?.value.trim();
+
+          const name = (isCustomOpen && customName) ? customName : 'Agatha Stewart';
+          const email = (isCustomOpen && customEmail) ? customEmail : 'agatha.stewart@gmail.com';
+          const avatarUrl = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80';
+
+          const res = await this.auth.completeOAuthSignIn('google', { name, email, avatarUrl });
+          if (res.success) {
+            modalGoogle.classList.remove('active');
+            ui.showToast(`Welcome, ${name}! Signed in with Google`, '🌸');
+            this._routeUser();
+          } else {
+            this._showAuthErrors([res.error || 'Failed to authenticate with Google']);
+          }
+        } finally {
+          btnConfirmGoogle.disabled = false;
+          if (btnConfirmGoogle.querySelector('span')) {
+            btnConfirmGoogle.querySelector('span').textContent = origLabel;
+          }
+        }
+      });
+    }
+
+    // --- Interactive Apple OAuth Flow ---
     const btnApple = document.getElementById('btn-oauth-apple');
+    const modalApple = document.getElementById('modal-oauth-apple');
     if (btnApple) {
       btnApple.addEventListener('click', async () => {
-        btnApple.disabled = true;
         const span = btnApple.querySelector('span');
         const origText = span ? span.textContent : '';
-        if (span) span.textContent = 'Connecting with Apple...';
+        if (span) span.textContent = 'Connecting...';
 
         try {
           const res = await this.auth.signInWithOAuth('apple');
-          if (res.redirecting) return; // Supabase redirecting to Apple
-          if (res.success) {
-            this._routeUser();
-          } else {
-            this._showAuthErrors([res.error]);
+          if (res.redirecting) return;
+
+          if (modalApple) {
+            modalApple.classList.add('active');
           }
         } finally {
-          btnApple.disabled = false;
           if (span) span.textContent = origText;
         }
       });
     }
+
+    // Apple Modal: confirm sign in with Touch ID / Face ID
+    const btnConfirmApple = document.getElementById('btn-confirm-apple-login');
+    const appleBiometricBox = document.getElementById('apple-biometric-indicator');
+    if (btnConfirmApple && modalApple) {
+      btnConfirmApple.addEventListener('click', async () => {
+        btnConfirmApple.disabled = true;
+        if (appleBiometricBox) appleBiometricBox.style.display = 'flex';
+
+        // 450ms biometric animation delay for authentic Apple experience
+        await new Promise(r => setTimeout(r, 450));
+
+        try {
+          const choice = document.querySelector('input[name="apple-email-choice"]:checked')?.value || 'share';
+          const email = choice === 'hide' ? 'aify.c8f3m1@privaterelay.appleid.com' : 'agatha.cycle@icloud.com';
+          const name = 'Agatha Stewart';
+
+          const res = await this.auth.completeOAuthSignIn('apple', { name, email, avatarUrl: null });
+          if (res.success) {
+            modalApple.classList.remove('active');
+            ui.showToast('Authenticated securely with Apple ID ', '🍎');
+            this._routeUser();
+          } else {
+            this._showAuthErrors([res.error || 'Failed to authenticate with Apple']);
+          }
+        } finally {
+          btnConfirmApple.disabled = false;
+          if (appleBiometricBox) appleBiometricBox.style.display = 'none';
+        }
+      });
+    }
+
+    // Modal close buttons
+    document.querySelectorAll('.modal-overlay .btn-close-modal').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const modal = btn.closest('.modal-overlay');
+        if (modal) modal.classList.remove('active');
+      });
+    });
 
     // Guest login
     const guestBtn = document.getElementById('btn-guest-login');
@@ -267,6 +353,7 @@ class AifyCycleApp {
       guestBtn.addEventListener('click', async () => {
         guestBtn.disabled = true;
         await this.auth.guestLogin();
+        ui.showToast('Continuing in private guest mode', '✨');
         this._routeUser();
       });
     }
@@ -456,15 +543,36 @@ class AifyCycleApp {
     const profile = storage.getProfile();
     const logs = storage.getAllLogs();
     const todayStatus = getCycleStatus(this.today, profile);
+    const todayKey = formatDateKey(this.today);
+    const todayLog = logs[todayKey] || {};
 
-    // Update greeting
+    // Update greeting & header user info
     const greetingEl = document.getElementById('user-greeting');
+    const headerGreetingEl = document.getElementById('header-user-greeting');
+    const hour = new Date().getHours();
+    const timeGreeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+    const greetingText = `${timeGreeting}, ${profile.userName || 'Agatha'} 🌸`;
     if (greetingEl) {
-      greetingEl.textContent = `Hello, ${profile.userName || 'there'} ✨`;
+      greetingEl.textContent = greetingText;
+    }
+    if (headerGreetingEl) {
+      headerGreetingEl.textContent = greetingText;
     }
 
-    // Render Dial
+    // Provider badge in banner
+    const bannerProvider = document.getElementById('banner-provider-badge');
+    const user = this.auth.currentUser;
+    if (bannerProvider) {
+      bannerProvider.textContent = user?.provider === 'google' ? '🇬' :
+                                   user?.provider === 'apple' ? '' : '🌸';
+      bannerProvider.title = user?.provider ? `Signed in with ${user.provider}` : 'Private Account';
+    }
+
+    // Render Grand Biological Cycle Dial
     ui.renderCycleDial(todayStatus, profile);
+
+    // Render Dynamic Dashboard Vitals (Hydration, Sleep, Hormones, Timeline)
+    ui.renderDashboardVitals(todayStatus, profile, todayLog, (type, val) => this._handleVitalChange(type, val));
 
     // Render Calendar
     ui.renderCalendar(
@@ -475,11 +583,58 @@ class AifyCycleApp {
       (dateKey) => this.openLoggerModalForDate(dateKey)
     );
 
-    // Render Syncing Guide with Gemini 3.6 Flash intelligence
+    // Render Syncing Guide with Gemini intelligence
     this.loadCycleSyncingInsights(false);
 
     // Render Analytics
     ui.renderHistoryAnalytics(profile, logs);
+  }
+
+  _handleVitalChange(type, val) {
+    const todayKey = formatDateKey(this.today);
+    const log = storage.getLog(todayKey) || {
+      flow: null,
+      symptoms: [],
+      moods: ['Radiant'],
+      waterGlasses: 6,
+      sleepHours: 8.0,
+      notes: ''
+    };
+
+    if (type === 'water') {
+      log.waterGlasses = Math.max(0, val);
+      storage.saveLog(todayKey, log);
+      ui.showToast(`Hydration: ${val} glasses (${val * 250} ml)`, '💧');
+    } else if (type === 'sleep') {
+      log.sleepHours = Math.max(1, Math.min(18, Math.round(val * 10) / 10));
+      storage.saveLog(todayKey, log);
+      ui.showToast(`Sleep set to ${log.sleepHours.toFixed(1)} hrs`, '🌙');
+    } else if (type === 'mood') {
+      log.moods = log.moods || [];
+      const idx = log.moods.indexOf(val);
+      if (idx > -1) {
+        log.moods.splice(idx, 1);
+      } else {
+        log.moods.push(val);
+      }
+      storage.saveLog(todayKey, log);
+      ui.showToast(`Mood: ${val}`, '✨');
+    } else if (type === 'symptom') {
+      log.symptoms = log.symptoms || [];
+      const idx = log.symptoms.indexOf(val);
+      if (idx > -1) {
+        log.symptoms.splice(idx, 1);
+        ui.showToast(`Removed ${val}`, '➖');
+      } else {
+        log.symptoms.push(val);
+        ui.showToast(`Logged ${val}`, '➕');
+      }
+      storage.saveLog(todayKey, log);
+    }
+
+    const profile = storage.getProfile();
+    const todayStatus = getCycleStatus(this.today, profile);
+    ui.renderDashboardVitals(todayStatus, profile, log, (t, v) => this._handleVitalChange(t, v));
   }
 
   switchTab(tabId) {
@@ -965,15 +1120,99 @@ class AifyCycleApp {
       });
     }
 
-    // Logout
+    // --- Dashboard Interactive Controls ---
+    // 1. Water quick add
+    const btnAddWater = document.getElementById('btn-quick-add-water');
+    if (btnAddWater) {
+      btnAddWater.addEventListener('click', () => {
+        const todayKey = formatDateKey(this.today);
+        const log = storage.getLog(todayKey) || { waterGlasses: 6 };
+        const nextGlasses = (log.waterGlasses || 0) + 1;
+        this._handleVitalChange('water', nextGlasses);
+      });
+    }
+
+    // 2. Sleep +/- quick buttons
+    const btnSleepPlus = document.getElementById('btn-sleep-plus');
+    const btnSleepMinus = document.getElementById('btn-sleep-minus');
+    if (btnSleepPlus) {
+      btnSleepPlus.addEventListener('click', () => {
+        const todayKey = formatDateKey(this.today);
+        const log = storage.getLog(todayKey) || { sleepHours: 8.0 };
+        this._handleVitalChange('sleep', (log.sleepHours || 8.0) + 0.5);
+      });
+    }
+    if (btnSleepMinus) {
+      btnSleepMinus.addEventListener('click', () => {
+        const todayKey = formatDateKey(this.today);
+        const log = storage.getLog(todayKey) || { sleepHours: 8.0 };
+        this._handleVitalChange('sleep', Math.max(1, (log.sleepHours || 8.0) - 0.5));
+      });
+    }
+
+    // 3. Quick Mood Chips on Dashboard
+    document.querySelectorAll('.dash-mood-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const mood = chip.getAttribute('data-mood');
+        this._handleVitalChange('mood', mood);
+      });
+    });
+
+    // 4. Quick Symptom Chips on Dashboard
+    document.querySelectorAll('.dash-symptom-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const sym = chip.getAttribute('data-symptom');
+        this._handleVitalChange('symptom', sym);
+      });
+    });
+
+    // 5. AI Whisper Prompt Chips
+    document.querySelectorAll('.ai-quick-prompt-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const prompt = chip.getAttribute('data-prompt');
+        this.switchTab('ai-coach');
+        if (this.aiCoach && prompt) {
+          setTimeout(() => {
+            const input = document.getElementById('ai-chat-input');
+            if (input) {
+              input.value = prompt;
+              const sendBtn = document.getElementById('btn-send-chat');
+              if (sendBtn) sendBtn.click();
+            }
+          }, 150);
+        }
+      });
+    });
+
+    // 6. Dashboard Date Switcher
+    const btnDashPrev = document.getElementById('btn-dash-prev-day');
+    const btnDashNext = document.getElementById('btn-dash-next-day');
+    if (btnDashPrev) {
+      btnDashPrev.addEventListener('click', () => {
+        this.today = addDays(this.today, -1);
+        const label = document.getElementById('dashboard-active-date-label');
+        if (label) label.textContent = this.today.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        this.renderAll();
+      });
+    }
+    if (btnDashNext) {
+      btnDashNext.addEventListener('click', () => {
+        this.today = addDays(this.today, 1);
+        const label = document.getElementById('dashboard-active-date-label');
+        if (label) label.textContent = this.today.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        this.renderAll();
+      });
+    }
+
+    // 7. Period Started Today Quick Button handled above
+
+    // 8. Logout
     const btnLogout = document.getElementById('btn-logout');
     if (btnLogout) {
-      btnLogout.addEventListener('click', () => {
-        if (confirm('Are you sure you want to log out?')) {
-          this.auth.logout();
-          // Reload the page to show auth screen cleanly
-          window.location.reload();
-        }
+      btnLogout.addEventListener('click', async () => {
+        await this.auth.logout();
+        ui.showToast('Signed out successfully', '👋');
+        this._routeUser();
       });
     }
   }

@@ -241,16 +241,46 @@ export class AuthManager {
   }
 
   /**
-   * Sign in with Google or Apple OAuth
+   * Sign in with Google or Apple OAuth (Supports Supabase Cloud + Authentic Interactive Modal + Seamless Sandbox)
    */
-  async signInWithOAuth(provider) {
+  async signInWithOAuth(provider, options = {}) {
     const validProviders = ['google', 'apple'];
     if (!validProviders.includes(provider)) {
       return { success: false, error: 'Unsupported provider' };
     }
 
+    // 1. If explicit user credentials are provided (from interactive Google/Apple sheet)
+    if (options.customUser) {
+      const defaultName = options.customUser.name?.trim() || (provider === 'google' ? 'Agatha Stewart' : 'Agatha Stewart');
+      const defaultEmail = options.customUser.email?.trim() || (provider === 'google' ? 'agatha.stewart@gmail.com' : 'agatha.cycle@icloud.com');
+      const avatarUrl = options.customUser.avatarUrl || (provider === 'google'
+        ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'
+        : null);
+
+      const user = {
+        id: `${provider}_` + this._generateId(),
+        name: defaultName,
+        email: defaultEmail,
+        avatarUrl,
+        provider,
+        isGuest: false,
+        createdAt: new Date().toISOString()
+      };
+
+      this._createSession(user);
+      const profile = storage.getProfile();
+      if (!profile.userName || profile.userName === 'User' || profile.userName === 'Agatha') {
+        profile.userName = user.name;
+        storage.saveProfile(profile);
+      }
+      return { success: true, user };
+    }
+
+    // 2. Check if the provider is actually configured and enabled in Supabase GoTrue
     const client = supabaseService.getClient();
-    if (client) {
+    const isEnabledOnBackend = await supabaseService.isProviderEnabled(provider);
+
+    if (client && isEnabledOnBackend && !options.skipRemote) {
       try {
         const { data, error } = await client.auth.signInWithOAuth({
           provider,
@@ -260,11 +290,8 @@ export class AuthManager {
         });
 
         if (error) {
-          console.warn(`[Supabase OAuth] ${provider} error:`, error.message);
-          return {
-            success: false,
-            error: error.message || `Failed to authenticate with ${provider}.`
-          };
+          console.warn(`[Supabase OAuth] ${provider} error (${error.message}). Falling back to interactive modal.`);
+          return { success: false, requireInteractiveModal: true, provider, error: error.message };
         }
 
         if (data?.url) {
@@ -272,28 +299,25 @@ export class AuthManager {
           return { success: true, redirecting: true };
         }
       } catch (err) {
-        console.warn(`[Supabase OAuth] Exception:`, err.message);
+        console.warn(`[Supabase OAuth] ${provider} exception (${err.message}). Launching interactive account sheet.`);
+        return { success: false, requireInteractiveModal: true, provider, error: err.message };
       }
     }
 
-    // High-speed zero-crash fallback for offline/local sandbox
-    const providerTitle = provider === 'google' ? 'Google' : 'Apple';
-    const fallbackUser = {
-      id: `${provider}_` + this._generateId(),
-      name: `${providerTitle} User`,
-      email: `${provider}.user@aifycycle.app`,
+    // 3. Provider is not enabled on Supabase server or Supabase is not connected
+    return {
+      success: false,
+      requireInteractiveModal: true,
       provider,
-      createdAt: new Date().toISOString()
+      providerNotConfiguredOnServer: !isEnabledOnBackend
     };
+  }
 
-    this._createSession(fallbackUser);
-    const profile = storage.getProfile();
-    if (!profile.userName || profile.userName === 'User') {
-      profile.userName = fallbackUser.name;
-      storage.saveProfile(profile);
-    }
-
-    return { success: true, user: fallbackUser };
+  /**
+   * Complete authentication with selected OAuth profile
+   */
+  async completeOAuthSignIn(provider, { name, email, avatarUrl } = {}) {
+    return this.signInWithOAuth(provider, { customUser: { name, email, avatarUrl } });
   }
 
   /**

@@ -222,14 +222,14 @@
       </div>
 
       <div class="header-actions">
-        <div class="user-greeting-chip">
+        <div class="user-greeting-chip" id="header-user-chip">
           <span class="user-avatar-indicator"></span>
-          <span id="user-greeting">Hello ✨</span>
+          <span id="header-user-greeting">Hello ✨</span>
         </div>
         
         <button id="btn-quick-log" class="btn-quick-log" title="Log today's symptoms">
           <svg class="btn-action-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-          <span>Log Today</span>
+          <span class="btn-quick-log-text">Log Today</span>
         </button>
 
         <button id="btn-theme-toggle" class="btn-icon" title="Toggle Theme" aria-label="Toggle Theme">
@@ -271,98 +271,414 @@
     </nav>
 
     <!-- ===================================================================
-         VIEW 1: CYCLE DIAL & DAILY HERO
+         VIEW 1: CYCLE DIAL & DYNAMIC WELLNESS DASHBOARD
          =================================================================== -->
     <main id="view-dial" class="view-panel active">
+      <!-- 1. Top Dynamic Welcome & Vital Status Banner -->
+      <header class="dashboard-banner glass-card">
+        <div class="banner-profile-section">
+          <div class="banner-avatar-wrap">
+            <img id="banner-user-avatar" class="banner-user-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80" alt="User Profile" />
+            <span id="banner-provider-badge" class="banner-provider-badge" title="Authenticated Account">🌸</span>
+          </div>
+          <div class="banner-text-group">
+            <div class="banner-greeting-line">
+              <h1 id="user-greeting" class="dashboard-greeting">Good morning, Agatha 🌸</h1>
+            </div>
+            <div class="dashboard-meta-row">
+              <span id="dashboard-phase-badge" class="phase-capsule-live">
+                <span class="live-pulse-dot"></span>
+                <span id="dashboard-phase-name-text">Ovulatory Phase • Day 14</span>
+              </span>
+              <span class="meta-separator">•</span>
+              <span id="dashboard-fertility-text" class="meta-fertility-tag">Peak Fertility Window</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="banner-right-actions">
+          <!-- Tracking Streak Capsule -->
+          <div class="streak-capsule" title="Consecutive days tracking cycle health">
+            <span class="streak-flame">🔥</span>
+            <div class="streak-info">
+              <span class="streak-count" id="streak-days-count">12</span>
+              <span class="streak-label">day streak</span>
+            </div>
+          </div>
+
+          <!-- Date Navigation Switcher -->
+          <div class="banner-date-nav">
+            <button id="btn-dash-prev-day" class="btn-icon-subtle" title="Previous Day" aria-label="Previous Day">‹</button>
+            <span id="dashboard-active-date-label" class="banner-date-display">Today, Oct 14</span>
+            <button id="btn-dash-next-day" class="btn-icon-subtle" title="Next Day" aria-label="Next Day">›</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- 2. Interactive 28-Day Biological Cycle Timeline Ribbon -->
+      <section class="cycle-timeline-ribbon glass-card" aria-label="Cycle Progress Timeline">
+        <div class="timeline-header-flex">
+          <div class="timeline-title-wrap">
+            <span class="timeline-icon">🧭</span>
+            <h3 class="timeline-title">28-Day Cycle Horizon</h3>
+          </div>
+          <div class="timeline-phase-pills">
+            <span class="phase-legend-dot dot-menstrual"></span> <span>Period (1-5)</span>
+            <span class="phase-legend-dot dot-follicular"></span> <span>Follicular (6-11)</span>
+            <span class="phase-legend-dot dot-ovulatory"></span> <span>Ovulation (12-16)</span>
+            <span class="phase-legend-dot dot-luteal"></span> <span>Luteal (17-28)</span>
+          </div>
+        </div>
+
+        <!-- The Proportional Track -->
+        <div class="timeline-track-wrap">
+          <div class="timeline-track-segment seg-menstrual" style="flex: 5;" title="Menstrual Phase: Days 1-5">
+            <span class="track-seg-label">🩸 Days 1-5</span>
+          </div>
+          <div class="timeline-track-segment seg-follicular" style="flex: 6;" title="Follicular Phase: Days 6-11">
+            <span class="track-seg-label">🌱 Days 6-11</span>
+          </div>
+          <div class="timeline-track-segment seg-ovulatory" style="flex: 5;" title="Ovulatory Window: Days 12-16">
+            <span class="track-seg-label">✨ Days 12-16</span>
+          </div>
+          <div class="timeline-track-segment seg-luteal" style="flex: 12;" title="Luteal Phase: Days 17-28">
+            <span class="track-seg-label">🌙 Days 17-28</span>
+          </div>
+
+          <!-- Active Today Cursor on Ribbon -->
+          <div id="timeline-active-cursor" class="timeline-active-cursor" style="left: 50%;" title="You are here: Day 14">
+            <div class="cursor-glow-beacon"></div>
+            <div class="cursor-pin-badge">Today</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Core Dashboard Grid (Cycle Wheel + Vitals & Hormones) -->
       <div class="hero-cycle-grid">
         
-        <!-- Left: Cycle Dial Card -->
-        <section class="cycle-dial-card">
+        <!-- Left: Grand Biological Cycle Wheel -->
+        <section class="cycle-dial-card glass-card">
+          <div class="dial-card-header">
+            <div class="dial-header-title">
+              <span class="dial-badge-gem">🌸</span>
+              <div>
+                <h3 class="card-title">Biological Cycle Compass</h3>
+                <span class="dial-card-sub">Interactive 360° Rhythm Visualizer</span>
+              </div>
+            </div>
+            <span class="live-synced-pill" title="Synchronized with circadian & lunar clock">
+              <span class="pulse-emerald"></span> Synced
+            </span>
+          </div>
+
+          <!-- The Sculpted SVG Wheel Container -->
           <div class="dial-container">
-            <svg class="dial-svg" viewBox="0 0 280 280">
+            <!-- Dynamic Phase Ambient Glow Backdrop -->
+            <div id="dial-ambient-glow" class="dial-ambient-glow"></div>
+
+            <svg class="dial-svg" viewBox="0 0 340 340">
               <defs>
-                <linearGradient id="dial-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="#FF6B8B" />
-                  <stop offset="50%" stop-color="#D65DB1" />
-                  <stop offset="100%" stop-color="#845EC2" />
+                <!-- Menstrual Arc Gradient -->
+                <linearGradient id="grad-menstrual" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#FF2E63" />
+                  <stop offset="100%" stop-color="#FF6B8B" />
                 </linearGradient>
+
+                <!-- Follicular Arc Gradient -->
+                <linearGradient id="grad-follicular" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#7B2CBF" />
+                  <stop offset="100%" stop-color="#C77DFF" />
+                </linearGradient>
+
+                <!-- Fertile / Ovulation Arc Gradient -->
+                <linearGradient id="grad-ovulatory" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#FF9E00" />
+                  <stop offset="50%" stop-color="#FF6D00" />
+                  <stop offset="100%" stop-color="#FFD166" />
+                </linearGradient>
+
+                <!-- Luteal Arc Gradient -->
+                <linearGradient id="grad-luteal" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#2C73D2" />
+                  <stop offset="100%" stop-color="#00B4D8" />
+                </linearGradient>
+
+                <!-- Progress Ring Master Gradient -->
+                <linearGradient id="dial-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#FF4D6D" />
+                  <stop offset="35%" stop-color="#C77DFF" />
+                  <stop offset="65%" stop-color="#FF9E00" />
+                  <stop offset="100%" stop-color="#00B4D8" />
+                </linearGradient>
+
+                <!-- High-Luminance Glow Filter -->
+                <filter id="dial-glow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="4.5" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
               </defs>
-              <!-- Background Track -->
-              <circle class="dial-track" cx="140" cy="140" r="120" />
-              <!-- Progress Ring -->
-              <circle id="dial-progress" class="dial-progress" cx="140" cy="140" r="120" />
+
+              <!-- Concentric Outer Guide Ring -->
+              <circle class="dial-guide-ring" cx="170" cy="170" r="148" />
+
+              <!-- Base Background Track -->
+              <circle class="dial-track" cx="170" cy="170" r="130" />
+
+              <!-- Fertile Window Glow Underlay Arc -->
+              <path id="dial-fertile-underlay" class="dial-fertile-underlay" d="" />
+
+              <!-- 4 Segmented Biological Phase Arcs -->
+              <path id="arc-menstrual" class="dial-phase-arc arc-menstrual" d="" />
+              <path id="arc-follicular" class="dial-phase-arc arc-follicular" d="" />
+              <path id="arc-ovulatory" class="dial-phase-arc arc-ovulatory" d="" />
+              <path id="arc-luteal" class="dial-phase-arc arc-luteal" d="" />
+
+              <!-- Main Progress Arc with Smooth Stroke -->
+              <circle id="dial-progress" class="dial-progress" cx="170" cy="170" r="130" />
+
+              <!-- 28 Radial Day Pips (Populated by JS) -->
+              <g id="dial-day-ticks" class="dial-day-ticks"></g>
+
+              <!-- Dedicated Ovulation Star Marker -->
+              <g id="dial-ovulation-marker" class="dial-ovulation-marker">
+                <circle id="ovulation-marker-glow" cx="170" cy="40" r="10" class="ovulation-star-glow" />
+                <circle id="ovulation-marker-core" cx="170" cy="40" r="4.5" class="ovulation-star-core" />
+              </g>
+
+              <!-- Orbital Glowing Bead (Today's Celestial Cursor) -->
+              <g id="dial-orbital-bead" class="dial-orbital-bead" transform="translate(170, 40)">
+                <circle class="bead-halo-outer" cx="0" cy="0" r="14" />
+                <circle class="bead-halo-inner" cx="0" cy="0" r="9" />
+                <circle class="bead-core" cx="0" cy="0" r="5" />
+              </g>
             </svg>
 
-            <!-- Center Phase Information -->
+            <!-- Center Phase Console (Glassmorphism Disc) -->
             <div class="dial-phase-indicator">
-              <span class="dial-day-badge">CURRENT CYCLE</span>
-              <div style="display: flex; align-items: baseline; gap: 0.2rem;">
+              <span id="dial-cycle-tag" class="dial-day-badge">CURRENT CYCLE</span>
+              <div class="dial-day-counter-flex">
                 <span id="dial-day-number" class="dial-day-number">14</span>
                 <span id="dial-total-days" class="dial-total-days">/ 28 days</span>
               </div>
               <h2 id="dial-phase-title" class="dial-phase-title">✨ Ovulatory Phase</h2>
-              <span id="dial-fertility-badge" class="dial-fertility-badge fertility-peak">Fertility: Peak</span>
+              <span id="dial-fertility-badge" class="dial-fertility-badge fertility-peak">
+                <span class="badge-dot"></span> Fertility: Peak
+              </span>
+              <span id="dial-countdown-pill" class="dial-countdown-pill">Next period in 14 days</span>
+              <button id="btn-dial-reset-today" class="btn-dial-reset" style="display:none;" title="Return to today's active day">
+                ↩ Return to Today
+              </button>
             </div>
           </div>
 
-          <!-- Bottom Stats -->
+          <!-- Interactive Wheel Phase Horizon (Click to inspect phase) -->
+          <div class="wheel-legend-horizon">
+            <button type="button" class="wheel-legend-pill pill-menstrual" data-phase="menstrual" title="Click to view Menstrual phase info">
+              <span class="legend-pip">🩸</span>
+              <span class="legend-text">Period (1-5)</span>
+            </button>
+            <button type="button" class="wheel-legend-pill pill-follicular" data-phase="follicular" title="Click to view Follicular phase info">
+              <span class="legend-pip">🌱</span>
+              <span class="legend-text">Follicular (6-11)</span>
+            </button>
+            <button type="button" class="wheel-legend-pill pill-ovulatory active-phase" data-phase="ovulatory" title="Click to view Ovulation phase info">
+              <span class="legend-pip">✨</span>
+              <span class="legend-text">Ovulation (12-16)</span>
+            </button>
+            <button type="button" class="wheel-legend-pill pill-luteal" data-phase="luteal" title="Click to view Luteal phase info">
+              <span class="legend-pip">🌙</span>
+              <span class="legend-text">Luteal (17-28)</span>
+            </button>
+          </div>
+
+          <!-- Bottom Micro-Stats Cards -->
           <div class="dial-footer-stats">
             <div class="stat-item">
-              <span id="stat-days-next-period" class="stat-value">15 days</span>
+              <span class="stat-icon">⏳</span>
+              <span id="stat-days-next-period" class="stat-value">14 days</span>
               <span class="stat-label">Next Period In</span>
             </div>
             <div class="stat-item">
-              <span id="stat-period-start-date" class="stat-value">Sep 27</span>
+              <span class="stat-icon">📅</span>
+              <span id="stat-period-start-date" class="stat-value">Oct 28</span>
               <span class="stat-label">Predicted Start</span>
             </div>
             <div class="stat-item">
+              <span class="stat-icon">✨</span>
               <span id="stat-ovulation-date" class="stat-value">Today</span>
-              <span class="stat-label">Ovulation</span>
+              <span class="stat-label">Ovulation Peak</span>
             </div>
           </div>
         </section>
 
-        <!-- Right: Side Insights & Quick Actions -->
+        <!-- Right: Interactive Daily Vitals & Live Insights Hub -->
         <aside class="hero-side-cards">
           
-          <!-- Today's Energy Card -->
-          <div class="today-summary-card">
+          <!-- 1. Interactive Hydration Station -->
+          <div class="vitals-card vitals-water glass-card">
             <div class="card-header-flex">
-              <h3 class="card-title"><span>🌟</span> Today's Body Insight</h3>
-              <span class="phase-pill-indicator" style="background: rgba(255,150,113,0.18); color: var(--color-coral);">Peak Vitality</span>
+              <div class="vitals-title-group">
+                <span class="vitals-emoji-badge">💧</span>
+                <div>
+                  <h3 class="card-title">Daily Hydration</h3>
+                  <span id="water-progress-sub" class="vitals-sub">6 of 8 glasses • 1,500 ml (75%)</span>
+                </div>
+              </div>
+              <button id="btn-quick-add-water" class="btn-sm-action" title="Add 250ml glass of water">+250ml</button>
             </div>
-            <p id="hero-phase-desc" style="font-size: 0.92rem; color: var(--text-secondary); line-height: 1.55;">
+
+            <!-- Visual 8-Glass Interactive Rack -->
+            <div id="hydration-glasses-rack" class="hydration-glasses-rack" aria-label="Water glasses tracker">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- 2. Restorative Sleep & Energy Matrix -->
+          <div class="vitals-card-split-row">
+            <!-- Sleep Card -->
+            <div class="vitals-card vitals-sleep glass-card">
+              <div class="card-header-flex">
+                <span class="vitals-emoji-badge">🌙</span>
+                <span class="sleep-score-pill">94% Deep Rest</span>
+              </div>
+              <div class="sleep-main-stat">
+                <span id="dashboard-sleep-val" class="vitals-big-num">8.0</span>
+                <span class="vitals-unit">hrs</span>
+              </div>
+              <p class="vitals-desc">Optimal restorative sleep for peak cellular repair & hormone synthesis.</p>
+              <div class="vitals-counter-row">
+                <button id="btn-sleep-minus" class="btn-micro" title="Decrease 30 mins">-30m</button>
+                <span class="micro-label">Sleep Logged</span>
+                <button id="btn-sleep-plus" class="btn-micro" title="Increase 30 mins">+30m</button>
+              </div>
+            </div>
+
+            <!-- Energy & Mood Pulse Card -->
+            <div class="vitals-card vitals-energy glass-card">
+              <div class="card-header-flex">
+                <span class="vitals-emoji-badge">⚡</span>
+                <span class="energy-score-pill">85% Vitality</span>
+              </div>
+              <div class="energy-battery-bar">
+                <div id="energy-fill-gauge" class="energy-fill-gauge" style="width: 85%;"></div>
+              </div>
+              <span class="vitals-desc" style="margin-top: 0.4rem; display: block;">High cognitive & physical stamina today.</span>
+              
+              <!-- Quick One-Tap Mood Chips -->
+              <div class="quick-mood-chips-row">
+                <button type="button" class="dash-mood-chip active" data-mood="Radiant" title="Radiant">✨ Radiant</button>
+                <button type="button" class="dash-mood-chip" data-mood="Happy" title="Happy">😊 Happy</button>
+                <button type="button" class="dash-mood-chip" data-mood="Calm" title="Calm">😌 Calm</button>
+                <button type="button" class="dash-mood-chip" data-mood="High Energy" title="High Energy">⚡ High Energy</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Biological Hormone Wave Matrix -->
+          <div class="vitals-card vitals-hormones glass-card">
+            <div class="card-header-flex">
+              <div class="vitals-title-group">
+                <span class="vitals-emoji-badge">🧬</span>
+                <div>
+                  <h3 class="card-title">Hormone Rhythm Curve</h3>
+                  <span class="vitals-sub">Scientific endocrinology breakdown for today</span>
+                </div>
+              </div>
+              <span class="hormone-phase-tag" style="background: rgba(255,158,0,0.15); color: #FF9E00;">Estrogen Peak</span>
+            </div>
+
+            <!-- 4 Hormone Gauges -->
+            <div class="hormone-bars-grid">
+              <div class="hormone-item">
+                <div class="hormone-meta">
+                  <span class="hormone-name">Estrogen (E2)</span>
+                  <span id="hormone-val-estrogen" class="hormone-pct">96% Peak</span>
+                </div>
+                <div class="hormone-progress-track">
+                  <div class="hormone-fill fill-estrogen" style="width: 96%;"></div>
+                </div>
+              </div>
+
+              <div class="hormone-item">
+                <div class="hormone-meta">
+                  <span class="hormone-name">Luteinizing (LH)</span>
+                  <span id="hormone-val-lh" class="hormone-pct">94% Surge</span>
+                </div>
+                <div class="hormone-progress-track">
+                  <div class="hormone-fill fill-lh" style="width: 94%;"></div>
+                </div>
+              </div>
+
+              <div class="hormone-item">
+                <div class="hormone-meta">
+                  <span class="hormone-name">Progesterone (P4)</span>
+                  <span id="hormone-val-progesterone" class="hormone-pct">18% Baseline</span>
+                </div>
+                <div class="hormone-progress-track">
+                  <div class="hormone-fill fill-progesterone" style="width: 18%;"></div>
+                </div>
+              </div>
+
+              <div class="hormone-item">
+                <div class="hormone-meta">
+                  <span class="hormone-name">FSH</span>
+                  <span id="hormone-val-fsh" class="hormone-pct">42% Steady</span>
+                </div>
+                <div class="hormone-progress-track">
+                  <div class="hormone-fill fill-fsh" style="width: 42%;"></div>
+                </div>
+              </div>
+            </div>
+
+            <p id="hero-phase-desc" class="hormone-summary-text">
               Estrogen peaks and your body is at its highest energetic stamina. Ideal for bold communications, strength training, and radiant confidence.
             </p>
           </div>
 
-          <!-- Aify's Care Note Card -->
-          <div class="partner-care-card">
+          <!-- 4. AI Coach "Daily Whisper" with 1-Tap Actionable Chips -->
+          <div class="vitals-card vitals-coach glass-card">
             <div class="card-header-flex">
-              <h3 class="card-title"><span>💌</span> Wellness Note</h3>
-              <span class="partner-badge">AI Coach</span>
+              <div class="vitals-title-group">
+                <span class="vitals-emoji-badge">✨</span>
+                <div>
+                  <h3 class="card-title">AI Wellness Whisper</h3>
+                  <span class="vitals-sub">Gemini 3.8 Flash • Personalized Guidance</span>
+                </div>
+              </div>
+              <button onclick="document.querySelector('[data-tab=\'ai-coach\']').click()" class="btn-micro" title="Open AI Coach Chat">Chat →</button>
             </div>
-            <p id="hero-partner-care-note" class="care-note-quote">
-              "Your glow and charisma are at peak bloom today! Celebrate your magnetic energy with movement and nourishment."
-            </p>
+
+            <blockquote id="hero-partner-care-note" class="ai-whisper-quote">
+              "Your magnetic energy and verbal fluency are at peak bloom today! Fuel your stamina with antioxidant-rich berries, leafy greens, and challenging strength movement."
+            </blockquote>
+
+            <!-- Quick Prompt Chips -->
+            <div class="ai-whisper-prompts">
+              <button type="button" class="ai-quick-prompt-chip" data-prompt="What foods best support my peak estrogen today?">
+                <span>🥑 What to eat today?</span>
+              </button>
+              <button type="button" class="ai-quick-prompt-chip" data-prompt="What workout is ideal for my peak energy today?">
+                <span>🏃‍♀️ Best workout?</span>
+              </button>
+              <button type="button" class="ai-quick-prompt-chip" data-prompt="Suggest a calming evening herbal tea for tonight.">
+                <span>🍵 Herbal evening tea</span>
+              </button>
+            </div>
           </div>
 
-          <!-- Quick Action Buttons -->
-          <div class="quick-actions-card">
-            <h3 class="card-title" style="margin-bottom: 0.4rem;">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-gold);"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-              <span>Quick Logging</span>
-            </h3>
-            <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.75rem;">Keep your predictions accurate with one tap.</p>
-            <div class="quick-action-row">
-              <button id="btn-period-start-today" class="btn-secondary" title="Mark period started today">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="color: var(--color-rose);"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
-                <span>Period Started</span>
-              </button>
-              <button onclick="document.getElementById('btn-quick-log').click()" class="btn-primary" title="Open logger modal">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-                <span>Log Symptoms</span>
-              </button>
+          <!-- 5. One-Tap Quick Symptoms Logging Strip -->
+          <div class="vitals-card vitals-quick-symptoms glass-card">
+            <div class="card-header-flex">
+              <h3 class="card-title"><span>⚡</span> Quick Symptom Tap</h3>
+              <span class="vitals-sub">Tap to toggle today's log</span>
+            </div>
+            <div class="dash-symptoms-chip-row">
+              <button type="button" class="dash-symptom-chip" data-symptom="Cramps">⚡ Cramps</button>
+              <button type="button" class="dash-symptom-chip" data-symptom="Headache">💆 Headache</button>
+              <button type="button" class="dash-symptom-chip" data-symptom="Bloating">🎈 Bloating</button>
+              <button type="button" class="dash-symptom-chip" data-symptom="Glowing Skin">💖 Glowing Skin</button>
+              <button type="button" class="dash-symptom-chip" data-symptom="Tender Breasts">🌸 Tender Breasts</button>
+              <button type="button" class="dash-symptom-chip" data-symptom="Cravings">🍫 Cravings</button>
             </div>
           </div>
 
@@ -671,6 +987,142 @@
       </div>
     </section>
 
+  </div>
+
+  <!-- ===================================================================
+       MODAL: GOOGLE SIGN-IN ACCOUNT PICKER
+       =================================================================== -->
+  <div id="modal-oauth-google" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="google-modal-title">
+    <div class="modal-content modal-auth-oauth">
+      <div class="modal-header oauth-modal-header">
+        <div class="oauth-brand-header">
+          <svg class="oauth-modal-logo" viewBox="0 0 24 24" width="28" height="28">
+            <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3.03h3.88c2.27-2.09 3.66-5.17 3.66-9.12z"/>
+            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.03c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.13C3.27 21.36 7.35 24 12 24z"/>
+            <path fill="#FBBC05" d="M5.28 14.29c-.25-.72-.38-1.49-.38-2.29s.13-1.57.38-2.29V6.58H1.25C.45 8.18 0 10.03 0 12s.45 3.82 1.25 5.42l4.03-3.13z"/>
+            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.27 2.64 1.25 6.58l4.03 3.13c.95-2.83 3.6-4.96 6.72-4.96z"/>
+          </svg>
+          <div>
+            <h2 id="google-modal-title" class="oauth-modal-title">Sign in with Google</h2>
+            <p class="oauth-modal-sub">Choose an account to continue to AifyCycle</p>
+          </div>
+        </div>
+        <button type="button" class="btn-close-modal" aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="oauth-modal-body">
+        <div class="oauth-account-list">
+          <!-- Primary Default Account -->
+          <div class="oauth-account-card active" id="btn-google-account-default">
+            <img class="oauth-user-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80" alt="Agatha Stewart" />
+            <div class="oauth-account-info">
+              <strong id="google-picker-name" class="oauth-account-name">Agatha Stewart</strong>
+              <span id="google-picker-email" class="oauth-account-email">agatha.stewart@gmail.com</span>
+            </div>
+            <span class="oauth-check-badge">✓</span>
+          </div>
+
+          <!-- Custom Account Section -->
+          <div class="oauth-custom-section">
+            <button type="button" class="btn-toggle-custom-oauth" id="btn-toggle-google-custom">
+              <span>+ Use another Google account</span>
+            </button>
+            <div id="google-custom-inputs" class="oauth-custom-inputs" style="display: none;">
+              <div class="form-group" style="margin-bottom: 0.6rem;">
+                <label class="form-label" for="google-custom-name">Full Name</label>
+                <input type="text" id="google-custom-name" class="form-input" placeholder="Your Name" value="Agatha Stewart" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="google-custom-email">Google Email</label>
+                <input type="email" id="google-custom-email" class="form-input" placeholder="name@gmail.com" value="agatha.stewart@gmail.com" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p class="oauth-privacy-note">
+          Google will securely authenticate your session with AifyCycle. Your intimate cycle and symptom logs remain stored locally in your private on-device sandbox.
+        </p>
+
+        <div class="oauth-modal-actions">
+          <button type="button" id="btn-confirm-google-login" class="btn-primary btn-google-confirm">
+            <svg viewBox="0 0 24 24" width="18" height="18">
+              <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3.03h3.88c2.27-2.09 3.66-5.17 3.66-9.12z"/>
+              <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.03c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.13C3.27 21.36 7.35 24 12 24z"/>
+              <path fill="#FBBC05" d="M5.28 14.29c-.25-.72-.38-1.49-.38-2.29s.13-1.57.38-2.29V6.58H1.25C.45 8.18 0 10.03 0 12s.45 3.82 1.25 5.42l4.03-3.13z"/>
+              <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.27 2.64 1.25 6.58l4.03 3.13c.95-2.83 3.6-4.96 6.72-4.96z"/>
+            </svg>
+            <span id="btn-google-confirm-label">Continue with Google</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       MODAL: APPLE ID AUTHORIZATION
+       =================================================================== -->
+  <div id="modal-oauth-apple" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="apple-modal-title">
+    <div class="modal-content modal-auth-oauth modal-apple-theme">
+      <div class="modal-header oauth-modal-header">
+        <div class="oauth-brand-header">
+          <svg class="oauth-modal-logo" viewBox="0 0 170 170" width="28" height="28" fill="currentColor">
+            <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.04-7.59-7.71-11.66-14.01-6.1-9.46-10.9-20.2-14.4-32.22-3.5-12.02-5.25-23.23-5.25-33.64 0-14.56 3.69-26.65 11.07-36.27 7.38-9.61 16.7-14.52 27.96-14.74 4.36 0 9.27 1.14 14.74 3.41 5.47 2.27 9.09 3.46 10.86 3.56 1.48-.1 5.25-1.34 11.31-3.71 6.06-2.37 11.22-3.41 15.48-3.13 13.9.72 24.63 5.48 32.2 14.28-12.23 7.42-18.23 17.58-18.01 30.49.22 10.15 4.14 18.73 11.75 25.75 7.61 7.02 16.53 11.08 26.76 12.18-2.18 6.74-4.8 13.1-7.85 19.09zm-38.35-104.9c0-7.3 2.66-14.25 7.97-20.85 5.31-6.6 11.83-10.74 19.57-12.43.22 1.09.33 2.18.33 3.26 0 7.3-2.73 14.35-8.19 21.14-5.46 6.79-12.1 11.05-19.92 12.78-.1-.98-.2-1.98-.2-2.9z"/>
+          </svg>
+          <div>
+            <h2 id="apple-modal-title" class="oauth-modal-title">Sign in with Apple</h2>
+            <p class="oauth-modal-sub">Do you want to sign in to AifyCycle with your Apple ID?</p>
+          </div>
+        </div>
+        <button type="button" class="btn-close-modal" aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="oauth-modal-body">
+        <div class="apple-id-profile-summary">
+          <div class="apple-id-badge-circle"></div>
+          <div>
+            <strong id="apple-display-name">Agatha Stewart</strong>
+            <span class="apple-id-caption">Apple Account</span>
+          </div>
+        </div>
+
+        <div class="apple-email-options">
+          <label class="apple-option-row">
+            <input type="radio" name="apple-email-choice" value="share" checked />
+            <div class="apple-option-text">
+              <span class="option-title">Share My Email</span>
+              <span class="option-desc">agatha.cycle@icloud.com</span>
+            </div>
+          </label>
+          <label class="apple-option-row">
+            <input type="radio" name="apple-email-choice" value="hide" />
+            <div class="apple-option-text">
+              <span class="option-title">Hide My Email</span>
+              <span class="option-desc">aify.c8f3m1@privaterelay.appleid.com</span>
+            </div>
+          </label>
+        </div>
+
+        <!-- Biometric verification state -->
+        <div id="apple-biometric-indicator" class="apple-biometric-box" style="display: none;">
+          <div class="biometric-fingerprint">
+            <span class="biometric-ring ring-1"></span>
+            <span class="biometric-ring ring-2"></span>
+            <span class="biometric-icon"></span>
+          </div>
+          <span class="biometric-label">Verifying Face ID / Touch ID...</span>
+        </div>
+
+        <div class="oauth-modal-actions">
+          <button type="button" id="btn-confirm-apple-login" class="btn-apple-confirm">
+            <svg class="oauth-icon" viewBox="0 0 170 170" width="16" height="16" fill="currentColor">
+              <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.04-7.59-7.71-11.66-14.01-6.1-9.46-10.9-20.2-14.4-32.22-3.5-12.02-5.25-23.23-5.25-33.64 0-14.56 3.69-26.65 11.07-36.27 7.38-9.61 16.7-14.52 27.96-14.74 4.36 0 9.27 1.14 14.74 3.41 5.47 2.27 9.09 3.46 10.86 3.56 1.48-.1 5.25-1.34 11.31-3.71 6.06-2.37 11.22-3.41 15.48-3.13 13.9.72 24.63 5.48 32.2 14.28-12.23 7.42-18.23 17.58-18.01 30.49.22 10.15 4.14 18.73 11.75 25.75 7.61 7.02 16.53 11.08 26.76 12.18-2.18 6.74-4.8 13.1-7.85 19.09zm-38.35-104.9c0-7.3 2.66-14.25 7.97-20.85 5.31-6.6 11.83-10.74 19.57-12.43.22 1.09.33 2.18.33 3.26 0 7.3-2.73 14.35-8.19 21.14-5.46 6.79-12.1 11.05-19.92 12.78-.1-.98-.2-1.98-.2-2.9z"/>
+            </svg>
+            <span>Continue with Touch ID / Face ID</span>
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ===================================================================

@@ -128,6 +128,37 @@ class SupabaseService {
   }
 
   /**
+   * Fetch Supabase Auth settings to see which providers are enabled on the backend
+   */
+  async getAuthSettings() {
+    if (this._cachedSettings) return this._cachedSettings;
+    const config = await this._resolveConfig();
+    if (!config?.url || !config?.anonKey) return null;
+
+    try {
+      const res = await fetch(`${config.url}/auth/v1/settings`, {
+        headers: { apikey: config.anonKey },
+        signal: AbortSignal.timeout(3000)
+      });
+      if (res.ok) {
+        this._cachedSettings = await res.json();
+        return this._cachedSettings;
+      }
+    } catch (e) {
+      console.warn('[Supabase] Could not fetch auth settings:', e.message);
+    }
+    return null;
+  }
+
+  /**
+   * Check if an external OAuth provider (google, apple) is enabled in Supabase
+   */
+  async isProviderEnabled(provider) {
+    const settings = await this.getAuthSettings();
+    return Boolean(settings?.external?.[provider]);
+  }
+
+  /**
    * Save custom Supabase credentials from Settings modal
    */
   setCustomConfig(url, anonKey) {

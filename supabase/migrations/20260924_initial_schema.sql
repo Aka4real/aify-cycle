@@ -4,10 +4,7 @@
 -- Safe to run idempotently in Supabase Cloud SQL Editor.
 -- ============================================================================
 
--- 1. Ensure pgcrypto is available in the extensions schema (for secure share tokens)
-CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA extensions;
-
--- 2. Shared updated_at trigger helper (hardened search_path)
+-- 1. Shared updated_at trigger helper (hardened search_path)
 CREATE OR REPLACE FUNCTION public.set_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -160,7 +157,7 @@ CREATE TABLE IF NOT EXISTS public.partner_shares (
   owner_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   partner_email TEXT,
   partner_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  share_token TEXT UNIQUE NOT NULL DEFAULT encode(extensions.gen_random_bytes(24), 'hex'),
+  share_token TEXT UNIQUE NOT NULL DEFAULT replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', ''),
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'revoked')),
   permissions JSONB NOT NULL DEFAULT '{
     "show_current_phase": true,

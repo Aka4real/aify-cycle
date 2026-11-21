@@ -1,10 +1,20 @@
 -- ============================================================================
--- AifyCycle - Supabase PostgreSQL Schema & Security Policies
+-- AifyCycle - Supabase Cloud PostgreSQL Schema & Security Policies
 -- Migration: 20260924_initial_schema.sql
+-- Safe to run idempotently in Supabase Cloud SQL Editor.
 -- ============================================================================
 
--- 1. Enable UUID Extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- 1. Ensure pgcrypto is available in the extensions schema (for secure share tokens)
+CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA extensions;
+
+-- 2. Shared updated_at trigger helper (hardened search_path)
+CREATE OR REPLACE FUNCTION public.set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SET search_path = '';
 
 -- ============================================================================
 -- TABLE: profiles
@@ -13,16 +23,24 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   user_name TEXT NOT NULL DEFAULT 'User',
-  partner_name TEXT DEFAULT 'Partner',
+  partner_name TEXT DEFAULT '',
   cycle_length INTEGER NOT NULL DEFAULT 28 CHECK (cycle_length BETWEEN 21 AND 45),
   period_length INTEGER NOT NULL DEFAULT 5 CHECK (period_length BETWEEN 2 AND 10),
-  last_period_start DATE NOT NULL,
+  last_period_start DATE,
   reminder_enabled BOOLEAN NOT NULL DEFAULT true,
   notifications JSONB NOT NULL DEFAULT '{"periodReminderDays": 2, "fertileWindowAlert": true}'::jsonb,
-  telemetry_enabled BOOLEAN NOT NULL DEFAULT true,
+  telemetry_enabled BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Allow nullable last_period_start on upgrades from older schema versions
+ALTER TABLE public.profiles ALTER COLUMN last_period_start DROP NOT NULL;
+
+DROP TRIGGER IF EXISTS trg_profiles_updated_at ON public.profiles;
+CREATE TRIGGER trg_profiles_updated_at
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
@@ -30,15 +48,16 @@ DROP POLICY IF EXISTS "Users can view and manage their own profile" ON public.pr
 CREATE POLICY "Users can view and manage their own profile"
   ON public.profiles
   FOR ALL
-  USING (auth.uid() = id)
-  WITH CHECK (auth.uid() = id);
+  TO authenticated
+  USING ((select auth.uid()) = id)
+  WITH CHECK ((select auth.uid()) = id);
 
 -- ============================================================================
 -- TABLE: cycle_logs
 -- Daily reproductive, symptom, mood, and biometric health logs
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.cycle_logs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   date_key DATE NOT NULL,
   flow TEXT CHECK (flow IN ('none', 'spotting', 'light', 'medium', 'heavy')),
@@ -59,21 +78,27 @@ CREATE TABLE IF NOT EXISTS public.cycle_logs (
 
 CREATE INDEX IF NOT EXISTS idx_cycle_logs_user_date ON public.cycle_logs(user_id, date_key DESC);
 
+DROP TRIGGER IF EXISTS trg_cycle_logs_updated_at ON public.cycle_logs;
+CREATE TRIGGER trg_cycle_logs_updated_at
+  BEFORE UPDATE ON public.cycle_logs
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
 ALTER TABLE public.cycle_logs ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can manage their own cycle logs" ON public.cycle_logs;
 CREATE POLICY "Users can manage their own cycle logs"
   ON public.cycle_logs
   FOR ALL
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  TO authenticated
+  USING ((select auth.uid()) = user_id)
+  WITH CHECK ((select auth.uid()) = user_id);
 
 -- ============================================================================
 -- TABLE: ai_memories
 -- Personalized learned habits, remedy preferences, and sensitivities
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.ai_memories (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   category TEXT NOT NULL CHECK (category IN ('remedy_preference', 'cycle_pattern', 'lifestyle_habit', 'personal_goal', 'sensitivity_trigger', 'general')),
   fact TEXT NOT NULL,
@@ -85,21 +110,27 @@ CREATE TABLE IF NOT EXISTS public.ai_memories (
 
 CREATE INDEX IF NOT EXISTS idx_ai_memories_user ON public.ai_memories(user_id);
 
+DROP TRIGGER IF EXISTS trg_ai_memories_updated_at ON public.ai_memories;
+CREATE TRIGGER trg_ai_memories_updated_at
+  BEFORE UPDATE ON public.ai_memories
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
 ALTER TABLE public.ai_memories ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view and manage their AI memories" ON public.ai_memories;
 CREATE POLICY "Users can view and manage their AI memories"
   ON public.ai_memories
   FOR ALL
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  TO authenticated
+  USING ((select auth.uid()) = user_id)
+  WITH CHECK ((select auth.uid()) = user_id);
 
 -- ============================================================================
 -- TABLE: ai_chat_history
 -- Conversational logs with the AI Coach
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.ai_chat_history (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
   content TEXT NOT NULL,
@@ -116,19 +147,20 @@ DROP POLICY IF EXISTS "Users can manage their own chat history" ON public.ai_cha
 CREATE POLICY "Users can manage their own chat history"
   ON public.ai_chat_history
   FOR ALL
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  TO authenticated
+  USING ((select auth.uid()) = user_id)
+  WITH CHECK ((select auth.uid()) = user_id);
 
 -- ============================================================================
 -- TABLE: partner_shares
 -- Granular access-controlled sharing between partners
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.partner_shares (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   owner_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   partner_email TEXT,
   partner_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  share_token TEXT UNIQUE NOT NULL DEFAULT encode(gen_random_bytes(24), 'hex'),
+  share_token TEXT UNIQUE NOT NULL DEFAULT encode(extensions.gen_random_bytes(24), 'hex'),
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'revoked')),
   permissions JSONB NOT NULL DEFAULT '{
     "show_current_phase": true,
@@ -143,31 +175,49 @@ CREATE TABLE IF NOT EXISTS public.partner_shares (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+DROP TRIGGER IF EXISTS trg_partner_shares_updated_at ON public.partner_shares;
+CREATE TRIGGER trg_partner_shares_updated_at
+  BEFORE UPDATE ON public.partner_shares
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
 ALTER TABLE public.partner_shares ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Owner has full access to partner shares" ON public.partner_shares;
 CREATE POLICY "Owner has full access to partner shares"
   ON public.partner_shares
   FOR ALL
-  USING (auth.uid() = owner_id);
+  TO authenticated
+  USING ((select auth.uid()) = owner_id)
+  WITH CHECK ((select auth.uid()) = owner_id);
 
 DROP POLICY IF EXISTS "Partner can view active share grants" ON public.partner_shares;
 CREATE POLICY "Partner can view active share grants"
   ON public.partner_shares
   FOR SELECT
-  USING (auth.uid() = partner_user_id AND status = 'active');
+  TO authenticated
+  USING ((select auth.uid()) = partner_user_id AND status = 'active');
 
 -- ============================================================================
 -- GDPR / CCPA ARTICLE 17: Right to Erasure Cascade Function
+-- Hardened SECURITY DEFINER with empty search_path and authenticated-only execute
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.delete_user_data()
 RETURNS void AS $$
+DECLARE
+  v_uid UUID := auth.uid();
 BEGIN
-  DELETE FROM public.profiles WHERE id = auth.uid();
-  DELETE FROM public.cycle_logs WHERE user_id = auth.uid();
-  DELETE FROM public.ai_memories WHERE user_id = auth.uid();
-  DELETE FROM public.ai_chat_history WHERE user_id = auth.uid();
-  DELETE FROM public.partner_shares WHERE owner_id = auth.uid() OR partner_user_id = auth.uid();
-  DELETE FROM auth.users WHERE id = auth.uid();
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  DELETE FROM public.profiles WHERE id = v_uid;
+  DELETE FROM public.cycle_logs WHERE user_id = v_uid;
+  DELETE FROM public.ai_memories WHERE user_id = v_uid;
+  DELETE FROM public.ai_chat_history WHERE user_id = v_uid;
+  DELETE FROM public.partner_shares WHERE owner_id = v_uid OR partner_user_id = v_uid;
+  DELETE FROM auth.users WHERE id = v_uid;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
+
+REVOKE ALL ON FUNCTION public.delete_user_data() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.delete_user_data() TO authenticated;

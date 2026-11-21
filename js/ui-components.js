@@ -313,7 +313,7 @@ export class UIComponents {
 
     const hour = new Date().getHours();
     const timeGreeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-    const greetingText = `${timeGreeting}, ${profile.userName || 'Agatha'} 🌸`;
+    const greetingText = profile.userName ? `${timeGreeting}, ${profile.userName} 🌸` : `${timeGreeting} 🌸`;
     if (bannerName) {
       bannerName.textContent = greetingText;
     }

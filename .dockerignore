@@ -4,6 +4,9 @@
 .env.*
 !.env.example
 .gemini
+.vercel
+.playwright-mcp
+dist
 *.md
 node_modules
 npm-debug.log

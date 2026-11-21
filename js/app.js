@@ -5,7 +5,7 @@
  */
 
 import { storage } from './storage.js';
-import { getCycleStatus, formatDateKey, parseDateKey } from './cycle-engine.js';
+import { getCycleStatus, formatDateKey, parseDateKey, addDays } from './cycle-engine.js';
 import { ui } from './ui-components.js';
 import { AuthManager } from './auth.js';
 import { OnboardingWizard } from './onboarding.js';
@@ -26,30 +26,44 @@ class AifyCycleApp {
     this.auth = new AuthManager();
     this.onboarding = null;
     this.aiCoach = null;
+    this._authListenersAttached = false;
+    this._mainListenersAttached = false;
   }
 
-  init() {
+  async init() {
     this.setupTheme();
     this._initComplianceAndConsent();
 
-    // Register auth redirect callback for OAuth return
+    // Register auth redirect callback for OAuth return / background session restore
     this.auth.setOnAuthRedirectCallback(() => {
       this._routeUser();
     });
 
-    // Check if returning from Supabase OAuth redirect with access token or code
-    if (window.location.hash.includes('access_token') || window.location.search.includes('code=')) {
-      supabaseService.init().then(() => {
-        this.auth.checkSession().then(user => {
-          if (user) {
-            window.history.replaceState({}, document.title, window.location.pathname);
-            this._routeUser();
-          }
-        });
+    const urlHasAuthParams =
+      window.location.search.includes('code=') ||
+      window.location.search.includes('error=') ||
+      window.location.hash.includes('access_token') ||
+      window.location.hash.includes('error=');
+
+    if (urlHasAuthParams) {
+      // Wait for PKCE code exchange / error parsing before routing so auth screen doesn't flash
+      const { error } = await this.auth.handleOAuthCallback();
+      this._routeUser();
+      if (error) {
+        this._showAuthErrors([error]);
+      }
+    } else {
+      // Instant local-first render, then reconcile Supabase session in background
+      this._routeUser();
+      this.auth.handleOAuthCallback().then(({ user, error }) => {
+        if (error) {
+          console.warn('[Auth] Session verification notice:', error);
+        } else if (user) {
+          this._routeUser();
+        }
       });
     }
 
-    this._routeUser();
     console.log('🌸 AifyCycle Initialized successfully.');
   }
 
@@ -118,9 +132,26 @@ class AifyCycleApp {
     document.getElementById('main-app-container').style.display = 'none';
 
     this._attachAuthListeners();
+    this._syncOAuthButtonsAvailability();
+  }
+
+  async _syncOAuthButtonsAvailability() {
+    const btnApple = document.getElementById('btn-oauth-apple');
+    if (!btnApple) return;
+
+    // Keep Sign in with Apple hidden until Apple provider is enabled in Supabase Cloud
+    try {
+      await supabaseService.init();
+      const providers = await supabaseService.getAuthProviderStatus();
+      btnApple.style.display = providers.apple === true ? '' : 'none';
+    } catch (e) {
+      btnApple.style.display = 'none';
+    }
   }
 
   _attachAuthListeners() {
+    if (this._authListenersAttached) return;
+    this._authListenersAttached = true;
     // Tab switching
     const loginTab = document.getElementById('auth-tab-login');
     const signupTab = document.getElementById('auth-tab-signup');
@@ -213,133 +244,33 @@ class AifyCycleApp {
       });
     }
 
-    // --- Interactive Google OAuth Flow ---
-    const btnGoogle = document.getElementById('btn-oauth-google');
-    const modalGoogle = document.getElementById('modal-oauth-google');
-    if (btnGoogle) {
-      btnGoogle.addEventListener('click', async () => {
-        const span = btnGoogle.querySelector('span');
+    // --- Real Supabase OAuth Flows (Google & Apple) ---
+    const wireOAuthButton = (btnId, provider, providerLabel) => {
+      const btn = document.getElementById(btnId);
+      if (!btn) return;
+      btn.addEventListener('click', async () => {
+        const span = btn.querySelector('span');
         const origText = span ? span.textContent : '';
-        if (span) span.textContent = 'Connecting...';
+        this._clearAuthErrors();
+        btn.disabled = true;
+        if (span) span.textContent = `Connecting to ${providerLabel}...`;
 
         try {
-          const res = await this.auth.signInWithOAuth('google');
+          const res = await this.auth.signInWithOAuth(provider);
           if (res.redirecting) return;
 
-          if (modalGoogle) {
-            const noteEl = modalGoogle.querySelector('.oauth-privacy-note');
-            if (noteEl && res.providerNotConfiguredOnServer) {
-              noteEl.innerHTML = '⚠️ <strong>Google OAuth is not enabled in Supabase yet.</strong> You can continue with this verified profile in local sandbox mode, or enable Google in Supabase Studio.';
-            }
-            modalGoogle.classList.add('active');
-          }
+          this._showAuthErrors([res.error || `Could not sign in with ${providerLabel}.`]);
         } finally {
+          btn.disabled = false;
           if (span) span.textContent = origText;
         }
       });
-    }
+    };
 
-    // Google Modal: toggle custom account inputs
-    const btnToggleGoogleCustom = document.getElementById('btn-toggle-google-custom');
-    const googleCustomInputs = document.getElementById('google-custom-inputs');
-    if (btnToggleGoogleCustom && googleCustomInputs) {
-      btnToggleGoogleCustom.addEventListener('click', () => {
-        const isHidden = googleCustomInputs.style.display === 'none';
-        googleCustomInputs.style.display = isHidden ? 'block' : 'none';
-        btnToggleGoogleCustom.querySelector('span').textContent = isHidden ? '− Use default account' : '+ Use another Google account';
-      });
-    }
+    wireOAuthButton('btn-oauth-google', 'google', 'Google');
+    wireOAuthButton('btn-oauth-apple', 'apple', 'Apple');
 
-    // Google Modal: confirm sign in
-    const btnConfirmGoogle = document.getElementById('btn-confirm-google-login');
-    if (btnConfirmGoogle && modalGoogle) {
-      btnConfirmGoogle.addEventListener('click', async () => {
-        btnConfirmGoogle.disabled = true;
-        const origLabel = btnConfirmGoogle.querySelector('span')?.textContent || '';
-        if (btnConfirmGoogle.querySelector('span')) {
-          btnConfirmGoogle.querySelector('span').textContent = 'Authenticating with Google...';
-        }
-
-        try {
-          const isCustomOpen = googleCustomInputs && googleCustomInputs.style.display !== 'none';
-          const customName = document.getElementById('google-custom-name')?.value.trim();
-          const customEmail = document.getElementById('google-custom-email')?.value.trim();
-
-          const name = (isCustomOpen && customName) ? customName : 'Agatha Stewart';
-          const email = (isCustomOpen && customEmail) ? customEmail : 'agatha.stewart@gmail.com';
-          const avatarUrl = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80';
-
-          const res = await this.auth.completeOAuthSignIn('google', { name, email, avatarUrl });
-          if (res.success) {
-            modalGoogle.classList.remove('active');
-            ui.showToast(`Welcome, ${name}! Signed in with Google`, '🌸');
-            this._routeUser();
-          } else {
-            this._showAuthErrors([res.error || 'Failed to authenticate with Google']);
-          }
-        } finally {
-          btnConfirmGoogle.disabled = false;
-          if (btnConfirmGoogle.querySelector('span')) {
-            btnConfirmGoogle.querySelector('span').textContent = origLabel;
-          }
-        }
-      });
-    }
-
-    // --- Interactive Apple OAuth Flow ---
-    const btnApple = document.getElementById('btn-oauth-apple');
-    const modalApple = document.getElementById('modal-oauth-apple');
-    if (btnApple) {
-      btnApple.addEventListener('click', async () => {
-        const span = btnApple.querySelector('span');
-        const origText = span ? span.textContent : '';
-        if (span) span.textContent = 'Connecting...';
-
-        try {
-          const res = await this.auth.signInWithOAuth('apple');
-          if (res.redirecting) return;
-
-          if (modalApple) {
-            modalApple.classList.add('active');
-          }
-        } finally {
-          if (span) span.textContent = origText;
-        }
-      });
-    }
-
-    // Apple Modal: confirm sign in with Touch ID / Face ID
-    const btnConfirmApple = document.getElementById('btn-confirm-apple-login');
-    const appleBiometricBox = document.getElementById('apple-biometric-indicator');
-    if (btnConfirmApple && modalApple) {
-      btnConfirmApple.addEventListener('click', async () => {
-        btnConfirmApple.disabled = true;
-        if (appleBiometricBox) appleBiometricBox.style.display = 'flex';
-
-        // 450ms biometric animation delay for authentic Apple experience
-        await new Promise(r => setTimeout(r, 450));
-
-        try {
-          const choice = document.querySelector('input[name="apple-email-choice"]:checked')?.value || 'share';
-          const email = choice === 'hide' ? 'aify.c8f3m1@privaterelay.appleid.com' : 'agatha.cycle@icloud.com';
-          const name = 'Agatha Stewart';
-
-          const res = await this.auth.completeOAuthSignIn('apple', { name, email, avatarUrl: null });
-          if (res.success) {
-            modalApple.classList.remove('active');
-            ui.showToast('Authenticated securely with Apple ID ', '🍎');
-            this._routeUser();
-          } else {
-            this._showAuthErrors([res.error || 'Failed to authenticate with Apple']);
-          }
-        } finally {
-          btnConfirmApple.disabled = false;
-          if (appleBiometricBox) appleBiometricBox.style.display = 'none';
-        }
-      });
-    }
-
-    // Modal close buttons
+    // Modal close buttons (for legal modals accessible on auth screen)
     document.querySelectorAll('.modal-overlay .btn-close-modal').forEach(btn => {
       btn.addEventListener('click', () => {
         const modal = btn.closest('.modal-overlay');
@@ -352,9 +283,13 @@ class AifyCycleApp {
     if (guestBtn) {
       guestBtn.addEventListener('click', async () => {
         guestBtn.disabled = true;
-        await this.auth.guestLogin();
-        ui.showToast('Continuing in private guest mode', '✨');
-        this._routeUser();
+        try {
+          await this.auth.guestLogin();
+          ui.showToast('Continuing in private guest mode', '✨');
+          this._routeUser();
+        } finally {
+          guestBtn.disabled = false;
+        }
       });
     }
   }
@@ -363,7 +298,12 @@ class AifyCycleApp {
     const display = document.getElementById('auth-error-display');
     if (display) {
       display.style.display = 'block';
-      display.innerHTML = errors.map(e => `<p>⚠️ ${e}</p>`).join('');
+      display.textContent = '';
+      (errors || []).forEach(errText => {
+        const p = document.createElement('p');
+        p.textContent = `⚠️ ${errText}`;
+        display.appendChild(p);
+      });
       // Shake animation
       display.classList.remove('shake');
       void display.offsetWidth;
@@ -415,11 +355,19 @@ class AifyCycleApp {
     document.getElementById('main-app-container').style.display = '';
 
     this.renderAll();
-    this.attachEventListeners();
+    if (!this._mainListenersAttached) {
+      this._mainListenersAttached = true;
+      this.attachEventListeners();
+    }
 
-    // Initialize AI Coach
-    this.aiCoach = new AICoach();
-    this.aiCoach.init();
+    // Initialize AI Coach once; re-render if switching back in
+    if (!this.aiCoach) {
+      this.aiCoach = new AICoach();
+      this.aiCoach.init();
+    } else {
+      this.aiCoach._loadChatHistory?.();
+      this.aiCoach.renderChatUI();
+    }
   }
 
   setupTheme() {
@@ -494,8 +442,12 @@ class AifyCycleApp {
 
     try {
       await supabaseService.init();
-      if (supabaseService.hasConfig()) {
-        statusPill.textContent = '☁️ Cloud Sync Active';
+      const info = supabaseService.getConnectionInfo();
+      if (info.configured) {
+        const label = info.source === 'custom'
+          ? `☁️ Custom Override (${info.host})`
+          : `☁️ Cloud Active (${info.host})`;
+        statusPill.textContent = label;
         statusPill.className = 'ai-status-pill pill-server';
       } else {
         statusPill.textContent = '📱 Local-First Sandbox';
@@ -551,7 +503,7 @@ class AifyCycleApp {
     const headerGreetingEl = document.getElementById('header-user-greeting');
     const hour = new Date().getHours();
     const timeGreeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-    const greetingText = `${timeGreeting}, ${profile.userName || 'Agatha'} 🌸`;
+    const greetingText = profile.userName ? `${timeGreeting}, ${profile.userName} 🌸` : `${timeGreeting} 🌸`;
     if (greetingEl) {
       greetingEl.textContent = greetingText;
     }
@@ -559,11 +511,16 @@ class AifyCycleApp {
       headerGreetingEl.textContent = greetingText;
     }
 
-    // Provider badge in banner
+    // User avatar & provider badge in banner
+    const bannerAvatar = document.getElementById('banner-user-avatar');
     const bannerProvider = document.getElementById('banner-provider-badge');
     const user = this.auth.currentUser;
+    if (bannerAvatar) {
+      bannerAvatar.src = user?.avatarUrl || '/icon-192.png';
+      bannerAvatar.alt = profile.userName || user?.name || 'User Profile';
+    }
     if (bannerProvider) {
-      bannerProvider.textContent = user?.provider === 'google' ? '🇬' :
+      bannerProvider.textContent = user?.provider === 'google' ? 'G' :
                                    user?.provider === 'apple' ? '' : '🌸';
       bannerProvider.title = user?.provider ? `Signed in with ${user.provider}` : 'Private Account';
     }
@@ -1002,9 +959,13 @@ class AifyCycleApp {
           const downRes = await storage.syncFromCloud();
           if (upRes.success || downRes.success) {
             this.renderAll();
-            ui.showToast('All cycle records & memories synchronized with Supabase!', '☁️');
+            ui.showToast('Cycle records & memories synchronized with Supabase Cloud!', '☁️');
+          } else if (upRes.reason === 'not_authenticated' || downRes.reason === 'not_authenticated') {
+            ui.showToast('Sign in with Google or Email to sync with Supabase Cloud.', 'ℹ️');
+          } else if (upRes.reason === 'demo_mode') {
+            ui.showToast('Demo data is kept local and not uploaded to cloud.', 'ℹ️');
           } else {
-            ui.showToast('Sync check complete. Local-first storage active.', 'ℹ️');
+            ui.showToast(`Cloud sync failed: ${upRes.error || downRes.error || 'Unknown error'}`, '⚠️');
           }
         } catch (e) {
           ui.showToast('Cloud sync error: ' + e.message, '⚠️');
@@ -1093,16 +1054,20 @@ class AifyCycleApp {
     // GDPR Right to Erasure: Complete Account & Data Wipe
     const btnGdprWipe = document.getElementById('btn-gdpr-wipe');
     if (btnGdprWipe) {
-      btnGdprWipe.addEventListener('click', () => {
+      btnGdprWipe.addEventListener('click', async () => {
         const confirmed = confirm(
           '⚠️ GDPR DATA ERASURE WARNING:\n\n' +
-          'This will permanently delete all your account credentials, menstrual cycle logs, symptom entries, AI chat history, learned health memories, API keys, and local analytics from this device.\n\n' +
+          'This will permanently delete all your account credentials, menstrual cycle logs, symptom entries, AI chat history, learned health memories, API keys, and local analytics from this device and Supabase Cloud.\n\n' +
           'This action is irreversible. Do you wish to proceed?'
         );
 
         if (confirmed) {
-          storage.purgeAllUserData();
-          alert('All your personal data, cycle records, and sessions have been permanently erased from this device.');
+          const result = await storage.purgeAllUserData();
+          if (result?.error) {
+            alert(`Local data erased, but cloud erasure reported an error: ${result.error}`);
+          } else {
+            alert('All your personal data, cycle records, and sessions have been permanently erased.');
+          }
           window.location.reload();
         }
       });

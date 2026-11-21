@@ -4,6 +4,11 @@
 .env.*
 !.env.example
 
+# Build & deployment artifacts
+dist/
+.vercel/
+.playwright-mcp/
+
 # Dependencies
 node_modules/
 package-lock.json
@@ -21,3 +26,6 @@ Thumbs.db
 *.swo
 .vscode/
 .idea/
+
+.vercel
+.env*

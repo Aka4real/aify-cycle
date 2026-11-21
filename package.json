@@ -1,12 +1,11 @@
 {
   "name": "aify-cycle",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "AifyCycle - Period & Holistic Health Tracker",
-  "main": "server.js",
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js",
-    "build": "echo 'Static assets ready'"
+    "build": "node scripts/build-static.js"
   },
   "engines": {
     "node": ">=20.0.0"

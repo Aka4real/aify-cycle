@@ -1,7 +1,7 @@
 /**
- * AifyCycle - Authentication Manager with Supabase & Offline-First Fallback
- * Handles Supabase cloud authentication, local session persistence, anonymous guest mode,
- * and seamless fallback when operating in standalone offline mode.
+ * AifyCycle - Authentication Manager (Supabase Cloud PKCE OAuth + Private Guest Mode)
+ * Handles real Google/Apple OAuth, email/password auth via Supabase Cloud,
+ * cloud-to-local profile synchronization, and offline private guest mode.
  */
 
 import { storage } from './storage.js';
@@ -11,50 +11,91 @@ export class AuthManager {
   constructor() {
     this.isAuthenticated = false;
     this.currentUser = null;
+    this._onAuthRedirectCallback = null;
+    this._lastSyncedUserId = null;
+    this._applyPromise = null;
     this._loadSession();
     this._initSupabaseAuthSync();
   }
 
   _loadSession() {
     const session = storage.getAuthSession();
-    if (session && session.isLoggedIn) {
+    if (session && session.isLoggedIn && session.user) {
       this.isAuthenticated = true;
       this.currentUser = session.user;
     }
   }
 
-  _initSupabaseAuthSync() {
-    this._onAuthRedirectCallback = null;
+  _mapSupabaseUser(sbUser) {
+    const meta = sbUser.user_metadata || {};
+    const appMeta = sbUser.app_metadata || {};
+    const provider = sbUser.is_anonymous ? 'guest' : (appMeta.provider || 'email');
+    return {
+      id: sbUser.id,
+      name: sbUser.is_anonymous
+        ? 'Guest'
+        : (meta.full_name || meta.name || sbUser.email?.split('@')[0] || 'User'),
+      email: sbUser.email || (sbUser.is_anonymous ? 'guest@aifycycle.app' : ''),
+      avatarUrl: meta.avatar_url || meta.picture || null,
+      provider,
+      isGuest: Boolean(sbUser.is_anonymous),
+      createdAt: sbUser.created_at
+    };
+  }
 
-    supabaseService.onAuthStateChange(async (event, session) => {
-      if ((event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION') && session?.user) {
-        this.isAuthenticated = true;
-        const meta = session.user.user_metadata || {};
-        this.currentUser = {
-          id: session.user.id,
-          name: meta.full_name || meta.name || session.user.email?.split('@')[0] || 'User',
-          email: session.user.email,
-          avatarUrl: meta.avatar_url || meta.picture || null,
-          isGuest: session.user.is_anonymous || false,
-          createdAt: session.user.created_at
-        };
-        this._createSession(this.currentUser);
-        // Automatically sync cloud logs down to local cache
-        await storage.syncFromCloud().catch(() => { });
+  async _applySupabaseUser(sbUser, { notifyRoute = false } = {}) {
+    if (!sbUser) return null;
 
-        // Reconcile user name with profile
+    if (this._applyPromise && this._lastSyncedUserId === sbUser.id) {
+      return this._applyPromise;
+    }
+
+    this._lastSyncedUserId = sbUser.id;
+    const mapped = this._mapSupabaseUser(sbUser);
+    this._createSession(mapped);
+
+    this._applyPromise = (async () => {
+      const syncRes = await storage.syncFromCloud().catch(() => ({ success: false, hasCloudProfile: false }));
+
+      // Returning or migrated user already has cloud records: skip onboarding
+      if (syncRes?.hasCloudProfile) {
+        storage.setOnboardingCompleted(true);
+      } else if (!mapped.isGuest) {
+        // Brand-new account: prefill display name locally without pushing an incomplete row
         const profile = storage.getProfile();
-        if ((!profile.userName || profile.userName === 'User') && this.currentUser.name !== 'User') {
-          profile.userName = this.currentUser.name;
-          storage.saveProfile(profile);
+        if ((!profile.userName || profile.userName === 'User') && mapped.name && mapped.name !== 'User') {
+          profile.userName = mapped.name;
+          storage.saveProfile(profile, { skipCloudSync: true });
         }
+      }
 
-        if (typeof this._onAuthRedirectCallback === 'function') {
-          this._onAuthRedirectCallback(this.currentUser);
-        }
+      if (notifyRoute && typeof this._onAuthRedirectCallback === 'function') {
+        this._onAuthRedirectCallback(this.currentUser);
+      }
+
+      return this.currentUser;
+    })();
+
+    try {
+      return await this._applyPromise;
+    } finally {
+      this._applyPromise = null;
+    }
+  }
+
+  _initSupabaseAuthSync() {
+    supabaseService.onAuthStateChange(async (event, session) => {
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
+        const wasAuthenticated = this.isAuthenticated && this.currentUser?.id === session.user.id;
+        await this._applySupabaseUser(session.user, {
+          notifyRoute: !wasAuthenticated || event === 'SIGNED_IN'
+        });
+      } else if (event === 'USER_UPDATED' && session?.user) {
+        this._createSession(this._mapSupabaseUser(session.user));
       } else if (event === 'SIGNED_OUT') {
         this.isAuthenticated = false;
         this.currentUser = null;
+        this._lastSyncedUserId = null;
         storage.clearAuthSession();
       }
     });
@@ -65,48 +106,83 @@ export class AuthManager {
   }
 
   /**
-   * Check for an existing active session on page load (useful for OAuth redirects)
+   * Inspect URL for OAuth callback (PKCE ?code=, implicit #access_token=, or ?error=)
+   * and finalize the Supabase session cleanly before rendering the auth screen.
    */
-  async checkSession() {
-    const client = supabaseService.getClient();
-    if (client) {
-      try {
-        const { data: { session } } = await client.auth.getSession();
-        if (session?.user) {
-          const meta = session.user.user_metadata || {};
-          this.currentUser = {
-            id: session.user.id,
-            name: meta.full_name || meta.name || session.user.email?.split('@')[0] || 'User',
-            email: session.user.email,
-            avatarUrl: meta.avatar_url || meta.picture || null,
-            isGuest: session.user.is_anonymous || false,
-            createdAt: session.user.created_at
-          };
-          this._createSession(this.currentUser);
-          await storage.syncFromCloud().catch(() => { });
-          return this.currentUser;
-        }
-      } catch (e) { }
+  async handleOAuthCallback() {
+    const searchParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+
+    const oauthError = searchParams.get('error') || hashParams.get('error');
+    const oauthErrorDesc = searchParams.get('error_description') || hashParams.get('error_description');
+
+    if (oauthError || oauthErrorDesc) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+      const message = oauthErrorDesc
+        ? decodeURIComponent(oauthErrorDesc.replace(/\+/g, ' '))
+        : `Sign-in failed (${oauthError}).`;
+      return { user: null, error: message };
     }
-    return this.currentUser;
+
+    const hasCallbackParams =
+      searchParams.has('code') ||
+      hashParams.has('access_token') ||
+      hashParams.has('refresh_token');
+
+    const client = await supabaseService.init();
+    if (!client) {
+      if (hasCallbackParams) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return { user: null, error: 'Supabase is not configured on this server, so sign-in could not complete.' };
+      }
+      return { user: this.currentUser, error: null };
+    }
+
+    try {
+      const { data: { session }, error } = await client.auth.getSession();
+      if (hasCallbackParams) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+      if (error) {
+        return { user: null, error: error.message };
+      }
+      if (session?.user) {
+        const user = await this._applySupabaseUser(session.user, { notifyRoute: false });
+        return { user, error: null };
+      }
+      // If local cached session belonged to a cloud user whose session expired, clear stale local flag
+      if (this.currentUser && !this.currentUser.isGuest) {
+        this.isAuthenticated = false;
+        this.currentUser = null;
+        storage.clearAuthSession();
+      }
+      return { user: this.currentUser, error: null };
+    } catch (e) {
+      if (hasCallbackParams) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+      return { user: null, error: e.message || 'Could not verify authentication session.' };
+    }
   }
 
   /**
-   * Check if the user is logged in
+   * Check for an existing active session on page load
    */
+  async checkSession() {
+    const res = await this.handleOAuthCallback();
+    return res.user;
+  }
+
   isLoggedIn() {
     return this.isAuthenticated;
   }
 
-  /**
-   * Check if onboarding has been completed
-   */
   hasCompletedOnboarding() {
     return storage.getOnboardingCompleted();
   }
 
   /**
-   * Signup a new user (Supabase Cloud + Local Fallback)
+   * Signup a new user via Supabase Cloud
    */
   async signup({ name, email, password, dateOfBirth }) {
     const errors = this._validateSignup({ name, email, password, dateOfBirth });
@@ -117,73 +193,57 @@ export class AuthManager {
     const cleanEmail = email.trim().toLowerCase();
     const cleanName = name.trim();
 
-    // 1. Try Supabase Auth if connected
-    const client = supabaseService.getClient();
-    if (client) {
-      try {
-        const { data, error } = await client.auth.signUp({
-          email: cleanEmail,
-          password,
-          options: {
-            data: {
-              name: cleanName,
-              dateOfBirth
-            }
-          }
-        });
+    const client = await supabaseService.init();
+    if (!client) {
+      return {
+        success: false,
+        errors: ['Cloud accounts require Supabase to be configured. Use "Continue as Guest" for private local-only tracking.']
+      };
+    }
 
-        if (error) {
-          return { success: false, errors: [error.message] };
-        }
-
-        if (data?.user) {
-          const user = {
-            id: data.user.id,
+    try {
+      const { data, error } = await client.auth.signUp({
+        email: cleanEmail,
+        password,
+        options: {
+          emailRedirectTo: window.location.origin + '/',
+          data: {
+            full_name: cleanName,
             name: cleanName,
-            email: cleanEmail,
-            dateOfBirth,
-            createdAt: data.user.created_at || new Date().toISOString()
-          };
-          this._createSession(user);
-
-          // Sync initial profile
-          const profile = storage.getProfile();
-          profile.userName = cleanName;
-          storage.saveProfile(profile);
-
-          // Upload any pre-existing local logs to their new account
-          await storage.uploadLocalToCloud().catch(() => { });
-
-          return { success: true, user };
+            dateOfBirth: dateOfBirth || null
+          }
         }
-      } catch (err) {
-        console.warn('[Supabase Auth] Signup fallback to local:', err.message);
+      });
+
+      if (error) {
+        return { success: false, errors: [error.message] };
       }
+
+      // Supabase requires email confirmation before granting a session
+      if (data?.user && !data?.session) {
+        return {
+          success: false,
+          requiresEmailConfirmation: true,
+          errors: ['Account created! Please check your email and click the confirmation link before logging in.']
+        };
+      }
+
+      if (data?.user && data?.session) {
+        const user = await this._applySupabaseUser(data.user, { notifyRoute: false });
+        const profile = storage.getProfile();
+        profile.userName = cleanName;
+        storage.saveProfile(profile);
+        return { success: true, user };
+      }
+
+      return { success: false, errors: ['Unable to complete sign up. Please try again.'] };
+    } catch (err) {
+      return { success: false, errors: [err.message || 'Network error while creating your account.'] };
     }
-
-    // 2. Standalone Local Fallback Mode
-    const existingUsers = storage.getUsers();
-    if (existingUsers.find(u => u.email.toLowerCase() === cleanEmail)) {
-      return { success: false, errors: ['An account with this email already exists.'] };
-    }
-
-    const user = {
-      id: this._generateId(),
-      name: cleanName,
-      email: cleanEmail,
-      dateOfBirth,
-      createdAt: new Date().toISOString()
-    };
-
-    existingUsers.push({ ...user, passwordHash: this._simpleHash(password) });
-    storage.saveUsers(existingUsers);
-    this._createSession(user);
-
-    return { success: true, user };
   }
 
   /**
-   * Login an existing user (Supabase Cloud + Local Fallback)
+   * Login an existing user via Supabase Cloud
    */
   async login({ email, password }) {
     const errors = this._validateLogin({ email, password });
@@ -193,154 +253,108 @@ export class AuthManager {
 
     const cleanEmail = email.trim().toLowerCase();
 
-    // 1. Try Supabase Auth if connected
-    const client = supabaseService.getClient();
-    if (client) {
-      try {
-        const { data, error } = await client.auth.signInWithPassword({
-          email: cleanEmail,
-          password
-        });
+    const client = await supabaseService.init();
+    if (!client) {
+      return {
+        success: false,
+        errors: ['Cloud login requires Supabase to be configured. Use "Continue as Guest" for private local-only tracking.']
+      };
+    }
 
-        if (error) {
-          return { success: false, errors: [error.message] };
-        }
+    try {
+      const { data, error } = await client.auth.signInWithPassword({
+        email: cleanEmail,
+        password
+      });
 
-        if (data?.user) {
-          const user = {
-            id: data.user.id,
-            name: data.user.user_metadata?.name || cleanEmail.split('@')[0],
-            email: cleanEmail,
-            createdAt: data.user.created_at
-          };
-          this._createSession(user);
-          await storage.syncFromCloud().catch(() => { });
-          return { success: true, user };
-        }
-      } catch (err) {
-        console.warn('[Supabase Auth] Login fallback to local:', err.message);
+      if (error) {
+        return { success: false, errors: [error.message] };
       }
+
+      if (data?.user) {
+        const user = await this._applySupabaseUser(data.user, { notifyRoute: false });
+        return { success: true, user };
+      }
+
+      return { success: false, errors: ['Login failed. Please check your credentials and try again.'] };
+    } catch (err) {
+      return { success: false, errors: [err.message || 'Network error while logging in.'] };
     }
-
-    // 2. Standalone Local Fallback Mode
-    const users = storage.getUsers();
-    const user = users.find(u => u.email === cleanEmail);
-
-    if (!user) {
-      return { success: false, errors: ['No account found with this email.'] };
-    }
-
-    if (user.passwordHash !== this._simpleHash(password)) {
-      return { success: false, errors: ['Incorrect password. Please try again.'] };
-    }
-
-    const { passwordHash, ...safeUser } = user;
-    this._createSession(safeUser);
-
-    return { success: true, user: safeUser };
   }
 
   /**
-   * Sign in with Google or Apple OAuth (Supports Supabase Cloud + Authentic Interactive Modal + Seamless Sandbox)
+   * Real OAuth Sign-In via Supabase Cloud (Google / Apple)
    */
-  async signInWithOAuth(provider, options = {}) {
+  async signInWithOAuth(provider) {
     const validProviders = ['google', 'apple'];
     if (!validProviders.includes(provider)) {
-      return { success: false, error: 'Unsupported provider' };
+      return { success: false, error: 'Unsupported sign-in provider.' };
     }
 
-    // 1. If explicit user credentials are provided (from interactive Google/Apple sheet)
-    if (options.customUser) {
-      const defaultName = options.customUser.name?.trim() || (provider === 'google' ? 'Agatha Stewart' : 'Agatha Stewart');
-      const defaultEmail = options.customUser.email?.trim() || (provider === 'google' ? 'agatha.stewart@gmail.com' : 'agatha.cycle@icloud.com');
-      const avatarUrl = options.customUser.avatarUrl || (provider === 'google'
-        ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'
-        : null);
+    const providerLabel = provider === 'google' ? 'Google' : 'Apple';
+    const client = await supabaseService.init();
 
-      const user = {
-        id: `${provider}_` + this._generateId(),
-        name: defaultName,
-        email: defaultEmail,
-        avatarUrl,
-        provider,
-        isGuest: false,
-        createdAt: new Date().toISOString()
+    if (!client) {
+      return {
+        success: false,
+        error: `Cloud authentication is not configured yet. Set SUPABASE_URL and SUPABASE_ANON_KEY to enable ${providerLabel} sign-in, or continue as Guest.`
       };
-
-      this._createSession(user);
-      const profile = storage.getProfile();
-      if (!profile.userName || profile.userName === 'User' || profile.userName === 'Agatha') {
-        profile.userName = user.name;
-        storage.saveProfile(profile);
-      }
-      return { success: true, user };
     }
 
-    // 2. Check if the provider is actually configured and enabled in Supabase GoTrue
-    const client = supabaseService.getClient();
     const isEnabledOnBackend = await supabaseService.isProviderEnabled(provider);
-
-    if (client && isEnabledOnBackend && !options.skipRemote) {
-      try {
-        const { data, error } = await client.auth.signInWithOAuth({
-          provider,
-          options: {
-            redirectTo: window.location.origin + window.location.pathname
-          }
-        });
-
-        if (error) {
-          console.warn(`[Supabase OAuth] ${provider} error (${error.message}). Falling back to interactive modal.`);
-          return { success: false, requireInteractiveModal: true, provider, error: error.message };
-        }
-
-        if (data?.url) {
-          window.location.href = data.url;
-          return { success: true, redirecting: true };
-        }
-      } catch (err) {
-        console.warn(`[Supabase OAuth] ${provider} exception (${err.message}). Launching interactive account sheet.`);
-        return { success: false, requireInteractiveModal: true, provider, error: err.message };
-      }
+    if (isEnabledOnBackend === false) {
+      return {
+        success: false,
+        providerNotConfiguredOnServer: true,
+        error: `${providerLabel} sign-in is not enabled in your Supabase project yet (Authentication → Providers → ${providerLabel}).`
+      };
     }
 
-    // 3. Provider is not enabled on Supabase server or Supabase is not connected
-    return {
-      success: false,
-      requireInteractiveModal: true,
-      provider,
-      providerNotConfiguredOnServer: !isEnabledOnBackend
-    };
+    try {
+      const oauthOptions = {
+        redirectTo: window.location.origin + '/'
+      };
+      if (provider === 'google') {
+        oauthOptions.queryParams = { prompt: 'select_account' };
+      }
+
+      const { data, error } = await client.auth.signInWithOAuth({
+        provider,
+        options: oauthOptions
+      });
+
+      if (error) {
+        return { success: false, error: error.message || `${providerLabel} sign-in failed.` };
+      }
+
+      if (data?.url) {
+        return { success: true, redirecting: true };
+      }
+
+      return { success: false, error: `Could not start ${providerLabel} sign-in.` };
+    } catch (err) {
+      return { success: false, error: err.message || `${providerLabel} sign-in failed.` };
+    }
   }
 
   /**
-   * Complete authentication with selected OAuth profile
-   */
-  async completeOAuthSignIn(provider, { name, email, avatarUrl } = {}) {
-    return this.signInWithOAuth(provider, { customUser: { name, email, avatarUrl } });
-  }
-
-  /**
-   * Continue as guest (Anonymous Guest session)
+   * Continue as private Guest (uses Supabase Anonymous Auth if enabled, else local-only guest)
    */
   async guestLogin() {
-    const client = supabaseService.getClient();
+    const client = await supabaseService.init();
     if (client) {
-      try {
-        const { data, error } = await client.auth.signInAnonymously();
-        if (!error && data?.user) {
-          const user = {
-            id: data.user.id,
-            name: 'Guest',
-            email: 'guest@aifycycle.app',
-            isGuest: true,
-            createdAt: data.user.created_at
-          };
-          this._createSession(user);
-          return { success: true, user };
+      const providers = await supabaseService.getAuthProviderStatus();
+      if (providers.anonymous !== false) {
+        try {
+          const { data, error } = await client.auth.signInAnonymously();
+          if (!error && data?.user) {
+            const user = this._mapSupabaseUser(data.user);
+            this._createSession(user);
+            return { success: true, user };
+          }
+        } catch (e) {
+          // Fall back to local private guest mode
         }
-      } catch (e) {
-        // Fallback to local guest
       }
     }
 
@@ -348,6 +362,7 @@ export class AuthManager {
       id: 'guest-' + this._generateId(),
       name: 'Guest',
       email: 'guest@aifycycle.app',
+      provider: 'guest',
       isGuest: true,
       createdAt: new Date().toISOString()
     };
@@ -364,17 +379,15 @@ export class AuthManager {
     if (client) {
       try {
         await client.auth.signOut();
-      } catch (e) { }
+      } catch (e) {}
     }
 
     this.isAuthenticated = false;
     this.currentUser = null;
+    this._lastSyncedUserId = null;
     storage.clearAuthSession();
   }
 
-  /**
-   * Mark onboarding as completed
-   */
   completeOnboarding() {
     storage.setOnboardingCompleted(true);
   }
@@ -391,7 +404,7 @@ export class AuthManager {
     });
   }
 
-  _validateSignup({ name, email, password, dateOfBirth }) {
+  _validateSignup({ name, email, password }) {
     const errors = [];
     if (!name || name.trim().length < 2) errors.push('Name must be at least 2 characters.');
     if (!email || !this._isValidEmail(email)) errors.push('Please enter a valid email address.');
@@ -410,17 +423,7 @@ export class AuthManager {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }
 
-  _simpleHash(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return 'hash_' + Math.abs(hash).toString(36);
-  }
-
   _generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2, 6);
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   }
 }

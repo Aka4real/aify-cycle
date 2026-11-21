@@ -29,11 +29,11 @@ AifyCycle is fully configured for Vercel with dedicated serverless functions (`a
 1. Log in to [Vercel Dashboard](https://vercel.com/dashboard).
 2. Click **Add New...** -> **Project**.
 3. Select the **`Aka4real/aify-cycle`** repository and click **Import**.
-4. Configure Project Settings:
-   - **Framework Preset:** `Other` (or leave default)
+4. Configure Project Settings (handled automatically by `vercel.json`):
+   - **Framework Preset:** `Other` (`"framework": null`)
    - **Root Directory:** `./`
-   - **Build Command:** Leave default (`npm run build` or empty)
-   - **Output Directory:** Leave empty (serves root static assets)
+   - **Build Command:** `node scripts/build-static.js`
+   - **Output Directory:** `dist`
 5. Under **Environment Variables**:
    - Add Key: `GEMINI_API_KEY`
    - Value: `<Your Google Gemini API Key>`

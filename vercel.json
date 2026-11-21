@@ -1,5 +1,8 @@
 {
   "version": 2,
+  "framework": null,
+  "buildCommand": "node scripts/build-static.js",
+  "outputDirectory": "dist",
   "rewrites": [
     {
       "source": "/((?!api/|css/|js/|favicon.*|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.svg|.*\\.webmanifest|.*\\.ico).*)",

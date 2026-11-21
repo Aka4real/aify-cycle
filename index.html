@@ -144,7 +144,7 @@
             </svg>
             <span>Continue with Google</span>
           </button>
-          <button type="button" id="btn-oauth-apple" class="btn-oauth btn-oauth-apple" title="Sign in with Apple">
+          <button type="button" id="btn-oauth-apple" class="btn-oauth btn-oauth-apple" title="Sign in with Apple" style="display: none;">
             <svg class="oauth-icon" viewBox="0 0 170 170" fill="currentColor">
               <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.04-7.59-7.71-11.66-14.01-6.1-9.46-10.9-20.2-14.4-32.22-3.5-12.02-5.25-23.23-5.25-33.64 0-14.56 3.69-26.65 11.07-36.27 7.38-9.61 16.7-14.52 27.96-14.74 4.36 0 9.27 1.14 14.74 3.41 5.47 2.27 9.09 3.46 10.86 3.56 1.48-.1 5.25-1.34 11.31-3.71 6.06-2.37 11.22-3.41 15.48-3.13 13.9.72 24.63 5.48 32.2 14.28-12.23 7.42-18.23 17.58-18.01 30.49.22 10.15 4.14 18.73 11.75 25.75 7.61 7.02 16.53 11.08 26.76 12.18-2.18 6.74-4.8 13.1-7.85 19.09zm-38.35-104.9c0-7.3 2.66-14.25 7.97-20.85 5.31-6.6 11.83-10.74 19.57-12.43.22 1.09.33 2.18.33 3.26 0 7.3-2.73 14.35-8.19 21.14-5.46 6.79-12.1 11.05-19.92 12.78-.1-.98-.2-1.98-.2-2.9z"/>
             </svg>
@@ -163,7 +163,7 @@
         </button>
       </div>
 
-      <p class="auth-footer-text">Your data stays private — stored only on your device.</p>
+      <p class="auth-footer-text">Local-first by default — syncs securely to your private Supabase account when signed in.</p>
       <div class="auth-compliance-links">
         <button type="button" class="btn-link-legal" data-modal="modal-medical-disclaimer">Medical Disclaimer</button> •
         <button type="button" class="btn-link-legal" data-modal="modal-privacy-policy">Privacy Policy</button> •
@@ -278,12 +278,12 @@
       <header class="dashboard-banner glass-card">
         <div class="banner-profile-section">
           <div class="banner-avatar-wrap">
-            <img id="banner-user-avatar" class="banner-user-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80" alt="User Profile" />
+            <img id="banner-user-avatar" class="banner-user-avatar" src="/icon-192.png" alt="User Profile" />
             <span id="banner-provider-badge" class="banner-provider-badge" title="Authenticated Account">🌸</span>
           </div>
           <div class="banner-text-group">
             <div class="banner-greeting-line">
-              <h1 id="user-greeting" class="dashboard-greeting">Good morning, Agatha 🌸</h1>
+              <h1 id="user-greeting" class="dashboard-greeting">Good morning 🌸</h1>
             </div>
             <div class="dashboard-meta-row">
               <span id="dashboard-phase-badge" class="phase-capsule-live">
@@ -987,142 +987,6 @@
       </div>
     </section>
 
-  </div>
-
-  <!-- ===================================================================
-       MODAL: GOOGLE SIGN-IN ACCOUNT PICKER
-       =================================================================== -->
-  <div id="modal-oauth-google" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="google-modal-title">
-    <div class="modal-content modal-auth-oauth">
-      <div class="modal-header oauth-modal-header">
-        <div class="oauth-brand-header">
-          <svg class="oauth-modal-logo" viewBox="0 0 24 24" width="28" height="28">
-            <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3.03h3.88c2.27-2.09 3.66-5.17 3.66-9.12z"/>
-            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.03c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.13C3.27 21.36 7.35 24 12 24z"/>
-            <path fill="#FBBC05" d="M5.28 14.29c-.25-.72-.38-1.49-.38-2.29s.13-1.57.38-2.29V6.58H1.25C.45 8.18 0 10.03 0 12s.45 3.82 1.25 5.42l4.03-3.13z"/>
-            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.27 2.64 1.25 6.58l4.03 3.13c.95-2.83 3.6-4.96 6.72-4.96z"/>
-          </svg>
-          <div>
-            <h2 id="google-modal-title" class="oauth-modal-title">Sign in with Google</h2>
-            <p class="oauth-modal-sub">Choose an account to continue to AifyCycle</p>
-          </div>
-        </div>
-        <button type="button" class="btn-close-modal" aria-label="Close modal">&times;</button>
-      </div>
-
-      <div class="oauth-modal-body">
-        <div class="oauth-account-list">
-          <!-- Primary Default Account -->
-          <div class="oauth-account-card active" id="btn-google-account-default">
-            <img class="oauth-user-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80" alt="Agatha Stewart" />
-            <div class="oauth-account-info">
-              <strong id="google-picker-name" class="oauth-account-name">Agatha Stewart</strong>
-              <span id="google-picker-email" class="oauth-account-email">agatha.stewart@gmail.com</span>
-            </div>
-            <span class="oauth-check-badge">✓</span>
-          </div>
-
-          <!-- Custom Account Section -->
-          <div class="oauth-custom-section">
-            <button type="button" class="btn-toggle-custom-oauth" id="btn-toggle-google-custom">
-              <span>+ Use another Google account</span>
-            </button>
-            <div id="google-custom-inputs" class="oauth-custom-inputs" style="display: none;">
-              <div class="form-group" style="margin-bottom: 0.6rem;">
-                <label class="form-label" for="google-custom-name">Full Name</label>
-                <input type="text" id="google-custom-name" class="form-input" placeholder="Your Name" value="Agatha Stewart" />
-              </div>
-              <div class="form-group">
-                <label class="form-label" for="google-custom-email">Google Email</label>
-                <input type="email" id="google-custom-email" class="form-input" placeholder="name@gmail.com" value="agatha.stewart@gmail.com" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <p class="oauth-privacy-note">
-          Google will securely authenticate your session with AifyCycle. Your intimate cycle and symptom logs remain stored locally in your private on-device sandbox.
-        </p>
-
-        <div class="oauth-modal-actions">
-          <button type="button" id="btn-confirm-google-login" class="btn-primary btn-google-confirm">
-            <svg viewBox="0 0 24 24" width="18" height="18">
-              <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3.03h3.88c2.27-2.09 3.66-5.17 3.66-9.12z"/>
-              <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.03c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.13C3.27 21.36 7.35 24 12 24z"/>
-              <path fill="#FBBC05" d="M5.28 14.29c-.25-.72-.38-1.49-.38-2.29s.13-1.57.38-2.29V6.58H1.25C.45 8.18 0 10.03 0 12s.45 3.82 1.25 5.42l4.03-3.13z"/>
-              <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.27 2.64 1.25 6.58l4.03 3.13c.95-2.83 3.6-4.96 6.72-4.96z"/>
-            </svg>
-            <span id="btn-google-confirm-label">Continue with Google</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===================================================================
-       MODAL: APPLE ID AUTHORIZATION
-       =================================================================== -->
-  <div id="modal-oauth-apple" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="apple-modal-title">
-    <div class="modal-content modal-auth-oauth modal-apple-theme">
-      <div class="modal-header oauth-modal-header">
-        <div class="oauth-brand-header">
-          <svg class="oauth-modal-logo" viewBox="0 0 170 170" width="28" height="28" fill="currentColor">
-            <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.04-7.59-7.71-11.66-14.01-6.1-9.46-10.9-20.2-14.4-32.22-3.5-12.02-5.25-23.23-5.25-33.64 0-14.56 3.69-26.65 11.07-36.27 7.38-9.61 16.7-14.52 27.96-14.74 4.36 0 9.27 1.14 14.74 3.41 5.47 2.27 9.09 3.46 10.86 3.56 1.48-.1 5.25-1.34 11.31-3.71 6.06-2.37 11.22-3.41 15.48-3.13 13.9.72 24.63 5.48 32.2 14.28-12.23 7.42-18.23 17.58-18.01 30.49.22 10.15 4.14 18.73 11.75 25.75 7.61 7.02 16.53 11.08 26.76 12.18-2.18 6.74-4.8 13.1-7.85 19.09zm-38.35-104.9c0-7.3 2.66-14.25 7.97-20.85 5.31-6.6 11.83-10.74 19.57-12.43.22 1.09.33 2.18.33 3.26 0 7.3-2.73 14.35-8.19 21.14-5.46 6.79-12.1 11.05-19.92 12.78-.1-.98-.2-1.98-.2-2.9z"/>
-          </svg>
-          <div>
-            <h2 id="apple-modal-title" class="oauth-modal-title">Sign in with Apple</h2>
-            <p class="oauth-modal-sub">Do you want to sign in to AifyCycle with your Apple ID?</p>
-          </div>
-        </div>
-        <button type="button" class="btn-close-modal" aria-label="Close modal">&times;</button>
-      </div>
-
-      <div class="oauth-modal-body">
-        <div class="apple-id-profile-summary">
-          <div class="apple-id-badge-circle"></div>
-          <div>
-            <strong id="apple-display-name">Agatha Stewart</strong>
-            <span class="apple-id-caption">Apple Account</span>
-          </div>
-        </div>
-
-        <div class="apple-email-options">
-          <label class="apple-option-row">
-            <input type="radio" name="apple-email-choice" value="share" checked />
-            <div class="apple-option-text">
-              <span class="option-title">Share My Email</span>
-              <span class="option-desc">agatha.cycle@icloud.com</span>
-            </div>
-          </label>
-          <label class="apple-option-row">
-            <input type="radio" name="apple-email-choice" value="hide" />
-            <div class="apple-option-text">
-              <span class="option-title">Hide My Email</span>
-              <span class="option-desc">aify.c8f3m1@privaterelay.appleid.com</span>
-            </div>
-          </label>
-        </div>
-
-        <!-- Biometric verification state -->
-        <div id="apple-biometric-indicator" class="apple-biometric-box" style="display: none;">
-          <div class="biometric-fingerprint">
-            <span class="biometric-ring ring-1"></span>
-            <span class="biometric-ring ring-2"></span>
-            <span class="biometric-icon"></span>
-          </div>
-          <span class="biometric-label">Verifying Face ID / Touch ID...</span>
-        </div>
-
-        <div class="oauth-modal-actions">
-          <button type="button" id="btn-confirm-apple-login" class="btn-apple-confirm">
-            <svg class="oauth-icon" viewBox="0 0 170 170" width="16" height="16" fill="currentColor">
-              <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.04-7.59-7.71-11.66-14.01-6.1-9.46-10.9-20.2-14.4-32.22-3.5-12.02-5.25-23.23-5.25-33.64 0-14.56 3.69-26.65 11.07-36.27 7.38-9.61 16.7-14.52 27.96-14.74 4.36 0 9.27 1.14 14.74 3.41 5.47 2.27 9.09 3.46 10.86 3.56 1.48-.1 5.25-1.34 11.31-3.71 6.06-2.37 11.22-3.41 15.48-3.13 13.9.72 24.63 5.48 32.2 14.28-12.23 7.42-18.23 17.58-18.01 30.49.22 10.15 4.14 18.73 11.75 25.75 7.61 7.02 16.53 11.08 26.76 12.18-2.18 6.74-4.8 13.1-7.85 19.09zm-38.35-104.9c0-7.3 2.66-14.25 7.97-20.85 5.31-6.6 11.83-10.74 19.57-12.43.22 1.09.33 2.18.33 3.26 0 7.3-2.73 14.35-8.19 21.14-5.46 6.79-12.1 11.05-19.92 12.78-.1-.98-.2-1.98-.2-2.9z"/>
-            </svg>
-            <span>Continue with Touch ID / Face ID</span>
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- ===================================================================

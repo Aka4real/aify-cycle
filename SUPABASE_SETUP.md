@@ -1,107 +1,84 @@
-# 🚀 AifyCycle: Supabase Integration & Cloud Setup Guide
+# AifyCycle — Supabase Cloud Migration & Google OAuth Setup
 
-This guide details how to connect **Supabase** to your AifyCycle deployment to enable **secure cloud backups, multi-device synchronization, real-time partner sharing, and persistent account authentication**, while maintaining our sub-50ms local-first offline speed.
-
----
-
-## 📋 Overview of Architecture
-
-- **Local-First Speed**: Reads and writes complete instantly (0ms latency) in local storage, so cycle tracking works seamlessly even on airplanes or without an internet connection.
-- **Background Cloud Sync**: When connected to Supabase, logs, symptoms, cycle settings, and AI memories automatically replicate to your PostgreSQL database.
-- **Row-Level Security (RLS)**: Sensitive reproductive health data is locked strictly to `auth.uid() = user_id`.
-- **Zero-Crash Resilience**: If Supabase is unconfigured or offline, AifyCycle automatically falls back to standalone local mode.
+This guide walks through running **AifyCycle** on **Supabase Cloud (`*.supabase.co`)** with **Google Sign-In (PKCE OAuth)** on **Vercel** and localhost, plus migrating public table data from an older self-hosted Supabase instance.
 
 ---
 
-## 🛠️ Step-by-Step Setup
+## 1. Apply Database Schema on Supabase Cloud
 
-### Step 1: Create a Free Supabase Project
-1. Go to [https://supabase.com](https://supabase.com) and sign in.
-2. Click **New Project**, choose an organization, and give your project a name (e.g. `aify-cycle`).
-3. Set a strong database password and select the region closest to your users.
-
----
-
-### Step 2: Run the Database Migration
-1. In your Supabase Dashboard, navigate to the **SQL Editor** (icon on the left navigation bar).
-2. Click **New query**.
-3. Copy the entire contents of [`supabase/migrations/20260924_initial_schema.sql`](./supabase/migrations/20260924_initial_schema.sql) and paste it into the editor.
-4. Click **Run** (or `Ctrl+Enter` / `Cmd+Enter`).
-5. You should see a confirmation that all tables (`profiles`, `cycle_logs`, `ai_memories`, `ai_chat_history`, `partner_shares`) and Row Level Security (RLS) policies were created successfully.
+1. Open your project in the [Supabase Dashboard](https://supabase.com/dashboard).
+2. Go to **SQL Editor** → **New query**.
+3. Run [`supabase/migrations/20260924_initial_schema.sql`](./supabase/migrations/20260924_initial_schema.sql) to create all tables (`profiles`, `cycle_logs`, `ai_memories`, `ai_chat_history`, `partner_shares`), RLS policies, `updated_at` triggers, and the hardened `delete_user_data()` RPC.
+4. *(If migrating table data from self-hosted Supabase)* Run [`supabase/migrations/20261121_legacy_data_claim.sql`](./supabase/migrations/20261121_legacy_data_claim.sql) to install the locked-down `legacy_user_imports` staging table and automatic claim-on-confirmed-signin trigger.
 
 ---
 
-### Step 3: Enable Anonymous Sign-ins (Recommended)
-To allow users to track their cycles immediately as a Guest without friction:
-1. In Supabase Dashboard, go to **Authentication** ➔ **Providers**.
-2. Scroll to **Anonymous Sign-ins** and toggle it **ON**.
-3. Click **Save**.
+## 2. Migrate Public Table Data (Self-Hosted → Supabase Cloud)
+
+Users do **not** need password hashes migrated — they simply sign in with Google (or re-register with their email) on Supabase Cloud, and their historical data attaches automatically to their new account.
+
+1. Open your **old self-hosted Supabase Studio → SQL Editor**.
+2. Paste and run [`supabase/export_from_self_hosted.sql`](./supabase/export_from_self_hosted.sql).
+3. Copy all statements from the `insert_sql` column.
+4. Paste and run them in your **new Supabase Cloud → SQL Editor**.
+5. When a user signs in with Google (or confirms an email signup) matching their previous email, their profile, cycle logs, AI memories, and chat history are automatically migrated once.
+   - If a user signs in with a **different** email or had an **anonymous** account (`anonymous-<old-uuid>`), attach their records manually in SQL Editor:
+     ```sql
+     SELECT public.claim_legacy_user_data('<new-auth-user-uuid>', 'old@email.com');
+     ```
 
 ---
 
-### Step 4: Configure Google & Apple OAuth Providers
+## 3. Configure Google OAuth
 
-If your users click **Continue with Google** or **Sign in with Apple**, Supabase requires external providers to be enabled. Otherwise, Supabase will return `{"code":400,"error_code":"validation_failed","msg":"Unsupported provider: provider is not enabled"}`.
-
-#### A. Google OAuth Setup
-1. Go to the [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
-2. Create or select a project, then navigate to **APIs & Services** ➔ **Credentials**.
-3. Click **Create Credentials** ➔ **OAuth client ID** ➔ Application type: **Web application**.
-4. In **Authorized redirect URIs**, add your Supabase Auth callback URL:
+### A. Google Cloud Console
+1. Open [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials).
+2. Configure the **OAuth consent screen** (User Type: **External**, add your app name and support email; while in Testing mode, add your Gmail under **Test users**, or publish to Production when ready).
+3. Click **Create Credentials → OAuth client ID → Web application**.
+4. Under **Authorized JavaScript origins**, add:
    ```text
-   https://<your-supabase-domain>/auth/v1/callback
+   https://<your-project>.vercel.app
+   http://localhost:3000
    ```
-   *(For self-hosted Supabase, e.g., `https://supabasestudio.195.88.87.151.sslip.io/auth/v1/callback`)*
-5. Copy the **Client ID** and **Client Secret**.
-6. In **Supabase Studio / Dashboard**:
-   - Go to **Authentication** ➔ **Providers** ➔ **Google**.
-   - Toggle **Google Enabled** to **ON**.
-   - Paste your **Client ID** and **Client Secret**.
+5. Under **Authorized redirect URIs**, add your Supabase Cloud callback URL:
+   ```text
+   https://<your-project-ref>.supabase.co/auth/v1/callback
+   ```
+6. Copy the generated **Client ID** and **Client Secret**.
+
+### B. Supabase Cloud Dashboard
+1. Go to **Authentication → Providers → Google**.
+2. Toggle **Enable Sign in with Google** to **ON**.
+3. Paste the Google **Client ID** and **Client Secret**, then click **Save**.
+4. *(Optional)* Under **Authentication → Providers → Anonymous Sign-ins**, toggle **ON** if you want Guest Mode to create temporary cloud sessions (otherwise Guest Mode runs locally).
+5. Go to **Authentication → URL Configuration**:
+   - **Site URL**: `https://<your-project>.vercel.app`
+   - **Redirect URLs**:
+     ```text
+     https://<your-project>.vercel.app/**
+     https://*.vercel.app/**
+     http://localhost:3000/**
+     http://localhost:4180/**
+     ```
    - Click **Save**.
 
-#### B. Apple OAuth Setup
-1. In the [Apple Developer Account](https://developer.apple.com/account/resources/identifiers/list), configure a **Services ID** with **Sign In with Apple**.
-2. Add your Supabase callback URL (`https://<your-supabase-domain>/auth/v1/callback`) to the **Return URLs**.
-3. Generate a private key (`.p8`), note your **Key ID**, **Team ID**, and **Services ID**.
-4. In **Supabase Studio / Dashboard**:
-   - Go to **Authentication** ➔ **Providers** ➔ **Apple**.
-   - Toggle **Apple Enabled** to **ON**, paste credentials, and click **Save**.
-
-#### C. URL Configuration (Allowed Redirect URLs)
-1. In Supabase Dashboard, go to **Authentication** ➔ **URL Configuration**.
-2. Set **Site URL** to your domain (e.g. `https://aifycycle.mooo.com`).
-3. Under **Redirect URLs**, add wildcard redirect paths:
-   ```text
-   https://aifycycle.mooo.com/**
-   http://localhost:3000/**
-   http://localhost:4180/**
-   ```
-4. Click **Save**.
+> **Sign in with Apple (later):** The Apple button stays hidden automatically until **Authentication → Providers → Apple** is enabled in Supabase Cloud. Once enabled with your Apple Developer Services ID + `.p8` key, the button appears automatically with no code changes.
 
 ---
 
-### Step 5: Configure Environment Variables
+## 4. Configure Environment Variables (Local + Vercel)
 
-1. In Supabase Dashboard, navigate to **Project Settings** (gear icon) ➔ **API**.
-2. Find:
-   - **Project URL**: e.g., `https://xyzcompany.supabase.co`
-   - **Project API Keys** ➔ `anon` `public`: e.g., `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
+Find **Project URL** and **anon public key** in **Supabase Dashboard → Project Settings → API** (or **Data API / API Keys**).
 
-3. In your server `.env` file (or in your **Coolify** / **Vercel** environment dashboard), add:
+### Local (`.env`)
 ```env
-SUPABASE_URL=https://your-project-id.supabase.co
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_URL=https://<your-project-ref>.supabase.co
+SUPABASE_ANON_KEY=<your-supabase-anon-key>
 ```
 
-4. Restart your Node server or trigger a redeploy in Coolify.
+### Vercel
+1. Open your project in **Vercel Dashboard → Settings → Environment Variables** (or run `vercel env add`).
+2. Set `SUPABASE_URL` and `SUPABASE_ANON_KEY` for **Production** and **Preview**.
+3. Trigger a redeploy.
 
----
-
-## 🔒 Security & Privacy Guarantees
-
-| Feature | Implementation | Protection Level |
-| :--- | :--- | :--- |
-| **Row Level Security (RLS)** | Postgres RLS policies on all tables | Only `auth.uid()` can read/write their own health logs |
-| **Public API Key Safe** | Uses Supabase `anon` public key | Safe in client-side code; cannot bypass RLS |
-| **GDPR Article 17** | `rpc('delete_user_data')` function | Permanently purges all profile records, symptoms, AI chats, and memories |
-| **Offline Sandbox** | Local-First Storage Adapter | Operates 100% offline if cloud is unreachable |
+> **Important:** If you previously saved custom self-hosted Supabase credentials inside the app's **Settings → Supabase Cloud Sync → Configure Custom Credentials**, click **Disconnect / Reset** once so your browser switches to the new server-configured Supabase Cloud URL.

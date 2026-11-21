@@ -13,11 +13,16 @@ import { escapeHtml } from './dom-utils.js';
 import {
   parseProposedActionsFromText,
   sanitizeModelActions,
-  mergeProposedActions
+  mergeProposedActions,
+  evaluateFloatingGreetingSchedule,
+  buildDiscreetGreetingText
 } from './ai-action-parser.js';
 
 const BACKEND_PROXY_URL = '/api/gemini';
 const BACKEND_STATUS_URL = '/api/gemini/status';
+const GREETING_STORAGE_KEY = 'aifycycle_aify_greeting_v1';
+
+export { evaluateFloatingGreetingSchedule, buildDiscreetGreetingText };
 
 const SUGGESTED_QUESTIONS = [
   { icon: '🩸', text: 'My period started today' },
@@ -46,14 +51,24 @@ export class AICoach {
     this.activeCategoryFilter = 'all';
     this._listenersAttached = false;
     this._undoSnapshots = new Map();
+    this._isDrawerOpen = false;
+    this._greetingTimer = null;
+    this._onExpandToTab = null;
+    this._getCurrentTab = null;
+    this._getUserId = null;
     this._loadChatHistory();
   }
 
-  init() {
+  init(options = {}) {
+    if (options.onExpandToTab) this._onExpandToTab = options.onExpandToTab;
+    if (options.getCurrentTab) this._getCurrentTab = options.getCurrentTab;
+    if (options.getUserId) this._getUserId = options.getUserId;
+
     this.renderChatUI();
     this.attachListeners();
     this._updateMemoryCountBadge();
     this.updateEngineBadge();
+    this._scheduleFloatingGreeting();
   }
 
   async checkGeminiStatus() {
@@ -79,17 +94,22 @@ export class AICoach {
 
   async updateEngineBadge() {
     const badgeEl = document.getElementById('ai-engine-badge');
-    if (!badgeEl) return;
+    const drawerDotEl = document.getElementById('aify-drawer-engine-dot');
 
     const status = await this.checkGeminiStatus();
-    if (status.active) {
-      badgeEl.className = 'ai-engine-badge badge-active';
-      badgeEl.innerHTML = `<span class="engine-dot live"></span><span>✨ ${escapeHtml(status.label)}</span>`;
-      badgeEl.title = `Live ${status.label} connected via secure server gateway.`;
-    } else {
-      badgeEl.className = 'ai-engine-badge badge-local';
-      badgeEl.innerHTML = `<span class="engine-dot local"></span><span>🧠 Local Intelligence</span>`;
-      badgeEl.title = 'Running in offline local wellness mode.';
+    if (badgeEl) {
+      if (status.active) {
+        badgeEl.className = 'ai-engine-badge badge-active';
+        badgeEl.innerHTML = `<span class="engine-dot live"></span><span>✨ ${escapeHtml(status.label)}</span>`;
+        badgeEl.title = `Live ${status.label} connected via secure server gateway.`;
+      } else {
+        badgeEl.className = 'ai-engine-badge badge-local';
+        badgeEl.innerHTML = `<span class="engine-dot local"></span><span>🧠 Local Intelligence</span>`;
+        badgeEl.title = 'Running in offline local wellness mode.';
+      }
+    }
+    if (drawerDotEl) {
+      drawerDotEl.className = status.active ? 'engine-dot live' : 'engine-dot local';
     }
   }
 
@@ -615,14 +635,17 @@ export class AICoach {
   }
 
   _renderMessages() {
-    const container = document.getElementById('ai-chat-messages');
-    if (!container) return;
+    const containers = [
+      document.getElementById('ai-chat-messages'),
+      document.getElementById('aify-drawer-messages')
+    ].filter(Boolean);
+    if (containers.length === 0) return;
 
     if (this.chatHistory.length === 0) {
-      container.innerHTML = `
+      const emptyHtml = `
         <div class="ai-chat-empty">
           <div class="ai-chat-empty-icon">🌸</div>
-          <h3>Hi! I'm Aify, your wellness guide</h3>
+          <h3>Hi! I'm AiFy, your wellness guide</h3>
           <p>Ask cycle questions or tell me about symptoms — I'll draft log updates for you to confirm before saving.</p>
           <div class="ai-chat-quick-hints">
             <span>✨ "My period started today"</span>
@@ -631,10 +654,11 @@ export class AICoach {
           </div>
         </div>
       `;
+      containers.forEach(c => { c.innerHTML = emptyHtml; });
       return;
     }
 
-    container.innerHTML = this.chatHistory.map((msg, idx) => {
+    const html = this.chatHistory.map((msg, idx) => {
       const isUser = msg.role === 'user';
       const formattedContent = isUser ? escapeHtml(msg.content) : this._formatMarkdown(msg.content);
       const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -701,20 +725,26 @@ export class AICoach {
         </div>
       `;
     }).join('');
+
+    containers.forEach(c => { c.innerHTML = html; });
   }
 
   _renderSuggestedQuestions() {
-    const container = document.getElementById('ai-suggested-questions');
-    if (!container) return;
+    const containers = [
+      document.getElementById('ai-suggested-questions'),
+      document.getElementById('aify-drawer-suggestions')
+    ].filter(Boolean);
+    if (containers.length === 0) return;
 
     const shuffled = [...SUGGESTED_QUESTIONS].sort(() => Math.random() - 0.5).slice(0, 4);
-
-    container.innerHTML = shuffled.map(q => `
-      <button class="suggested-question-btn" data-question="${escapeHtml(q.text)}">
+    const html = shuffled.map(q => `
+      <button type="button" class="suggested-question-btn" data-question="${escapeHtml(q.text)}">
         <span>${q.icon}</span>
         <span>${escapeHtml(q.text)}</span>
       </button>
     `).join('');
+
+    containers.forEach(c => { c.innerHTML = html; });
   }
 
   _updateMemoryCountBadge() {
@@ -731,49 +761,39 @@ export class AICoach {
 
     const form = document.getElementById('ai-chat-form');
     const input = document.getElementById('ai-chat-input');
-    const sendBtn = document.getElementById('ai-chat-send');
     const clearBtn = document.getElementById('ai-chat-clear');
     const memoryBtn = document.getElementById('btn-agent-memory');
     const messagesContainer = document.getElementById('ai-chat-messages');
+    const drawerMessagesContainer = document.getElementById('aify-drawer-messages');
 
-    // Delegated handlers for Confirm / Dismiss / Undo buttons on AI action cards
-    if (messagesContainer) {
-      messagesContainer.addEventListener('click', (e) => {
-        const applyBtn = e.target.closest('.btn-apply-actions');
-        if (applyBtn) {
-          const idx = parseInt(applyBtn.getAttribute('data-msg-idx'), 10);
-          if (!Number.isNaN(idx)) this._applyMessageProposal(idx);
-          return;
-        }
-        const dismissBtn = e.target.closest('.btn-dismiss-actions');
-        if (dismissBtn) {
-          const idx = parseInt(dismissBtn.getAttribute('data-msg-idx'), 10);
-          if (!Number.isNaN(idx)) this._dismissMessageProposal(idx);
-          return;
-        }
-        const undoBtn = e.target.closest('.btn-undo-actions');
-        if (undoBtn) {
-          const idx = parseInt(undoBtn.getAttribute('data-msg-idx'), 10);
-          if (!Number.isNaN(idx)) this._undoMessageProposal(idx);
-        }
-      });
-    }
+    // Delegated handlers for Confirm / Dismiss / Undo buttons on AI action cards (main tab & drawer)
+    const handleActionCardClick = (e) => {
+      const applyBtn = e.target.closest('.btn-apply-actions');
+      if (applyBtn) {
+        const idx = parseInt(applyBtn.getAttribute('data-msg-idx'), 10);
+        if (!Number.isNaN(idx)) this._applyMessageProposal(idx);
+        return;
+      }
+      const dismissBtn = e.target.closest('.btn-dismiss-actions');
+      if (dismissBtn) {
+        const idx = parseInt(dismissBtn.getAttribute('data-msg-idx'), 10);
+        if (!Number.isNaN(idx)) this._dismissMessageProposal(idx);
+        return;
+      }
+      const undoBtn = e.target.closest('.btn-undo-actions');
+      if (undoBtn) {
+        const idx = parseInt(undoBtn.getAttribute('data-msg-idx'), 10);
+        if (!Number.isNaN(idx)) this._undoMessageProposal(idx);
+      }
+    };
+
+    if (messagesContainer) messagesContainer.addEventListener('click', handleActionCardClick);
+    if (drawerMessagesContainer) drawerMessagesContainer.addEventListener('click', handleActionCardClick);
 
     if (form) {
       form.addEventListener('submit', (e) => {
         e.preventDefault();
         if (input && input.value.trim()) {
-          const val = input.value;
-          input.value = '';
-          this.sendMessage(val);
-          this._renderSuggestedQuestions();
-        }
-      });
-    }
-
-    if (sendBtn && input) {
-      sendBtn.addEventListener('click', () => {
-        if (input.value.trim()) {
           const val = input.value;
           input.value = '';
           this.sendMessage(val);
@@ -794,6 +814,8 @@ export class AICoach {
         }
       });
     }
+
+    this._attachFloatingAssistantListeners();
 
     if (clearBtn) {
       clearBtn.addEventListener('click', () => {
@@ -935,39 +957,254 @@ export class AICoach {
   }
 
   _showTypingIndicator() {
-    const container = document.getElementById('ai-chat-messages');
-    if (!container) return;
+    this._hideTypingIndicator();
+    const pairs = [
+      { container: document.getElementById('ai-chat-messages'), id: 'ai-typing-indicator' },
+      { container: document.getElementById('aify-drawer-messages'), id: 'aify-drawer-typing-indicator' }
+    ];
 
-    const existing = document.getElementById('ai-typing-indicator');
-    if (existing) existing.remove();
-
-    const indicator = document.createElement('div');
-    indicator.id = 'ai-typing-indicator';
-    indicator.className = 'chat-message chat-message-ai';
-    indicator.innerHTML = `
-      <div class="chat-bubble bubble-ai">
-        <div class="chat-ai-avatar">🌸</div>
-        <div class="chat-bubble-content">
-          <div class="typing-dots">
-            <span></span><span></span><span></span>
+    pairs.forEach(({ container, id }) => {
+      if (!container) return;
+      const indicator = document.createElement('div');
+      indicator.id = id;
+      indicator.className = 'chat-message chat-message-ai';
+      indicator.innerHTML = `
+        <div class="chat-bubble bubble-ai">
+          <div class="chat-ai-avatar">🌸</div>
+          <div class="chat-bubble-content">
+            <div class="typing-dots">
+              <span></span><span></span><span></span>
+            </div>
           </div>
         </div>
-      </div>
-    `;
-    container.appendChild(indicator);
+      `;
+      container.appendChild(indicator);
+    });
   }
 
   _hideTypingIndicator() {
-    const indicator = document.getElementById('ai-typing-indicator');
-    if (indicator) indicator.remove();
+    ['ai-typing-indicator', 'aify-drawer-typing-indicator'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    });
   }
 
   _scrollToBottom() {
-    const container = document.getElementById('ai-chat-messages');
-    if (container) {
-      setTimeout(() => {
-        container.scrollTop = container.scrollHeight;
-      }, 100);
+    ['ai-chat-messages', 'aify-drawer-messages'].forEach(id => {
+      const container = document.getElementById(id);
+      if (container) {
+        setTimeout(() => {
+          container.scrollTop = container.scrollHeight;
+        }, 100);
+      }
+    });
+  }
+
+  // =========================================================================
+  // FLOATING AIFY ASSISTANT (ORB + DISCREET GREETING + MINI-CHAT DRAWER)
+  // =========================================================================
+
+  _attachFloatingAssistantListeners() {
+    const orb = document.getElementById('aify-floating-orb');
+    const acceptBtn = document.getElementById('btn-aify-greeting-accept');
+    const dismissBtn = document.getElementById('btn-aify-greeting-dismiss');
+    const closeGreetingBtn = document.getElementById('btn-aify-greeting-close');
+    const drawerCloseBtn = document.getElementById('btn-aify-drawer-close');
+    const drawerExpandBtn = document.getElementById('btn-aify-drawer-expand');
+    const drawerForm = document.getElementById('aify-drawer-form');
+    const drawerInput = document.getElementById('aify-drawer-input');
+    const drawerSuggestions = document.getElementById('aify-drawer-suggestions');
+
+    if (orb) {
+      orb.addEventListener('click', () => {
+        if (this._isDrawerOpen) {
+          this.closeFloatingDrawer();
+        } else {
+          this.openFloatingDrawer();
+        }
+      });
+    }
+
+    if (acceptBtn) {
+      acceptBtn.addEventListener('click', () => {
+        this._markGreetingSeen();
+        this.hideFloatingGreeting();
+        this.openFloatingDrawer();
+      });
+    }
+
+    if (dismissBtn) {
+      dismissBtn.addEventListener('click', () => {
+        this._markGreetingSeen();
+        this.hideFloatingGreeting();
+      });
+    }
+
+    if (closeGreetingBtn) {
+      closeGreetingBtn.addEventListener('click', () => {
+        this._markGreetingSeen();
+        this.hideFloatingGreeting();
+      });
+    }
+
+    if (drawerCloseBtn) {
+      drawerCloseBtn.addEventListener('click', () => {
+        this.closeFloatingDrawer();
+      });
+    }
+
+    if (drawerExpandBtn) {
+      drawerExpandBtn.addEventListener('click', () => {
+        this.closeFloatingDrawer();
+        if (typeof this._onExpandToTab === 'function') {
+          this._onExpandToTab();
+        }
+      });
+    }
+
+    if (drawerForm) {
+      drawerForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (drawerInput && drawerInput.value.trim()) {
+          const val = drawerInput.value;
+          drawerInput.value = '';
+          this.sendMessage(val);
+          this._renderSuggestedQuestions();
+        }
+      });
+    }
+
+    if (drawerSuggestions) {
+      drawerSuggestions.addEventListener('click', (e) => {
+        const btn = e.target.closest('.suggested-question-btn');
+        if (btn) {
+          const question = btn.getAttribute('data-question');
+          if (drawerInput) drawerInput.value = '';
+          this.sendMessage(question);
+          this._renderSuggestedQuestions();
+        }
+      });
+    }
+  }
+
+  _getGreetingState() {
+    try {
+      const raw = localStorage.getItem(GREETING_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  _saveGreetingState(state) {
+    try {
+      localStorage.setItem(GREETING_STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {}
+  }
+
+  _markGreetingSeen() {
+    if (this._pendingGreetingState) {
+      this._saveGreetingState(this._pendingGreetingState);
+      this._pendingGreetingState = null;
+    } else {
+      const userKey = typeof this._getUserId === 'function' ? this._getUserId() : 'guest';
+      const evalRes = evaluateFloatingGreetingSchedule({
+        state: this._getGreetingState(),
+        userKey,
+        now: new Date()
+      });
+      this._saveGreetingState(evalRes.nextState);
+    }
+  }
+
+  _scheduleFloatingGreeting() {
+    if (this._greetingTimer) {
+      clearTimeout(this._greetingTimer);
+    }
+    this._greetingTimer = setTimeout(() => {
+      this.maybeShowFloatingGreeting();
+    }, 1500);
+  }
+
+  maybeShowFloatingGreeting() {
+    const currentTab = typeof this._getCurrentTab === 'function' ? this._getCurrentTab() : 'dial';
+    if (currentTab === 'ai-coach' || this._isDrawerOpen) return;
+
+    const greetingEl = document.getElementById('aify-floating-greeting');
+    const textEl = document.getElementById('aify-greeting-text');
+    if (!greetingEl || !textEl) return;
+
+    const userKey = typeof this._getUserId === 'function' ? this._getUserId() : 'guest';
+    const now = new Date();
+    const evalRes = evaluateFloatingGreetingSchedule({
+      state: this._getGreetingState(),
+      userKey,
+      now
+    });
+
+    if (!evalRes.shouldShow) return;
+
+    const profile = storage.getProfile();
+    const sessionUser = storage.getAuthSession()?.user;
+    const userName = profile.userName || sessionUser?.name || '';
+
+    textEl.textContent = buildDiscreetGreetingText({
+      userName,
+      isFirstLogin: evalRes.isFirstLogin,
+      hour: now.getHours()
+    });
+
+    // Record slot immediately so page reloads within the same slot don't re-pop the bubble
+    this._pendingGreetingState = evalRes.nextState;
+    this._saveGreetingState(evalRes.nextState);
+    greetingEl.style.display = 'block';
+  }
+
+  hideFloatingGreeting() {
+    const greetingEl = document.getElementById('aify-floating-greeting');
+    if (greetingEl) greetingEl.style.display = 'none';
+  }
+
+  openFloatingDrawer() {
+    const drawer = document.getElementById('aify-floating-drawer');
+    const orb = document.getElementById('aify-floating-orb');
+    const input = document.getElementById('aify-drawer-input');
+
+    this.hideFloatingGreeting();
+    this._isDrawerOpen = true;
+    if (drawer) drawer.style.display = 'flex';
+    if (orb) orb.style.display = 'none';
+    this._renderMessages();
+    this._scrollToBottom();
+    if (input) setTimeout(() => input.focus(), 80);
+  }
+
+  closeFloatingDrawer() {
+    const drawer = document.getElementById('aify-floating-drawer');
+    const orb = document.getElementById('aify-floating-orb');
+
+    this._isDrawerOpen = false;
+    if (drawer) drawer.style.display = 'none';
+    const currentTab = typeof this._getCurrentTab === 'function' ? this._getCurrentTab() : 'dial';
+    if (orb && currentTab !== 'ai-coach') {
+      orb.style.display = 'inline-flex';
+    }
+  }
+
+  onTabChanged(tabId) {
+    const dock = document.getElementById('aify-floating-dock');
+    const orb = document.getElementById('aify-floating-orb');
+    if (!dock) return;
+
+    if (tabId === 'ai-coach') {
+      this.closeFloatingDrawer();
+      this.hideFloatingGreeting();
+      dock.style.display = 'none';
+    } else {
+      dock.style.display = 'flex';
+      if (orb && !this._isDrawerOpen) {
+        orb.style.display = 'inline-flex';
+      }
     }
   }
 

@@ -389,11 +389,17 @@ class AifyCycleApp {
     // Initialize AI Coach once; re-render if switching back in
     if (!this.aiCoach) {
       this.aiCoach = new AICoach();
-      this.aiCoach.init();
+      this.aiCoach.init({
+        onExpandToTab: () => this.switchTab('ai-coach'),
+        getCurrentTab: () => this.currentView,
+        getUserId: () => this.auth.currentUser?.id || 'guest'
+      });
     } else {
       this.aiCoach._loadChatHistory?.();
       this.aiCoach.renderChatUI();
+      this.aiCoach._scheduleFloatingGreeting?.();
     }
+    this.aiCoach.onTabChanged?.(this.currentView);
   }
 
   setupTheme() {
@@ -653,6 +659,8 @@ class AifyCycleApp {
     if (tabId === 'ai-coach' && this.aiCoach) {
       this.aiCoach.renderChatUI();
     }
+
+    this.aiCoach?.onTabChanged?.(tabId);
   }
 
   openLoggerModalForDate(dateKey) {
@@ -1165,20 +1173,13 @@ class AifyCycleApp {
       });
     });
 
-    // 5. AI Whisper Prompt Chips
+    // 5. AI Whisper Prompt Chips (opens floating AiFy drawer & sends prompt directly)
     document.querySelectorAll('.ai-quick-prompt-chip').forEach(chip => {
       chip.addEventListener('click', () => {
         const prompt = chip.getAttribute('data-prompt');
-        this.switchTab('ai-coach');
         if (this.aiCoach && prompt) {
-          setTimeout(() => {
-            const input = document.getElementById('ai-chat-input');
-            if (input) {
-              input.value = prompt;
-              const sendBtn = document.getElementById('btn-send-chat');
-              if (sendBtn) sendBtn.click();
-            }
-          }, 150);
+          this.aiCoach.openFloatingDrawer();
+          this.aiCoach.sendMessage(prompt);
         }
       });
     });

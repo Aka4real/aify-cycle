@@ -987,6 +987,70 @@
       </div>
     </section>
 
+    <!-- ===================================================================
+         FLOATING AIFY ASSISTANT (ORB + DISCREET GREETING + MINI-CHAT DRAWER)
+         =================================================================== -->
+    <div id="aify-floating-dock" class="aify-floating-dock" aria-live="polite">
+      <!-- Discreet Name-Only Greeting Bubble (max 2x/day + first login) -->
+      <div id="aify-floating-greeting" class="aify-floating-greeting" role="dialog" aria-label="AiFy Greeting" style="display: none;">
+        <div class="aify-greeting-header">
+          <div class="aify-greeting-badge">
+            <span class="aify-greeting-avatar">🌸</span>
+            <span class="aify-greeting-title">AiFy Companion</span>
+          </div>
+          <button type="button" id="btn-aify-greeting-close" class="aify-greeting-close" aria-label="Dismiss greeting">&times;</button>
+        </div>
+        <p id="aify-greeting-text" class="aify-greeting-text">Hi there 🌸 Ready for a quick wellness check-in?</p>
+        <div class="aify-greeting-actions">
+          <button type="button" id="btn-aify-greeting-accept" class="btn-primary aify-greeting-btn-accept">
+            <span>✨ Chat with AiFy</span>
+          </button>
+          <button type="button" id="btn-aify-greeting-dismiss" class="btn-secondary aify-greeting-btn-dismiss">
+            <span>Not now</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Compact Floating Mini-Chat Drawer -->
+      <div id="aify-floating-drawer" class="aify-floating-drawer" role="dialog" aria-label="AiFy Chat Drawer" style="display: none;">
+        <div class="aify-drawer-header">
+          <div class="aify-drawer-header-left">
+            <span class="aify-drawer-avatar">🌸</span>
+            <div>
+              <strong class="aify-drawer-title">AiFy Companion</strong>
+              <span id="aify-drawer-status-label" class="aify-drawer-subtitle"><span id="aify-drawer-engine-dot" class="engine-dot live"></span> Private Wellness Guide</span>
+            </div>
+          </div>
+          <div class="aify-drawer-header-actions">
+            <button type="button" id="btn-aify-drawer-expand" class="aify-drawer-icon-btn" title="Expand to full AI Coach tab" aria-label="Expand to full AI Coach tab">↗</button>
+            <button type="button" id="btn-aify-drawer-close" class="aify-drawer-icon-btn" title="Minimize chat" aria-label="Close chat drawer">&times;</button>
+          </div>
+        </div>
+
+        <div id="aify-drawer-suggestions" class="aify-drawer-suggestions">
+          <!-- Populated by JS -->
+        </div>
+
+        <div id="aify-drawer-messages" class="aify-drawer-messages">
+          <!-- Synchronized with AI Coach chat history -->
+        </div>
+
+        <form id="aify-drawer-form" class="aify-drawer-input-bar">
+          <input type="text" id="aify-drawer-input" class="aify-drawer-input" placeholder="Ask AiFy anything..." autocomplete="off" />
+          <button type="submit" id="aify-drawer-send" class="btn-primary aify-drawer-send-btn" title="Send message" aria-label="Send message">
+            <span>➤</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Floating Glowing Rose-Gold Orb -->
+      <button type="button" id="aify-floating-orb" class="aify-floating-orb" title="Chat with AiFy" aria-label="Open AiFy AI Assistant">
+        <span class="aify-orb-pulse"></span>
+        <span class="aify-orb-icon">🌸</span>
+        <span class="aify-orb-label">AiFy</span>
+      </button>
+    </div>
+
   </div>
 
   <!-- ===================================================================

@@ -13,12 +13,20 @@ import {
   parseProposedActionsFromText,
   sanitizeModelActions,
   mergeProposedActions,
-  isValidActionDate
+  isValidActionDate,
+  evaluateFloatingGreetingSchedule,
+  buildDiscreetGreetingText
 } from '../js/ai-action-parser.js';
 import { escapeHtml } from '../js/dom-utils.js';
 
 const require = createRequire(import.meta.url);
-const { buildValidatedGeminiRequest } = require('../lib/gemini.js');
+const {
+  buildValidatedGeminiRequest,
+  isModelCoolingDown,
+  markModelCooldown,
+  clearModelCooldowns,
+  getGeminiStatus
+} = require('../lib/gemini.js');
 const { isOriginAllowed, checkRateLimit } = require('../lib/http-security.js');
 
 // --- 1. Cycle Engine Tests ---
@@ -175,4 +183,55 @@ test('Rate limiter blocks once threshold is reached', () => {
   assert.equal(checkRateLimit(key, { limit: 2, windowMs: 60000 }).allowed, true);
   assert.equal(checkRateLimit(key, { limit: 2, windowMs: 60000 }).allowed, true);
   assert.equal(checkRateLimit(key, { limit: 2, windowMs: 60000 }).allowed, false);
+});
+
+test('Gemini circuit breaker cools down failing primary model and promotes healthy fallback', () => {
+  clearModelCooldowns();
+  assert.equal(isModelCoolingDown('gemini-3.8-flash'), false);
+  markModelCooldown('gemini-3.8-flash', 60000);
+  assert.equal(isModelCoolingDown('gemini-3.8-flash'), true);
+  const status = getGeminiStatus();
+  assert.notEqual(status.model, 'gemini-3.8-flash');
+  clearModelCooldowns();
+});
+
+test('Floating AiFy greeting schedule shows on first login and max twice per day (day + evening slots)', () => {
+  const morning = new Date(2026, 10, 21, 9, 30);
+  const afternoon = new Date(2026, 10, 21, 14, 15);
+  const evening = new Date(2026, 10, 21, 18, 45);
+  const nextMorning = new Date(2026, 10, 22, 8, 0);
+
+  // 1. First login in morning -> shows (isFirstLogin: true)
+  const first = evaluateFloatingGreetingSchedule({ state: {}, userKey: 'user-1', now: morning });
+  assert.equal(first.shouldShow, true);
+  assert.equal(first.isFirstLogin, true);
+  assert.equal(first.slot, 'day');
+
+  // 2. Later in afternoon (same day slot < 17:00) -> does NOT repeat
+  const second = evaluateFloatingGreetingSchedule({ state: first.nextState, userKey: 'user-1', now: afternoon });
+  assert.equal(second.shouldShow, false);
+  assert.equal(second.isFirstLogin, false);
+
+  // 3. Evening (>= 17:00) -> shows second daily check-in
+  const third = evaluateFloatingGreetingSchedule({ state: first.nextState, userKey: 'user-1', now: evening });
+  assert.equal(third.shouldShow, true);
+  assert.equal(third.slot, 'evening');
+
+  // 4. Later same evening -> does NOT repeat
+  const fourth = evaluateFloatingGreetingSchedule({ state: third.nextState, userKey: 'user-1', now: evening });
+  assert.equal(fourth.shouldShow, false);
+
+  // 5. Next morning -> shows again
+  const fifth = evaluateFloatingGreetingSchedule({ state: third.nextState, userKey: 'user-1', now: nextMorning });
+  assert.equal(fifth.shouldShow, true);
+});
+
+test('buildDiscreetGreetingText uses first name only and never exposes cycle phase or period data', () => {
+  const welcome = buildDiscreetGreetingText({ userName: 'Sarah Jenkins', isFirstLogin: true, hour: 10 });
+  assert.match(welcome, /Welcome, Sarah!/);
+  assert.doesNotMatch(welcome, /Jenkins|Phase|Day|Ovulat|Menstrual|Period|Fertile/i);
+
+  const evening = buildDiscreetGreetingText({ userName: 'Sarah Jenkins', isFirstLogin: false, hour: 19 });
+  assert.match(evening, /Good evening, Sarah/);
+  assert.doesNotMatch(evening, /Phase|Day|Ovulat|Menstrual|Period|Fertile/i);
 });

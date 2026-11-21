@@ -354,3 +354,65 @@ export function mergeProposedActions(localActions = [], modelActions = []) {
   ordered.push(...merged);
   return ordered;
 }
+
+/**
+ * Pure helper: determine whether the floating AiFy greeting should appear
+ * (on first-ever login for this user, then at most twice per day: <17:00 "day" and >=17:00 "evening").
+ */
+export function evaluateFloatingGreetingSchedule({ state = {}, userKey = 'guest', now = new Date() } = {}) {
+  const safeState = state && typeof state === 'object' ? state : {};
+  const firstLoginUsers = safeState.firstLoginUsers && typeof safeState.firstLoginUsers === 'object'
+    ? safeState.firstLoginUsers
+    : {};
+  const cleanUserKey = String(userKey || 'guest').trim() || 'guest';
+  const dateKey = formatDateKey(now);
+  const slot = now.getHours() < 17 ? 'day' : 'evening';
+  const slotKey = `${dateKey}:${slot}`;
+
+  const isFirstLogin = !firstLoginUsers[cleanUserKey];
+  const shouldShow = isFirstLogin || safeState.lastSlotShown !== slotKey;
+
+  const nextState = {
+    firstLoginUsers: {
+      ...firstLoginUsers,
+      [cleanUserKey]: true
+    },
+    lastSlotShown: slotKey,
+    updatedAt: now.toISOString()
+  };
+
+  return {
+    shouldShow,
+    isFirstLogin,
+    slot,
+    slotKey,
+    nextState
+  };
+}
+
+/**
+ * Pure helper: build a discreet, privacy-first greeting using only the user's first name
+ * (never displays cycle phase, period day, or fertility in the popup).
+ */
+export function buildDiscreetGreetingText({ userName = '', isFirstLogin = false, hour = 10 } = {}) {
+  const rawToken = String(userName || '').trim().split(/\s+/)[0] || '';
+  const isGeneric = !rawToken || ['user', 'guest', 'demo'].includes(rawToken.toLowerCase());
+  const firstName = isGeneric ? '' : rawToken;
+
+  if (isFirstLogin) {
+    return firstName
+      ? `Welcome, ${firstName}! 🌸 I'm AiFy, your private wellness companion — ready whenever you'd like to chat.`
+      : `Welcome! 🌸 I'm AiFy, your private wellness companion — ready whenever you'd like to chat.`;
+  }
+
+  if (hour >= 17) {
+    return firstName
+      ? `Good evening, ${firstName} 🌸 How are you feeling today? I'm here if you'd like to chat.`
+      : `Good evening 🌸 How are you feeling today? I'm here if you'd like to chat.`;
+  }
+
+  const timeGreeting = hour < 12 ? 'Good morning' : 'Good afternoon';
+  return firstName
+    ? `${timeGreeting}, ${firstName} 🌸 Ready for a quick wellness check-in?`
+    : `${timeGreeting} 🌸 Ready for a quick wellness check-in?`;
+}

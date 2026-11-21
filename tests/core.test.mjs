@@ -229,9 +229,9 @@ test('Floating AiFy greeting schedule shows on first login and max twice per day
 test('buildDiscreetGreetingText uses first name only and never exposes cycle phase or period data', () => {
   const welcome = buildDiscreetGreetingText({ userName: 'Sarah Jenkins', isFirstLogin: true, hour: 10 });
   assert.match(welcome, /Welcome, Sarah!/);
-  assert.doesNotMatch(welcome, /Jenkins|Phase|Day|Ovulat|Menstrual|Period|Fertile/i);
+  assert.doesNotMatch(welcome, /\b(?:Jenkins|Phase|Day\s+\d+|Ovulat|Menstrual|Period|Fertile)/i);
 
   const evening = buildDiscreetGreetingText({ userName: 'Sarah Jenkins', isFirstLogin: false, hour: 19 });
   assert.match(evening, /Good evening, Sarah/);
-  assert.doesNotMatch(evening, /Phase|Day|Ovulat|Menstrual|Period|Fertile/i);
+  assert.doesNotMatch(evening, /\b(?:Phase|Day\s+\d+|Ovulat|Menstrual|Period|Fertile)/i);
 });

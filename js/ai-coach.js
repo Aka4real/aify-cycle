@@ -1,78 +1,27 @@
 /**
- * AifyCycle - AI Coach & Real-Time Adaptive Health Agent
- * Gemini 3.6 Flash-powered conversational AI menstrual health coach with
- * real-time cycle data updates, continuous learning memory, and instant synchronization.
+ * AifyCycle - AI Coach & Adaptive Wellness Companion
+ * Connects to the locked-down server-side /api/gemini gateway,
+ * proposes user-confirmed cycle log updates (never mutates health records silently),
+ * and provides graceful local fallback when offline.
  */
 
 import { storage } from './storage.js';
-import { getCycleStatus, formatDateKey, parseDateKey, addDays } from './cycle-engine.js';
+import { getCycleStatus, formatDateKey } from './cycle-engine.js';
 import { analytics } from './analytics-tracker.js';
+import { supabaseService } from './supabase-client.js';
+import { escapeHtml } from './dom-utils.js';
+import {
+  parseProposedActionsFromText,
+  sanitizeModelActions,
+  mergeProposedActions
+} from './ai-action-parser.js';
 
 const BACKEND_PROXY_URL = '/api/gemini';
 const BACKEND_STATUS_URL = '/api/gemini/status';
 
-const SYSTEM_INSTRUCTION = `You are "Aify", a warm, empathetic, and scientifically knowledgeable AI menstrual health coach inside the Aify Cycle app. Your personality is caring, empowering, body-positive, and medically grounded.
-
-CORE CONVERSATIONAL GUIDELINES:
-1. Provide complete, comprehensive, and well-rounded answers. Always finish your thoughts, sentences, and scientific explanations fully. Never stop abruptly or leave an answer incomplete.
-2. When discussing fertility, ovulation, contraception, and biological mechanisms, provide accurate, reassuring, and thorough guidance with clear distinctions between cycle awareness and clinical contraception.
-3. Be warm, supportive, and non-judgmental.
-
-REAL-TIME CYCLE & HABIT TRACKING AGENCY:
-You have direct agency to update the user's period dates, symptoms, flow, and record their personal health habits in real time.
-
-ONLY when the user explicitly reports personal cycle data (e.g., period start, flow intensity, symptoms, mood, sleep, water) or shares a personal habit/remedy preference, append a structured JSON block at the VERY END of your message:
-
-\`\`\`json:agent_actions
-{
-  "actions": [
-    // 1. When period started or date specified:
-    { "type": "UPDATE_PERIOD_START", "date": "YYYY-MM-DD", "flow": "medium" },
-
-    // 2. When logging daily symptoms, flow, mood, water, sleep, notes:
-    {
-      "type": "LOG_DAILY_DATA",
-      "date": "YYYY-MM-DD",
-      "flow": "none|spotting|light|medium|heavy",
-      "symptoms": ["Cramps", "Headache", "Bloating", "Tender Breasts", "Acne", "Lower Back Pain", "Fatigue", "Nausea"],
-      "moods": ["Calm", "Happy", "High Energy", "Romantic", "Sensitive", "Anxious", "Irritable", "Low Energy"],
-      "waterGlasses": 8,
-      "sleepHours": 8,
-      "notes": "User notes or observations"
-    },
-
-    // 3. When user specifies cycle settings or name:
-    { "type": "UPDATE_CYCLE_SETTINGS", "cycleLength": 30, "periodLength": 5, "userName": "Name" },
-
-    // 4. When user mentions a preference, remedy, habit, sensitivity, or goal:
-    {
-      "type": "LEARN_INSIGHT",
-      "category": "remedy_preference|cycle_pattern|lifestyle_habit|personal_goal|sensitivity_trigger",
-      "fact": "Clear, concise statement of what you learned about the user"
-    }
-  ]
-}
-\`\`\`
-
-IMPORTANT: If the user is asking questions, requesting advice, seeking explanations, or having a general conversation WITHOUT logging new personal cycle data or habits, DO NOT include any JSON block. Provide pure, beautifully formatted conversational guidance.
-
-- Use emojis naturally
-- Keep responses engaging, informative, and complete (2-4 well-rounded paragraphs)
-
-CRITICAL MEDICAL & LEGAL GUARDRAILS (FDA & COMPLIANCE):
-1. NON-DIAGNOSTIC & EDUCATIONAL ONLY: You are an educational and wellness lifestyle guide, NOT a doctor, gynecologist, or medical device. NEVER diagnose medical conditions (e.g. PCOS, endometriosis, fibroids, pelvic inflammatory disease, toxic shock syndrome, or pregnancy).
-2. CONTRACEPTION WARNING: If the user asks about using the app, fertility windows, or rhythm tracking for birth control or pregnancy prevention, EXPLICITLY state that cycle tracking predictions alone are NOT a fail-safe contraceptive method and cannot prevent unwanted pregnancy or sexually transmitted infections (STIs). Direct them to a healthcare provider for family planning options.
-3. EMERGENCY RED-FLAG PROTOCOLS: If the user mentions any of the following symptoms:
-   - Sudden, severe, sharp, or agonizing pelvic or abdominal pain (potential ectopic pregnancy, ovarian torsion, or appendicitis)
-   - Heavy hemorrhage soaking through one or more menstrual pads/tampons every hour for two or more consecutive hours
-   - High fever with chills, foul-smelling vaginal discharge, or flu-like symptoms during tampon use (potential Toxic Shock Syndrome or Pelvic Inflammatory Disease)
-   - Dizziness, fainting, extreme shortness of breath, or chest pain
-   IMMEDIATELY and prominently advise the user to seek URGENT EMERGENCY medical care or call emergency services (911/112/local emergency number). Do NOT downplay severe acute symptoms.
-4. MEDICATION DISCLAIMER: Do not prescribe or recommend prescription drugs or specific medical dosages. You may discuss gentle, evidence-based lifestyle comfort measures (e.g., heating pads, gentle hydration, magnesium-rich foods, chamomile tea) while recommending consulting a physician or pharmacist for medical treatments.`;
-
 const SUGGESTED_QUESTIONS = [
   { icon: '🩸', text: 'My period started today' },
-  { icon: '⚡', text: 'I have bad cramps and bloating today, flow is heavy' },
+  { icon: '⚡', text: 'I have cramps and bloating today, flow is heavy' },
   { icon: '🍵', text: 'I prefer chamomile tea and a heating pad for cramps' },
   { icon: '🔄', text: 'My cycle length is 30 days' },
   { icon: '🌙', text: 'What phase am I in right now?' },
@@ -81,17 +30,25 @@ const SUGGESTED_QUESTIONS = [
   { icon: '😴', text: 'I slept 6 hours and feel exhausted today' }
 ];
 
+function formatModelDisplayName(modelId) {
+  if (!modelId || typeof modelId !== 'string') return 'Gemini AI';
+  return modelId
+    .replace(/^models\//i, '')
+    .split('-')
+    .map(part => (part ? part[0].toUpperCase() + part.slice(1) : ''))
+    .join(' ');
+}
+
 export class AICoach {
   constructor() {
     this.chatHistory = [];
     this.isLoading = false;
     this.activeCategoryFilter = 'all';
+    this._listenersAttached = false;
+    this._undoSnapshots = new Map();
     this._loadChatHistory();
   }
 
-  /**
-   * Initialize the AI Coach UI
-   */
   init() {
     this.renderChatUI();
     this.attachListeners();
@@ -99,31 +56,27 @@ export class AICoach {
     this.updateEngineBadge();
   }
 
-  /**
-   * Check connection status of Gemini backend proxy and client key
-   */
   async checkGeminiStatus() {
-    // 1. Check server backend proxy
     try {
       const res = await fetch(BACKEND_STATUS_URL, { method: 'GET' });
       if (res.ok) {
         const data = await res.json();
         if (data.configured) {
-          const modelTitle = data.model === 'gemini-3.6-flash' ? 'Gemini 3.6 Flash' : (data.model === 'gemini-3.8-flash' ? 'Gemini 3.6 Flash' : data.model);
-          return { mode: 'server', label: modelTitle, active: true };
+          return {
+            mode: 'server',
+            model: data.model || 'gemini',
+            label: formatModelDisplayName(data.model),
+            active: true
+          };
         }
       }
     } catch (e) {
-      // Backend not running or static mode
+      // Backend unreachable or static offline mode
     }
 
-    // 2. Built-in Local Mode
-    return { mode: 'local', label: 'Local Intelligence', active: false };
+    return { mode: 'local', model: 'local', label: 'Local Intelligence', active: false };
   }
 
-  /**
-   * Update the interactive AI engine badge in the chat header
-   */
   async updateEngineBadge() {
     const badgeEl = document.getElementById('ai-engine-badge');
     if (!badgeEl) return;
@@ -131,31 +84,44 @@ export class AICoach {
     const status = await this.checkGeminiStatus();
     if (status.active) {
       badgeEl.className = 'ai-engine-badge badge-active';
-      badgeEl.innerHTML = `<span class="engine-dot live"></span><span>✨ ${status.label}</span>`;
-      badgeEl.title = `Live ${status.label} connected. Click to configure API settings.`;
+      badgeEl.innerHTML = `<span class="engine-dot live"></span><span>✨ ${escapeHtml(status.label)}</span>`;
+      badgeEl.title = `Live ${status.label} connected via secure server gateway.`;
     } else {
       badgeEl.className = 'ai-engine-badge badge-local';
       badgeEl.innerHTML = `<span class="engine-dot local"></span><span>🧠 Local Intelligence</span>`;
-      badgeEl.title = 'Running on local cycle intelligence. Click to connect Gemini 3.6 Flash API.';
+      badgeEl.title = 'Running in offline local wellness mode.';
     }
   }
 
   /**
-   * Dispatch generation request to backend proxy (Zero-credential secure gateway)
-   * The API key is strictly server-only and is never sent to or stored in the browser.
+   * Dispatch structured task request to the locked-down /api/gemini gateway.
+   * System instructions, model routing, and token limits are enforced server-side.
    */
-  async _callGeminiApi(requestBody) {
+  async _callGeminiGateway(payload) {
+    const headers = { 'Content-Type': 'application/json' };
+
+    // Attach Supabase JWT when signed in for authenticated rate-limit tier
+    try {
+      const client = supabaseService.getClient();
+      if (client) {
+        const { data: { session } } = await client.auth.getSession();
+        if (session?.access_token) {
+          headers.Authorization = `Bearer ${session.access_token}`;
+        }
+      }
+    } catch (e) {}
+
     const serverRes = await fetch(BACKEND_PROXY_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody)
+      headers,
+      body: JSON.stringify(payload)
     });
 
     const data = await serverRes.json().catch(() => ({}));
 
     if (serverRes.ok) {
       if (data._aify_meta?.cascaded) {
-        console.info(`[Aify AI] Google demand spike handled: auto-cascaded to ${data._aify_meta.modelUsed}`);
+        console.info(`[Aify AI] Auto-cascaded to ${data._aify_meta.modelUsed}`);
       }
       return data;
     }
@@ -168,14 +134,13 @@ export class AICoach {
   }
 
   /**
-   * Generate dynamic personalized Cycle Syncing insights with Gemini 3.6 Flash
+   * Generate dynamic personalized Cycle Syncing insights via server-side prompt builder
    */
   async generateCycleSyncingInsights(status, profile, logs = {}, forceRefresh = false) {
     const phaseKey = status.phase.key;
-    const cycleDay = status.cycleDay;
+    const cycleDay = status.cycleDay || 1;
     const cacheKey = `aify_gemini_sync_${phaseKey}_day_${cycleDay}`;
 
-    // 1. Check local cache first unless user explicitly requested a refresh
     if (!forceRefresh) {
       try {
         const cached = localStorage.getItem(cacheKey);
@@ -190,7 +155,6 @@ export class AICoach {
       }
     }
 
-    // 2. Gather recent symptoms / moods from the last 5 days
     const recentSymptoms = [];
     const today = new Date();
     for (let i = 0; i < 5; i++) {
@@ -199,77 +163,28 @@ export class AICoach {
       const key = formatDateKey(d);
       const dayLog = logs[key];
       if (dayLog) {
-        if (dayLog.symptoms && dayLog.symptoms.length > 0) {
-          recentSymptoms.push(...dayLog.symptoms);
-        }
-        if (dayLog.moods && dayLog.moods.length > 0) {
-          recentSymptoms.push(...dayLog.moods);
-        }
+        if (dayLog.symptoms?.length) recentSymptoms.push(...dayLog.symptoms);
+        if (dayLog.moods?.length) recentSymptoms.push(...dayLog.moods);
       }
     }
-    const uniqueSymptoms = [...new Set(recentSymptoms)].join(', ');
-
-    // 3. Build system instruction & prompt for Gemini 3.6 Flash
-    const prompt = `You are a world-class board-certified reproductive endocrinologist, functional nutritionist, and holistic women's health coach powering AifyCycle.
-Generate personalized, scientific, highly actionable cycle-syncing recommendations for Day ${cycleDay} of the ${status.phase.name}.
-
-User Context:
-- User Name: ${profile.userName || 'User'}
-- Current Phase: ${status.phase.name} (${status.phase.tagline})
-- Current Day: Day ${cycleDay} of ${status.cycleLength}-day cycle
-- Menstrual Period Length: ${profile.periodLength} days
-- Recent Logged Symptoms & Moods: ${uniqueSymptoms || 'None reported (balanced)'}
-- Next Predicted Period: ${status.nextPeriodStart}
-
-Instructions:
-- Tailor nutrition specifically to the phase's hormonal demands (e.g. estrogen clearance in ovulation, progesterone support & magnesium in luteal, iron & warming foods in menstrual, light phytoestrogens in follicular).
-- Workouts must accurately reflect follicular/ovulatory energetic capacity vs luteal/menstrual restorative recovery.
-- Mindset & focus tips should offer neuro-cognitive and emotional rhythm advice.
-- Partner/wellness tip should offer warm empathy and communication synergy.
-- scientificWhy should give a concise 1-2 sentence medical explanation of why these choices align with this day's endocrine environment.
-
-Respond ONLY with a valid JSON object matching this schema:
-{
-  "title": "${status.phase.name} (Day ${cycleDay})",
-  "tagline": "${status.phase.tagline}",
-  "hormoneSnapshot": "Short 1-sentence hormone dynamic description",
-  "energyCapacity": "e.g. Peak Dynamic Power (95%) or Restorative Inward Energy (50%)",
-  "foods": [
-    "Food 1 with micronutrient benefit",
-    "Food 2 with micronutrient benefit",
-    "Food 3 with micronutrient benefit",
-    "Hydration / herbal infusion advice"
-  ],
-  "workouts": [
-    "Primary workout suggestion",
-    "Intensity & heart rate guidance",
-    "Active recovery / mobility tip"
-  ],
-  "mindset": [
-    "Cognitive focus / work recommendation",
-    "Social stamina / communication rhythm",
-    "Evening wind-down / circadian rhythm"
-  ],
-  "partnerTip": "Empathetic daily holistic care note or partner synergy advice",
-  "scientificWhy": "Concise medical-grade rationale based on estrogen/progesterone/LH balance for Day ${cycleDay}."
-}`;
-
-    const requestBody = {
-      contents: [{
-        role: 'user',
-        parts: [{ text: prompt }]
-      }],
-      generationConfig: {
-        temperature: 0.65,
-        maxOutputTokens: 2048,
-        responseMimeType: 'application/json'
-      }
-    };
 
     try {
-      const data = await this._callGeminiApi(requestBody);
+      const data = await this._callGeminiGateway({
+        task: 'cycle_sync',
+        context: {
+          userName: profile.userName || 'User',
+          phaseName: status.phase.name,
+          phaseTagline: status.phase.tagline,
+          cycleDay,
+          cycleLength: status.cycleLength,
+          periodLength: profile.periodLength || 5,
+          recentSymptoms: [...new Set(recentSymptoms)].join(', '),
+          nextPeriodStart: status.nextPeriodStart,
+          isLate: Boolean(status.isLate)
+        }
+      });
+
       const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      
       let parsedJson = null;
       try {
         parsedJson = JSON.parse(rawText.trim());
@@ -286,60 +201,46 @@ Respond ONLY with a valid JSON object matching this schema:
         } catch (e) {}
 
         analytics.trackEvent('cycle', 'gemini_syncing_generated', status.phase.key, { cycleDay });
-        analytics.logAuditAction('GEMINI_SYNC_GENERATED', `Gemini 3.6 wrote personalized insights for Day ${cycleDay}`);
+        analytics.logAuditAction('AI_SYNC_GENERATED', `AI wrote personalized insights for Day ${cycleDay}`);
         return parsedJson;
       }
     } catch (err) {
-      console.warn('Gemini 3.6 Cycle Syncing generation bypassed or failed, using baseline guide:', err.message);
+      console.warn('AI Cycle Syncing generation bypassed or failed, using baseline guide:', err.message);
     }
 
     return null;
   }
 
-  /**
-   * Build context string from user's cycle data and learned memories
-   */
   _buildUserContext() {
     const profile = storage.getProfile();
+    const logs = storage.getAllLogs();
     const today = new Date();
-    const status = getCycleStatus(today, profile);
-    const todayLog = storage.getLog(formatDateKey(today));
+    const status = getCycleStatus(today, profile, logs);
+    const todayLog = logs[formatDateKey(today)] || null;
     const memories = storage.getAgentMemories();
 
-    let context = `\n\n--- User Context & Real-Time State ---\n`;
-    context += `User Name: ${profile.userName || 'User'}\n`;
-    context += `Today's Date: ${formatDateKey(today)}\n`;
-    context += `Cycle Day: ${status.cycleDay} of ${status.cycleLength}\n`;
-    context += `Current Phase: ${status.phase.name} (${status.phase.shortName})\n`;
-    context += `Phase Description: ${status.phase.description}\n`;
-    context += `Fertility Status: ${status.fertilityChance}\n`;
-    context += `Days Until Next Period: ${status.daysUntilNextPeriod}\n`;
-    context += `Next Period Predicted: ${status.nextPeriodStart}\n`;
-    context += `Next Ovulation: ${status.nextOvulationDate}\n`;
-    context += `Average Cycle Length: ${profile.cycleLength} days\n`;
-    context += `Average Period Length: ${profile.periodLength} days\n`;
-    context += `Last Period Start Date: ${profile.lastPeriodStart}\n`;
+    let context = `--- User Context ---\n`;
+    context += `Name: ${profile.userName || 'User'}\n`;
+    context += `Today: ${formatDateKey(today)}\n`;
+    context += `Cycle Day: ${status.cycleDay ?? 'Unknown'} of ${status.cycleLength}\n`;
+    context += `Current Phase: ${status.phase.name}${status.isLate ? ` (${status.daysLate} days late)` : ''}\n`;
+    context += `Estimated Fertility: ${status.fertilityChance} (calendar estimate only)\n`;
+    context += `Days Until Est. Next Period: ${status.daysUntilNextPeriod ?? 'Unknown'}\n`;
+    context += `Est. Next Period: ${status.nextPeriodStart}\n`;
+    context += `Average Cycle Length: ${status.cycleLength} days\n`;
+    context += `Average Period Length: ${status.periodLength} days\n`;
+    context += `Last Period Start: ${profile.lastPeriodStart || 'Not set'}\n`;
 
     if (todayLog) {
-      if (todayLog.symptoms && todayLog.symptoms.length > 0) {
-        context += `Today's Logged Symptoms: ${todayLog.symptoms.join(', ')}\n`;
-      }
-      if (todayLog.moods && todayLog.moods.length > 0) {
-        context += `Today's Logged Mood: ${todayLog.moods.join(', ')}\n`;
-      }
-      if (todayLog.flow) {
-        context += `Today's Logged Flow: ${todayLog.flow}\n`;
-      }
-      if (todayLog.waterGlasses) {
-        context += `Today's Water: ${todayLog.waterGlasses} glasses\n`;
-      }
-      if (todayLog.sleepHours) {
-        context += `Today's Sleep: ${todayLog.sleepHours} hours\n`;
-      }
+      if (todayLog.symptoms?.length) context += `Today's Symptoms: ${todayLog.symptoms.join(', ')}\n`;
+      if (todayLog.moods?.length) context += `Today's Moods: ${todayLog.moods.join(', ')}\n`;
+      if (todayLog.flow) context += `Today's Flow: ${todayLog.flow}\n`;
+      if (todayLog.waterGlasses) context += `Water Logged: ${todayLog.waterGlasses} glasses\n`;
+      if (todayLog.sleepHours) context += `Sleep Logged: ${todayLog.sleepHours} hours\n`;
     }
 
-    if (memories && memories.length > 0) {
-      context += `\n--- What You Have Learned About This User (Active Memory Bank) ---\n`;
+    if (memories.length > 0) {
+      context += `\n--- Saved Personal Notes ---\n`;
       memories.slice(0, 10).forEach(m => {
         context += `- [${m.category}] ${m.fact}\n`;
       });
@@ -349,178 +250,72 @@ Respond ONLY with a valid JSON object matching this schema:
   }
 
   /**
-   * Local Real-Time Semantic Parser:
-   * Extracts cycle updates, symptoms, flow, and learning insights instantaneously
-   * ensuring 100% offline & real-time zero-latency execution.
+   * Build human-readable summary chips for proposed actions (without writing yet)
    */
-  _parseLocalActionsAndLearning(text) {
-    const actions = [];
-    const lower = text.toLowerCase();
-    const today = new Date();
-    const todayKey = formatDateKey(today);
+  _describeActions(actions) {
+    if (!Array.isArray(actions) || actions.length === 0) return [];
+    const items = [];
 
-    // 1. Check for Period Start / Cycle Day 1
-    const periodStartRegex = /(?:period|cycle|bleeding)\s+(?:started|began|came|arrived|is here)|(?:got|started)\s+my\s+period|day\s*1\s+of\s+(?:my\s+)?cycle/i;
-    if (periodStartRegex.test(text)) {
-      let targetDate = todayKey;
-      if (/\byesterday\b/i.test(text)) {
-        targetDate = formatDateKey(addDays(today, -1));
-      }
-
-      // Check flow mentioned
-      let flow = 'medium';
-      if (/\bheavy\b/i.test(text)) flow = 'heavy';
-      else if (/\blight\b/i.test(text)) flow = 'light';
-      else if (/\bspotting\b/i.test(text)) flow = 'spotting';
-
-      actions.push({
-        type: 'UPDATE_PERIOD_START',
-        date: targetDate,
-        flow
-      });
-    }
-
-    // 2. Check for Menstrual Flow
-    let detectedFlow = null;
-    if (/\bheavy\s+(?:flow|bleeding)\b|\bflow\s+is\s+heavy\b|\bheavy\s+period\b/i.test(text)) detectedFlow = 'heavy';
-    else if (/\bmedium\s+(?:flow|bleeding)\b|\bflow\s+is\s+medium\b/i.test(text)) detectedFlow = 'medium';
-    else if (/\blight\s+(?:flow|bleeding)\b|\bflow\s+is\s+light\b/i.test(text)) detectedFlow = 'light';
-    else if (/\bspotting\b/i.test(text)) detectedFlow = 'spotting';
-
-    // 3. Check for Physical Symptoms
-    const detectedSymptoms = [];
-    const symptomDictionary = [
-      { name: 'Cramps', pattern: /\b(?:cramp|cramps|cramping|menstrual\s+pain|period\s+pain|pelvic\s+pain)\b/i },
-      { name: 'Tender Breasts', pattern: /\b(?:tender\s+breasts?|sore\s+breasts?|breast\s+tenderness|breast\s+pain|sore\s+nipples)\b/i },
-      { name: 'Headache', pattern: /\b(?:headache|headaches|migraine|migraines|head\s+pounding)\b/i },
-      { name: 'Bloating', pattern: /\b(?:bloat|bloated|bloating|water\s+retention|puffy\s+belly)\b/i },
-      { name: 'Acne', pattern: /\b(?:acne|breakout|breakouts|pimples?|zits?)\b/i },
-      { name: 'Lower Back Pain', pattern: /\b(?:lower\s+back\s+pain|back\s+ache|backache|back\s+pain)\b/i },
-      { name: 'Fatigue', pattern: /\b(?:fatigue|fatigued|exhausted|exhaustion|so\s+tired|lethargic|drained|no\s+energy)\b/i },
-      { name: 'Nausea', pattern: /\b(?:nausea|nauseous|queasy|sick\s+to\s+(?:my\s+)?stomach)\b/i }
-    ];
-
-    symptomDictionary.forEach(s => {
-      if (s.pattern.test(text) && !detectedSymptoms.includes(s.name)) {
-        detectedSymptoms.push(s.name);
-      }
-    });
-
-    // 4. Check for Moods
-    const detectedMoods = [];
-    const moodDictionary = [
-      { name: 'Calm', pattern: /\b(?:calm|peaceful|relaxed|centered|serene)\b/i },
-      { name: 'Happy', pattern: /\b(?:happy|joyful|great\s+mood|cheerful|good\s+mood)\b/i },
-      { name: 'High Energy', pattern: /\b(?:high\s+energy|energized|energetic|productive|buzzing)\b/i },
-      { name: 'Romantic', pattern: /\b(?:romantic|loving|intimate|flirty|affectionate)\b/i },
-      { name: 'Sensitive', pattern: /\b(?:sensitive|emotional|teary|crying|vulnerable)\b/i },
-      { name: 'Anxious', pattern: /\b(?:anxious|anxiety|stressed|stress|overwhelmed|worrying|nervous)\b/i },
-      { name: 'Irritable', pattern: /\b(?:irritable|irritated|cranky|moody|grumpy|annoyed|short-tempered)\b/i },
-      { name: 'Low Energy', pattern: /\b(?:low\s+energy|sluggish|run\s+down|depleted|foggy)\b/i }
-    ];
-
-    moodDictionary.forEach(m => {
-      if (m.pattern.test(text) && !detectedMoods.includes(m.name)) {
-        detectedMoods.push(m.name);
-      }
-    });
-
-    // 5. Water & Sleep
-    let waterGlasses = null;
-    const waterMatch = text.match(/(?:drank|drink|had|log|logged)\s+(\d+)\s*(?:glasses|cups|bottles)/i);
-    if (waterMatch) {
-      waterGlasses = parseInt(waterMatch[1], 10);
-    }
-
-    let sleepHours = null;
-    const sleepMatch = text.match(/(?:slept|got)\s+(\d+(?:\.\d+)?)\s*(?:hours|hrs|h)/i);
-    if (sleepMatch) {
-      sleepHours = parseFloat(sleepMatch[1]);
-    }
-
-    // Consolidate daily data log if anything detected
-    if (detectedFlow || detectedSymptoms.length > 0 || detectedMoods.length > 0 || waterGlasses !== null || sleepHours !== null) {
-      actions.push({
-        type: 'LOG_DAILY_DATA',
-        date: todayKey,
-        flow: detectedFlow,
-        symptoms: detectedSymptoms,
-        moods: detectedMoods,
-        waterGlasses,
-        sleepHours
-      });
-    }
-
-    // 6. Check for Cycle Settings (Cycle Length, Period Length, Name)
-    const cycleLengthMatch = text.match(/(?:my\s+)?cycle\s+(?:is|length\s+is|lasts?|usually\s+lasts?)\s*(\d{2})\s*days?/i);
-    const periodLengthMatch = text.match(/(?:my\s+)?period\s+(?:duration|lasts?|length\s+is)\s*(\d{1,2})\s*days?/i);
-    const nameMatch = text.match(/(?:call\s+me|my\s+name\s+is)\s+([A-Za-z]+)/i);
-
-    if (cycleLengthMatch || periodLengthMatch || nameMatch) {
-      actions.push({
-        type: 'UPDATE_CYCLE_SETTINGS',
-        cycleLength: cycleLengthMatch ? parseInt(cycleLengthMatch[1], 10) : undefined,
-        periodLength: periodLengthMatch ? parseInt(periodLengthMatch[1], 10) : undefined,
-        userName: nameMatch ? nameMatch[1].trim() : undefined
-      });
-    }
-
-    // 7. Continuous Learning & Insight Extraction
-    // Detect preferences: "I prefer chamomile tea", "heating pad helps my cramps", "I avoid coffee", "I usually do yoga"
-    const learningTriggers = [
-      {
-        category: 'remedy_preference',
-        pattern: /(?:(?:i\s+prefer|i\s+like|helps?\s+(?:me|my|with))\s+([^.,!]+))/i
-      },
-      {
-        category: 'lifestyle_habit',
-        pattern: /(?:i\s+(?:always|usually|tend\s+to|regularly|like\s+to)\s+([^.,!]+))/i
-      },
-      {
-        category: 'sensitivity_trigger',
-        pattern: /(?:(?:sensitive\s+to|avoid|makes?\s+(?:my\s+)?(?:cramps|bloating|pain)\s+worse|triggers?)\s+([^.,!]+))/i
-      },
-      {
-        category: 'personal_goal',
-        pattern: /(?:(?:my\s+goal\s+is|i'm\s+trying\s+to\s+(?:conceive|track|balance)|tracking\s+for)\s+([^.,!]+))/i
-      }
-    ];
-
-    learningTriggers.forEach(t => {
-      const match = text.match(t.pattern);
-      if (match && match[1] && match[1].trim().length > 4 && match[1].trim().length < 80) {
-        let fact = match[1].trim();
-        if (t.category === 'remedy_preference') {
-          fact = `Prefers ${fact} for soothing cycle symptoms`;
-        } else if (t.category === 'sensitivity_trigger') {
-          fact = `Sensitive to or avoids ${fact}`;
-        } else if (t.category === 'personal_goal') {
-          fact = `Cycle goal: ${fact}`;
-        } else {
-          fact = `Habit: ${fact}`;
+    for (const action of actions) {
+      if (action.type === 'UPDATE_PERIOD_START') {
+        items.push({
+          icon: '🩸',
+          title: 'Set Period Start',
+          detail: `Cycle Day 1 on ${action.date} (flow: ${action.flow || 'medium'})`
+        });
+      } else if (action.type === 'LOG_DAILY_DATA') {
+        const parts = [];
+        if (action.flow) parts.push(`Flow: ${action.flow}`);
+        if (action.symptoms?.length) parts.push(action.symptoms.join(', '));
+        if (action.moods?.length) parts.push(action.moods.join(', '));
+        if (action.waterGlasses !== null && action.waterGlasses !== undefined) parts.push(`${action.waterGlasses} glasses water`);
+        if (action.sleepHours !== null && action.sleepHours !== undefined) parts.push(`${action.sleepHours}h sleep`);
+        if (action.notes) parts.push(`Note: "${action.notes.slice(0, 50)}"`);
+        if (parts.length > 0) {
+          items.push({
+            icon: '📝',
+            title: `Daily Log (${action.date})`,
+            detail: parts.join(' • ')
+          });
         }
-
-        actions.push({
-          type: 'LEARN_INSIGHT',
-          category: t.category,
-          fact
+      } else if (action.type === 'UPDATE_CYCLE_SETTINGS') {
+        const parts = [];
+        if (action.cycleLength) parts.push(`Cycle: ${action.cycleLength}d`);
+        if (action.periodLength) parts.push(`Period: ${action.periodLength}d`);
+        if (action.userName) parts.push(`Name: ${action.userName}`);
+        if (parts.length > 0) {
+          items.push({
+            icon: '⚙️',
+            title: 'Update Profile Settings',
+            detail: parts.join(' • ')
+          });
+        }
+      } else if (action.type === 'LEARN_INSIGHT') {
+        items.push({
+          icon: '🧠',
+          title: 'Save Personal Note',
+          detail: `"${action.fact}"`
         });
       }
-    });
+    }
 
-    return actions;
+    return items;
   }
 
   /**
-   * Execute structured actions in real time on the application state
+   * Execute user-confirmed actions on storage and capture an undo snapshot
    */
   _executeActions(actions, userMessage = '') {
     if (!actions || actions.length === 0) return null;
 
-    const actionSummaries = [];
-    const today = new Date();
-    const todayKey = formatDateKey(today);
+    const snapshot = {
+      profile: JSON.parse(JSON.stringify(storage.getProfile())),
+      logs: JSON.parse(JSON.stringify(storage.getAllLogs())),
+      memories: JSON.parse(JSON.stringify(storage.getAgentMemories()))
+    };
 
+    const actionSummaries = [];
+    const todayKey = formatDateKey(new Date());
     let cycleUpdated = false;
     let memoriesLearned = [];
 
@@ -531,12 +326,11 @@ Respond ONLY with a valid JSON object matching this schema:
         profile.lastPeriodStart = targetDate;
         storage.saveProfile(profile);
 
-        // Update target date's log with period flow
+        // Record flow ONLY — never fabricate symptoms like 'Cramps'
         const existingLog = storage.getLog(targetDate) || {};
         storage.saveLog(targetDate, {
           ...existingLog,
-          flow: action.flow || 'medium',
-          symptoms: existingLog.symptoms && existingLog.symptoms.length > 0 ? existingLog.symptoms : ['Cramps']
+          flow: action.flow || 'medium'
         });
 
         cycleUpdated = true;
@@ -545,27 +339,12 @@ Respond ONLY with a valid JSON object matching this schema:
           title: 'Period Recorded',
           detail: `Cycle Day 1 started (${targetDate})`
         });
-      }
-
-      else if (action.type === 'LOG_DAILY_DATA') {
+      } else if (action.type === 'LOG_DAILY_DATA') {
         const targetDate = action.date || todayKey;
         const existingLog = storage.getLog(targetDate) || {};
 
-        // Merge symptoms
-        let mergedSymptoms = existingLog.symptoms ? [...existingLog.symptoms] : [];
-        if (action.symptoms && action.symptoms.length > 0) {
-          action.symptoms.forEach(s => {
-            if (!mergedSymptoms.includes(s)) mergedSymptoms.push(s);
-          });
-        }
-
-        // Merge moods
-        let mergedMoods = existingLog.moods ? [...existingLog.moods] : [];
-        if (action.moods && action.moods.length > 0) {
-          action.moods.forEach(m => {
-            if (!mergedMoods.includes(m)) mergedMoods.push(m);
-          });
-        }
+        const mergedSymptoms = [...new Set([...(existingLog.symptoms || []), ...(action.symptoms || [])])];
+        const mergedMoods = [...new Set([...(existingLog.moods || []), ...(action.moods || [])])];
 
         const updatedData = {
           ...existingLog,
@@ -574,46 +353,38 @@ Respond ONLY with a valid JSON object matching this schema:
           moods: mergedMoods,
           waterGlasses: action.waterGlasses !== undefined && action.waterGlasses !== null ? action.waterGlasses : existingLog.waterGlasses,
           sleepHours: action.sleepHours !== undefined && action.sleepHours !== null ? action.sleepHours : existingLog.sleepHours,
-          notes: action.notes ? (existingLog.notes ? `${existingLog.notes} • ${action.notes}` : action.notes) : existingLog.notes
+          notes: action.notes
+            ? (existingLog.notes && !existingLog.notes.includes(action.notes)
+              ? `${existingLog.notes} • ${action.notes}`
+              : (existingLog.notes || action.notes))
+            : existingLog.notes
         };
 
         storage.saveLog(targetDate, updatedData);
-
-        const itemsLogged = [];
-        if (action.flow) itemsLogged.push(`Flow: ${action.flow}`);
-        if (action.symptoms && action.symptoms.length > 0) itemsLogged.push(action.symptoms.join(', '));
-        if (action.moods && action.moods.length > 0) itemsLogged.push(action.moods.join(', '));
-        if (action.waterGlasses) itemsLogged.push(`${action.waterGlasses} glasses water`);
-        if (action.sleepHours) itemsLogged.push(`${action.sleepHours}h sleep`);
-
-        if (itemsLogged.length > 0) {
-          cycleUpdated = true;
-          actionSummaries.push({
-            icon: '📝',
-            title: 'Logged for Today',
-            detail: itemsLogged.join(' • ')
-          });
-        }
-      }
-
-      else if (action.type === 'UPDATE_CYCLE_SETTINGS') {
+        cycleUpdated = true;
+        actionSummaries.push({
+          icon: '📝',
+          title: 'Logged',
+          detail: `${targetDate}`
+        });
+      } else if (action.type === 'UPDATE_CYCLE_SETTINGS') {
         const profile = storage.getProfile();
         let changed = false;
-        const settingsDetails = [];
+        const details = [];
 
-        if (action.cycleLength && action.cycleLength >= 20 && action.cycleLength <= 50) {
+        if (action.cycleLength >= 21 && action.cycleLength <= 45) {
           profile.cycleLength = action.cycleLength;
-          settingsDetails.push(`Cycle: ${action.cycleLength}d`);
+          details.push(`Cycle: ${action.cycleLength}d`);
           changed = true;
         }
-        if (action.periodLength && action.periodLength >= 2 && action.periodLength <= 10) {
+        if (action.periodLength >= 2 && action.periodLength <= 10) {
           profile.periodLength = action.periodLength;
-          settingsDetails.push(`Period: ${action.periodLength}d`);
+          details.push(`Period: ${action.periodLength}d`);
           changed = true;
         }
         if (action.userName && action.userName.trim()) {
           profile.userName = action.userName.trim();
-          settingsDetails.push(`Name: ${profile.userName}`);
+          details.push(`Name: ${profile.userName}`);
           changed = true;
         }
 
@@ -622,25 +393,22 @@ Respond ONLY with a valid JSON object matching this schema:
           cycleUpdated = true;
           actionSummaries.push({
             icon: '⚙️',
-            title: 'Cycle Settings Updated',
-            detail: settingsDetails.join(' • ')
+            title: 'Settings Updated',
+            detail: details.join(' • ')
           });
         }
-      }
-
-      else if (action.type === 'LEARN_INSIGHT') {
+      } else if (action.type === 'LEARN_INSIGHT') {
         if (action.fact && action.fact.trim()) {
           const memory = storage.addAgentMemory({
             category: action.category || 'general',
             fact: action.fact.trim(),
-            source: userMessage ? `User: "${userMessage.substring(0, 40)}..."` : 'Chat dialogue'
+            source: userMessage ? `Chat: "${userMessage.substring(0, 40)}"` : 'Chat dialogue'
           });
-
           if (memory) {
             memoriesLearned.push(memory);
             actionSummaries.push({
               icon: '🧠',
-              title: 'Learned New Insight',
+              title: 'Saved Note',
               detail: `"${memory.fact}"`
             });
           }
@@ -649,34 +417,62 @@ Respond ONLY with a valid JSON object matching this schema:
     });
 
     if (cycleUpdated || memoriesLearned.length > 0) {
-      // Dispatch real-time synchronization event to app.js
       window.dispatchEvent(new CustomEvent('aify:data-updated', {
-        detail: {
-          actions,
-          summaries: actionSummaries,
-          source: 'ai-coach'
-        }
+        detail: { actions, summaries: actionSummaries, source: 'ai-coach' }
       }));
-
       this._updateMemoryCountBadge();
     }
 
-    return actionSummaries.length > 0 ? {
-      title: 'Real-Time Cycle Synchronization',
-      items: actionSummaries
-    } : null;
+    return { summaries: actionSummaries, snapshot };
   }
 
-  /**
-   * Send a message to Gemini and get a response with real-time agency
-   */
+  _applyMessageProposal(msgIdx) {
+    const msg = this.chatHistory[msgIdx];
+    if (!msg?.actionCard || msg.actionCard.status !== 'pending') return;
+
+    const result = this._executeActions(msg.actionCard.actions, msg.actionCard.sourceMessage || '');
+    if (result?.snapshot) {
+      this._undoSnapshots.set(msgIdx, result.snapshot);
+    }
+    msg.actionCard.status = 'applied';
+    this._saveChatHistory();
+    this._renderMessages();
+  }
+
+  _dismissMessageProposal(msgIdx) {
+    const msg = this.chatHistory[msgIdx];
+    if (!msg?.actionCard || msg.actionCard.status !== 'pending') return;
+
+    msg.actionCard.status = 'dismissed';
+    this._saveChatHistory();
+    this._renderMessages();
+  }
+
+  _undoMessageProposal(msgIdx) {
+    const msg = this.chatHistory[msgIdx];
+    const snapshot = this._undoSnapshots.get(msgIdx);
+    if (!msg?.actionCard || !snapshot) return;
+
+    storage.saveProfile(snapshot.profile);
+    storage.saveAllLogs(snapshot.logs);
+    storage.saveAgentMemories(snapshot.memories);
+    this._undoSnapshots.delete(msgIdx);
+
+    msg.actionCard.status = 'pending';
+    this._saveChatHistory();
+    this._updateMemoryCountBadge();
+    window.dispatchEvent(new CustomEvent('aify:data-updated', {
+      detail: { actions: [], summaries: [{ icon: '↩️', title: 'Reverted', detail: 'AI log update undone' }], source: 'ai-coach' }
+    }));
+    this._renderMessages();
+  }
+
   async sendMessage(userMessage) {
     if (this.isLoading || !userMessage.trim()) return;
 
     this.isLoading = true;
     const cleanUserMessage = userMessage.trim();
 
-    // 1. Add user message to history
     this.chatHistory.push({
       role: 'user',
       content: cleanUserMessage,
@@ -687,61 +483,39 @@ Respond ONLY with a valid JSON object matching this schema:
     this._showTypingIndicator();
     this._scrollToBottom();
 
-    // 2. Run Instant Local Real-Time Semantic Parser
-    const localActions = this._parseLocalActionsAndLearning(cleanUserMessage);
-    let actionCard = this._executeActions(localActions, cleanUserMessage);
+    // Parse PROPOSED actions locally without mutating storage yet
+    const localActions = parseProposedActionsFromText(cleanUserMessage, new Date());
     const startTime = Date.now();
 
     try {
       const userContext = this._buildUserContext();
+      const recentHistory = this.chatHistory.slice(-8).map(msg => ({
+        role: msg.role === 'user' ? 'user' : 'model',
+        text: msg.content
+      }));
 
-      // Build conversation contents for Gemini
-      const contents = [];
-      const recentHistory = this.chatHistory.slice(-8);
-      for (const msg of recentHistory) {
-        contents.push({
-          role: msg.role === 'user' ? 'user' : 'model',
-          parts: [{ text: msg.content }]
-        });
-      }
+      const data = await this._callGeminiGateway({
+        task: 'chat',
+        history: recentHistory,
+        userContext
+      });
 
-      // Append user cycle context & memories to the last message
-      if (contents.length > 0 && contents[contents.length - 1].role === 'user') {
-        contents[contents.length - 1].parts[0].text += userContext;
-      }
-
-      const requestBody = {
-        contents,
-        systemInstruction: {
-          parts: [{ text: SYSTEM_INSTRUCTION }]
-        },
-        generationConfig: {
-          temperature: 0.7,
-          topP: 0.95,
-          topK: 40,
-          maxOutputTokens: 4096
-        }
-      };
-
-      const data = await this._callGeminiApi(requestBody);
       const rawAiText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-      // 3. Parse Gemini output for structured action block
       const { cleanedText, modelActions } = this._extractModelActions(rawAiText);
+      const validModelActions = sanitizeModelActions(modelActions, new Date());
+      const proposedActions = mergeProposedActions(localActions, validModelActions);
+      const items = this._describeActions(proposedActions);
 
-      // Execute any additional actions from the model that local parser didn't catch
-      if (modelActions && modelActions.length > 0) {
-        const additionalCard = this._executeActions(modelActions, cleanUserMessage);
-        if (additionalCard) {
-          if (!actionCard) {
-            actionCard = additionalCard;
-          } else {
-            actionCard.items.push(...additionalCard.items);
+      const actionCard = items.length > 0
+        ? {
+            title: 'Proposed Cycle Update',
+            status: 'pending',
+            sourceMessage: cleanUserMessage,
+            actions: proposedActions,
+            items
           }
-        }
-      }
+        : null;
 
-      // Add AI response with Action Card attached
       this.chatHistory.push({
         role: 'assistant',
         content: cleanedText || this._generateEmpatheticLocalResponse(cleanUserMessage, actionCard),
@@ -751,18 +525,27 @@ Respond ONLY with a valid JSON object matching this schema:
 
       this._saveChatHistory();
 
-      // Track successful live query telemetry
       const latencyMs = Date.now() - startTime;
       analytics.trackEvent('ai_coach', 'query_sent', 'chat_message', { mode: 'server', latencyMs });
-      analytics.logAuditAction('AI_QUERY_LIVE', `Gemini 3.6 Flash responded in ${latencyMs}ms`);
+      analytics.logAuditAction('AI_QUERY_LIVE', `AI Coach responded in ${latencyMs}ms`);
     } catch (error) {
       if (error.message === 'NO_GEMINI_KEY') {
-        console.info('Aify: Running in local intelligent cycle mode.');
+        console.info('Aify: Running in local wellness mode.');
       } else {
-        console.warn('Gemini API call bypassed or failed; local intelligence responded:', error);
+        console.warn('AI gateway unavailable; local wellness mode responded:', error.message);
       }
 
-      // Local Fallback: Generates a warm, scientifically informed response immediately
+      const items = this._describeActions(localActions);
+      const actionCard = items.length > 0
+        ? {
+            title: 'Proposed Cycle Update',
+            status: 'pending',
+            sourceMessage: cleanUserMessage,
+            actions: localActions,
+            items
+          }
+        : null;
+
       const fallbackText = this._generateEmpatheticLocalResponse(cleanUserMessage, actionCard);
 
       this.chatHistory.push({
@@ -774,9 +557,8 @@ Respond ONLY with a valid JSON object matching this schema:
 
       this._saveChatHistory();
 
-      // Track local fallback telemetry
       analytics.trackEvent('ai_coach', 'query_sent', 'chat_message', { mode: 'local' });
-      analytics.logAuditAction('AI_QUERY_LOCAL', 'Local cycle intelligence responded');
+      analytics.logAuditAction('AI_QUERY_LOCAL', 'Local wellness mode responded');
     } finally {
       this.isLoading = false;
       this._hideTypingIndicator();
@@ -785,9 +567,6 @@ Respond ONLY with a valid JSON object matching this schema:
     }
   }
 
-  /**
-   * Extract JSON action block from Gemini response
-   */
   _extractModelActions(text) {
     let cleanedText = text;
     let modelActions = [];
@@ -810,39 +589,24 @@ Respond ONLY with a valid JSON object matching this schema:
     return { cleanedText, modelActions };
   }
 
-  /**
-   * Generates a warm, scientifically informed local fallback response
-   */
   _generateEmpatheticLocalResponse(userMessage, actionCard) {
     const profile = storage.getProfile();
+    const logs = storage.getAllLogs();
     const today = new Date();
-    const status = getCycleStatus(today, profile);
+    const status = getCycleStatus(today, profile, logs);
     const name = profile.userName || 'there';
 
     if (actionCard && actionCard.items && actionCard.items.length > 0) {
-      const actionTypes = actionCard.items.map(i => i.title);
-      let reply = `I've updated your cycle tracking in real time, ${name}! ✨\n\n`;
-
-      if (actionTypes.includes('Period Recorded')) {
-        reply += `I've marked today as **Day 1 of your new menstrual cycle**. Your cycle predictions, fertile window, and phases have all been recalibrated. Remember to rest, stay warm, and hydrate gently today. 🌸`;
-      } else if (actionTypes.includes('Logged for Today')) {
-        reply += `I've securely logged your symptoms and wellbeing details to today's bio-rhythm record. For your current **${status.phase.name}**, remember to listen to your body's natural cues and pace yourself with care. 🌿`;
-      } else if (actionTypes.includes('Learned New Insight')) {
-        reply += `I've remembered this personal preference and added it to my knowledge of your cycle habits! I'll tailor my future recommendations to support your unique routine. 🧠💖`;
-      } else {
-        reply += `Your cycle parameters have been updated across the dashboard. Your next predicted period is now scheduled for **${status.nextPeriodStart}**. 🔄`;
-      }
-
-      return reply;
+      return `Got it, ${name}! ✨ I drafted the cycle update below based on your message — tap **Save to Log** if everything looks right, or **Dismiss** to skip it.`;
     }
 
-    // General fallback advice
-    return `Hello ${name}! ✨ You are currently on **Day ${status.cycleDay} (${status.phase.name})**. ${status.phase.description}\n\nFeel free to tell me if your period started, log symptoms (like cramps or fatigue), or share what helps you feel your best so I can learn your preferences!`;
+    if (status.isLate) {
+      return `Hi ${name}! Your period is currently **${status.daysLate} ${status.daysLate === 1 ? 'day' : 'days'} past** your estimated cycle length. Small shifts can happen due to stress, sleep, or travel — let me know when it starts so I can draft a log entry, or consider checking with a clinician if you have concerns.`;
+    }
+
+    return `Hello ${name}! ✨ You are currently on **Day ${status.cycleDay} (${status.phase.name})**. ${status.phase.description}\n\nTell me if your period started, share symptoms like cramps or fatigue, or ask any wellness question — I'll always ask before saving changes to your logs.`;
   }
 
-  /**
-   * Render the chat interface
-   */
   renderChatUI() {
     this._renderMessages();
     this._renderSuggestedQuestions();
@@ -850,9 +614,6 @@ Respond ONLY with a valid JSON object matching this schema:
     this.updateEngineBadge();
   }
 
-  /**
-   * Render all chat messages with Apple Health-inspired Action Cards
-   */
   _renderMessages() {
     const container = document.getElementById('ai-chat-messages');
     if (!container) return;
@@ -862,11 +623,11 @@ Respond ONLY with a valid JSON object matching this schema:
         <div class="ai-chat-empty">
           <div class="ai-chat-empty-icon">🌸</div>
           <h3>Hi! I'm Aify, your wellness guide</h3>
-          <p>I learn your cycle patterns, record periods, track symptoms, and personalize your wellness journey in real time.</p>
+          <p>Ask cycle questions or tell me about symptoms — I'll draft log updates for you to confirm before saving.</p>
           <div class="ai-chat-quick-hints">
             <span>✨ "My period started today"</span>
-            <span>⚡ "Log heavy cramps & bloating"</span>
-            <span>🍵 "I prefer chamomile tea for pain"</span>
+            <span>⚡ "I have cramps and bloating today"</span>
+            <span>🍵 "I prefer chamomile tea for cramps"</span>
           </div>
         </div>
       `;
@@ -875,30 +636,54 @@ Respond ONLY with a valid JSON object matching this schema:
 
     container.innerHTML = this.chatHistory.map((msg, idx) => {
       const isUser = msg.role === 'user';
-      const formattedContent = isUser ? this._escapeHtml(msg.content) : this._formatMarkdown(msg.content);
+      const formattedContent = isUser ? escapeHtml(msg.content) : this._formatMarkdown(msg.content);
       const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-      // Build Action Card HTML if present
       let actionCardHtml = '';
       if (!isUser && msg.actionCard && msg.actionCard.items && msg.actionCard.items.length > 0) {
+        const cardStatus = msg.actionCard.status || 'applied';
+        const hasUndo = this._undoSnapshots.has(idx);
+
+        let statusBadge = '<span class="action-live-indicator"><span class="live-dot"></span> Saved</span>';
+        let controlsHtml = '';
+
+        if (cardStatus === 'pending') {
+          statusBadge = '<span class="action-live-indicator">Confirm to Save</span>';
+          controlsHtml = `
+            <div style="display:flex; gap:0.5rem; margin-top:0.6rem;">
+              <button type="button" class="btn-primary btn-apply-actions" data-msg-idx="${idx}" style="padding:0.35rem 0.75rem; font-size:0.78rem;">✓ Save to Log</button>
+              <button type="button" class="btn-secondary btn-dismiss-actions" data-msg-idx="${idx}" style="padding:0.35rem 0.75rem; font-size:0.78rem;">Dismiss</button>
+            </div>
+          `;
+        } else if (cardStatus === 'dismissed') {
+          statusBadge = '<span class="action-live-indicator" style="opacity:0.7;">Dismissed</span>';
+        } else if (hasUndo) {
+          controlsHtml = `
+            <div style="margin-top:0.45rem;">
+              <button type="button" class="btn-ghost btn-undo-actions" data-msg-idx="${idx}" style="font-size:0.74rem; padding:0.2rem 0.4rem; text-decoration:underline;">↩ Undo this update</button>
+            </div>
+          `;
+        }
+
         actionCardHtml = `
-          <div class="agent-action-card">
+          <div class="agent-action-card" style="${cardStatus === 'dismissed' ? 'opacity:0.6;' : ''}">
             <div class="action-card-header">
               <span class="action-card-sparkle">✨</span>
-              <span class="action-card-title">Real-Time Cycle Update</span>
-              <span class="action-live-indicator"><span class="live-dot"></span> Synchronized</span>
+              <span class="action-card-title">${cardStatus === 'pending' ? 'Proposed Cycle Update' : 'Cycle Update'}</span>
+              ${statusBadge}
             </div>
             <div class="action-card-chips">
               ${msg.actionCard.items.map(item => `
                 <div class="action-chip-item">
-                  <span class="action-chip-icon">${item.icon}</span>
+                  <span class="action-chip-icon">${escapeHtml(item.icon || '✨')}</span>
                   <div class="action-chip-text">
-                    <strong>${this._escapeHtml(item.title)}</strong>
-                    <span>${this._escapeHtml(item.detail)}</span>
+                    <strong>${escapeHtml(item.title)}</strong>
+                    <span>${escapeHtml(item.detail)}</span>
                   </div>
                 </div>
               `).join('')}
             </div>
+            ${controlsHtml}
           </div>
         `;
       }
@@ -910,7 +695,7 @@ Respond ONLY with a valid JSON object matching this schema:
             <div class="chat-bubble-content">
               <div class="chat-text">${formattedContent}</div>
               ${actionCardHtml}
-              <span class="chat-time">${time}</span>
+              <span class="chat-time">${escapeHtml(time)}</span>
             </div>
           </div>
         </div>
@@ -918,27 +703,20 @@ Respond ONLY with a valid JSON object matching this schema:
     }).join('');
   }
 
-  /**
-   * Render suggested questions
-   */
   _renderSuggestedQuestions() {
     const container = document.getElementById('ai-suggested-questions');
     if (!container) return;
 
-    // Show 4 suggestions
     const shuffled = [...SUGGESTED_QUESTIONS].sort(() => Math.random() - 0.5).slice(0, 4);
 
     container.innerHTML = shuffled.map(q => `
-      <button class="suggested-question-btn" data-question="${this._escapeHtml(q.text)}">
+      <button class="suggested-question-btn" data-question="${escapeHtml(q.text)}">
         <span>${q.icon}</span>
-        <span>${q.text}</span>
+        <span>${escapeHtml(q.text)}</span>
       </button>
     `).join('');
   }
 
-  /**
-   * Update memory count badge on the header button
-   */
   _updateMemoryCountBadge() {
     const memories = storage.getAgentMemories();
     const countEl = document.getElementById('agent-memory-count');
@@ -947,15 +725,39 @@ Respond ONLY with a valid JSON object matching this schema:
     }
   }
 
-  /**
-   * Attach event listeners
-   */
   attachListeners() {
+    if (this._listenersAttached) return;
+    this._listenersAttached = true;
+
     const form = document.getElementById('ai-chat-form');
     const input = document.getElementById('ai-chat-input');
     const sendBtn = document.getElementById('ai-chat-send');
     const clearBtn = document.getElementById('ai-chat-clear');
     const memoryBtn = document.getElementById('btn-agent-memory');
+    const messagesContainer = document.getElementById('ai-chat-messages');
+
+    // Delegated handlers for Confirm / Dismiss / Undo buttons on AI action cards
+    if (messagesContainer) {
+      messagesContainer.addEventListener('click', (e) => {
+        const applyBtn = e.target.closest('.btn-apply-actions');
+        if (applyBtn) {
+          const idx = parseInt(applyBtn.getAttribute('data-msg-idx'), 10);
+          if (!Number.isNaN(idx)) this._applyMessageProposal(idx);
+          return;
+        }
+        const dismissBtn = e.target.closest('.btn-dismiss-actions');
+        if (dismissBtn) {
+          const idx = parseInt(dismissBtn.getAttribute('data-msg-idx'), 10);
+          if (!Number.isNaN(idx)) this._dismissMessageProposal(idx);
+          return;
+        }
+        const undoBtn = e.target.closest('.btn-undo-actions');
+        if (undoBtn) {
+          const idx = parseInt(undoBtn.getAttribute('data-msg-idx'), 10);
+          if (!Number.isNaN(idx)) this._undoMessageProposal(idx);
+        }
+      });
+    }
 
     if (form) {
       form.addEventListener('submit', (e) => {
@@ -980,7 +782,6 @@ Respond ONLY with a valid JSON object matching this schema:
       });
     }
 
-    // Suggested questions (delegate)
     const suggestedContainer = document.getElementById('ai-suggested-questions');
     if (suggestedContainer) {
       suggestedContainer.addEventListener('click', (e) => {
@@ -994,11 +795,11 @@ Respond ONLY with a valid JSON object matching this schema:
       });
     }
 
-    // Clear chat
     if (clearBtn) {
       clearBtn.addEventListener('click', () => {
-        if (confirm('Clear all chat history with your AI coach? (Learned health memories will remain safe)')) {
+        if (confirm('Clear all chat history with your AI coach? (Saved personal notes will remain safe)')) {
           this.chatHistory = [];
+          this._undoSnapshots.clear();
           this._saveChatHistory();
           this._renderMessages();
           this._renderSuggestedQuestions();
@@ -1006,25 +807,20 @@ Respond ONLY with a valid JSON object matching this schema:
       });
     }
 
-    // Agent Memory Bank button
     if (memoryBtn) {
       memoryBtn.addEventListener('click', () => {
         this.openMemoryModal();
       });
     }
 
-    // AI Engine status badge click -> open Apple Intelligence Architecture Modal
     const engineBadge = document.getElementById('ai-engine-badge');
     if (engineBadge) {
       engineBadge.addEventListener('click', () => {
         const modal = document.getElementById('modal-ai-architecture');
-        if (modal) {
-          modal.classList.add('active');
-        }
+        if (modal) modal.classList.add('active');
       });
     }
 
-    // Memory Modal Close
     const closeMemoryBtn = document.getElementById('btn-close-memory-modal');
     if (closeMemoryBtn) {
       closeMemoryBtn.addEventListener('click', () => {
@@ -1032,7 +828,6 @@ Respond ONLY with a valid JSON object matching this schema:
       });
     }
 
-    // Memory Filter Chips
     const memoryFilters = document.querySelectorAll('.memory-filter-chip');
     memoryFilters.forEach(chip => {
       chip.addEventListener('click', () => {
@@ -1043,7 +838,6 @@ Respond ONLY with a valid JSON object matching this schema:
       });
     });
 
-    // Add Manual Memory Form
     const addMemoryForm = document.getElementById('form-add-memory');
     if (addMemoryForm) {
       addMemoryForm.addEventListener('submit', (e) => {
@@ -1064,9 +858,6 @@ Respond ONLY with a valid JSON object matching this schema:
     }
   }
 
-  /**
-   * Open the Learned Memory Modal
-   */
   openMemoryModal() {
     const modal = document.getElementById('agent-memory-modal');
     if (modal) {
@@ -1075,19 +866,11 @@ Respond ONLY with a valid JSON object matching this schema:
     }
   }
 
-  /**
-   * Close the Learned Memory Modal
-   */
   closeMemoryModal() {
     const modal = document.getElementById('agent-memory-modal');
-    if (modal) {
-      modal.classList.remove('active');
-    }
+    if (modal) modal.classList.remove('active');
   }
 
-  /**
-   * Render the list of memories inside the modal
-   */
   _renderMemoryList() {
     const container = document.getElementById('agent-memory-list');
     if (!container) return;
@@ -1101,7 +884,7 @@ Respond ONLY with a valid JSON object matching this schema:
       container.innerHTML = `
         <div class="memory-empty-state">
           <span style="font-size: 2rem;">🧠</span>
-          <p>No learned insights in this category yet. Chat with Aify or add one below!</p>
+          <p>No saved insights in this category yet. Chat with Aify or add one below!</p>
         </div>
       `;
       return;
@@ -1126,22 +909,21 @@ Respond ONLY with a valid JSON object matching this schema:
     };
 
     container.innerHTML = memories.map(m => `
-      <div class="memory-item" data-id="${m.id}">
+      <div class="memory-item" data-id="${escapeHtml(m.id)}">
         <div class="memory-item-left">
           <span class="memory-item-cat-icon">${categoryIcons[m.category] || '💡'}</span>
           <div class="memory-item-content">
-            <div class="memory-item-badge">${categoryLabels[m.category] || m.category}</div>
-            <p class="memory-item-fact">${this._escapeHtml(m.fact)}</p>
-            <span class="memory-item-date">Learned ${new Date(m.createdAt).toLocaleDateString()} • ${this._escapeHtml(m.source || 'Conversation')}</span>
+            <div class="memory-item-badge">${escapeHtml(categoryLabels[m.category] || m.category)}</div>
+            <p class="memory-item-fact">${escapeHtml(m.fact)}</p>
+            <span class="memory-item-date">Saved ${escapeHtml(new Date(m.createdAt).toLocaleDateString())} • ${escapeHtml(m.source || 'Conversation')}</span>
           </div>
         </div>
-        <button class="btn-delete-memory" data-id="${m.id}" title="Remove this memory" aria-label="Delete memory">&times;</button>
+        <button class="btn-delete-memory" data-id="${escapeHtml(m.id)}" title="Remove this note" aria-label="Delete note">&times;</button>
       </div>
     `).join('');
 
-    // Attach delete listeners
     container.querySelectorAll('.btn-delete-memory').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-id');
         if (id) {
           storage.deleteAgentMemory(id);
@@ -1152,11 +934,12 @@ Respond ONLY with a valid JSON object matching this schema:
     });
   }
 
-  // --- Utility Methods ---
-
   _showTypingIndicator() {
     const container = document.getElementById('ai-chat-messages');
     if (!container) return;
+
+    const existing = document.getElementById('ai-typing-indicator');
+    if (existing) existing.remove();
 
     const indicator = document.createElement('div');
     indicator.id = 'ai-typing-indicator';
@@ -1190,38 +973,20 @@ Respond ONLY with a valid JSON object matching this schema:
 
   _formatMarkdown(text) {
     if (!text) return '';
-    let html = this._escapeHtml(text);
+    let html = escapeHtml(text);
 
-    // Bold: **text**
     html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
-    // Italic: *text*
     html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
-
-    // Bullet lists: - item or * item
     html = html.replace(/^[\-\*]\s+(.+)$/gm, '<li>$1</li>');
     html = html.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
     html = html.replace(/<\/ul>\s*<ul>/g, '');
-
-    // Numbered lists: 1. item
     html = html.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
-
-    // Line breaks
     html = html.replace(/\n\n/g, '</p><p>');
     html = html.replace(/\n/g, '<br>');
-
-    // Wrap in paragraph
     html = '<p>' + html + '</p>';
     html = html.replace(/<p>\s*<\/p>/g, '');
 
     return html;
-  }
-
-  _escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
   }
 
   _loadChatHistory() {

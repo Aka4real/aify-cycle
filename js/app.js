@@ -400,7 +400,7 @@ class AifyCycleApp {
     statusPill.className = 'ai-status-pill';
 
     let serverConfigured = false;
-    let modelName = 'gemini-3.6-flash';
+    let modelName = '';
     try {
       const res = await fetch('/api/gemini/status');
       if (res.ok) {
@@ -411,7 +411,9 @@ class AifyCycleApp {
     } catch (e) {}
 
     if (serverConfigured) {
-      const displayModel = modelName === 'gemini-3.6-flash' ? 'Gemini 3.6 Flash' : (modelName === 'gemini-3.8-flash' ? 'Gemini 3.6 Flash' : modelName);
+      const displayModel = modelName
+        ? modelName.split('-').map(p => (p ? p[0].toUpperCase() + p.slice(1) : '')).join(' ')
+        : 'Gemini AI';
       statusPill.textContent = `✨ ${displayModel} Active`;
       statusPill.className = 'ai-status-pill pill-server';
     } else {
@@ -462,7 +464,7 @@ class AifyCycleApp {
   async loadCycleSyncingInsights(forceRefresh = false) {
     const profile = storage.getProfile();
     const logs = storage.getAllLogs();
-    const todayStatus = getCycleStatus(this.today, profile);
+    const todayStatus = getCycleStatus(this.today, profile, logs);
 
     // Initial render with baseline immediately so there is never an empty screen
     ui.renderCycleSyncingGuide(todayStatus);
@@ -494,7 +496,7 @@ class AifyCycleApp {
   renderAll() {
     const profile = storage.getProfile();
     const logs = storage.getAllLogs();
-    const todayStatus = getCycleStatus(this.today, profile);
+    const todayStatus = getCycleStatus(this.today, profile, logs);
     const todayKey = formatDateKey(this.today);
     const todayLog = logs[todayKey] || {};
 
@@ -590,7 +592,8 @@ class AifyCycleApp {
     }
 
     const profile = storage.getProfile();
-    const todayStatus = getCycleStatus(this.today, profile);
+    const logs = storage.getAllLogs();
+    const todayStatus = getCycleStatus(this.today, profile, logs);
     ui.renderDashboardVitals(todayStatus, profile, log, (t, v) => this._handleVitalChange(t, v));
   }
 
@@ -708,12 +711,11 @@ class AifyCycleApp {
     profile.lastPeriodStart = todayKey;
     storage.saveProfile(profile);
 
-    // Also write a daily log with medium flow
+    // Record daily log with medium flow (do not invent unlogged symptoms like 'Cramps')
     const existingLog = storage.getLog(todayKey) || {};
     storage.saveLog(todayKey, {
       ...existingLog,
-      flow: 'medium',
-      symptoms: existingLog.symptoms || ['Cramps'],
+      flow: existingLog.flow && existingLog.flow !== 'none' ? existingLog.flow : 'medium',
       notes: existingLog.notes || 'Cycle day 1 started today.'
     });
 
@@ -743,6 +745,12 @@ class AifyCycleApp {
         this.switchTab(tabTarget);
       });
     });
+
+    // Banner AI Coach button (CSP-compliant listener instead of inline onclick)
+    const btnBannerAiCoach = document.getElementById('btn-open-ai-coach-banner');
+    if (btnBannerAiCoach) {
+      btnBannerAiCoach.addEventListener('click', () => this.switchTab('ai-coach'));
+    }
 
     // Header Quick Log Button
     const btnQuickLog = document.getElementById('btn-quick-log');

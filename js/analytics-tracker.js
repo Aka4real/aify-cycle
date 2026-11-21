@@ -1,9 +1,7 @@
 /**
- * AifyCycle - Privacy-Preserving Analytics & Audit Telemetry Engine
- * Tracks user interactions, health logging consistency, AI Coach telemetry,
- * and maintains a tamper-evident compliance audit log for GDPR/CCPA.
- * 
- * All telemetry is stored locally by default and respects user consent.
+ * AifyCycle - Local-First Analytics & Activity Log
+ * Tracks optional usage metrics and maintains a local activity log.
+ * Analytics tracking is opt-in and stored locally in the browser.
  */
 
 import { storage } from './storage.js';
@@ -70,7 +68,8 @@ class AnalyticsTracker {
 
   isTrackingEnabled() {
     const consent = this.getConsent();
-    return consent ? consent.analyticsAllowed !== false : true;
+    // Explicit opt-in required for health app telemetry
+    return Boolean(consent && consent.analyticsAllowed === true);
   }
 
   getConsent() {
@@ -82,7 +81,7 @@ class AnalyticsTracker {
     }
   }
 
-  saveConsent({ analyticsAllowed = true, medicalAcknowledged = true }) {
+  saveConsent({ analyticsAllowed = false, medicalAcknowledged = false }) {
     const consentData = {
       analyticsAllowed,
       medicalAcknowledged,

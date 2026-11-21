@@ -4,7 +4,8 @@
  * Analytics, and Modals.
  */
 
-import { CYCLE_SYNCING_GUIDE, getMonthCycleMap, formatDateKey, parseDateKey, addDays, PHASES, getCycleStatus } from './cycle-engine.js';
+import { CYCLE_SYNCING_GUIDE, getMonthCycleMap, computeCycleStats, formatDateKey, parseDateKey, addDays, PHASES, getCycleStatus } from './cycle-engine.js';
+import { escapeHtml } from './dom-utils.js';
 
 export class UIComponents {
   constructor() {
@@ -33,7 +34,13 @@ export class UIComponents {
     this.initToasts();
     const toast = document.createElement('div');
     toast.className = 'toast';
-    toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
+    const iconSpan = document.createElement('span');
+    iconSpan.textContent = icon;
+    const msgSpan = document.createElement('span');
+    msgSpan.textContent = String(message ?? '');
+    toast.appendChild(iconSpan);
+    toast.appendChild(document.createTextNode(' '));
+    toast.appendChild(msgSpan);
     this.toastContainer.appendChild(toast);
 
     setTimeout(() => {
@@ -188,23 +195,26 @@ export class UIComponents {
     const dialCycleTag = document.getElementById('dial-cycle-tag');
     const resetTodayBtn = document.getElementById('btn-dial-reset-today');
 
-    if (dialDayNumber) dialDayNumber.textContent = status.cycleDay;
+    if (dialDayNumber) dialDayNumber.textContent = status.cycleDay ?? '—';
     if (dialTotalDays) dialTotalDays.textContent = `/ ${status.cycleLength} days`;
-    if (dialCycleTag) dialCycleTag.textContent = 'CURRENT CYCLE';
+    if (dialCycleTag) dialCycleTag.textContent = status.isLate ? 'LATE CYCLE' : 'CURRENT CYCLE';
     if (resetTodayBtn) resetTodayBtn.style.display = 'none';
 
     if (dialPhaseTitle) {
-      dialPhaseTitle.innerHTML = `${status.phase.icon} ${status.phase.name}`;
+      dialPhaseTitle.textContent = `${status.phase.icon} ${status.phase.name}`;
       dialPhaseTitle.style.color = status.phase.color;
     }
 
     if (dialFertilityBadge) {
       dialFertilityBadge.className = `dial-fertility-badge ${status.fertilityBadgeClass}`;
-      dialFertilityBadge.innerHTML = `<span class="badge-dot"></span> Fertility: ${status.fertilityChance}`;
+      dialFertilityBadge.title = 'Calendar estimate only — not a method of contraception.';
+      dialFertilityBadge.innerHTML = `<span class="badge-dot"></span> ${escapeHtml(status.fertilityChance)} • Est.`;
     }
 
     if (dialCountdownPill) {
-      dialCountdownPill.textContent = `${status.daysUntilNextPeriod} days until next period`;
+      dialCountdownPill.textContent = status.isLate
+        ? `Period ${status.daysLate} ${status.daysLate === 1 ? 'day' : 'days'} late`
+        : `${status.daysUntilNextPeriod} days until est. next period`;
     }
 
     // 8. Bottom Stats Cards
@@ -212,7 +222,11 @@ export class UIComponents {
     const statPeriodStartDate = document.getElementById('stat-period-start-date');
     const statOvulationDate = document.getElementById('stat-ovulation-date');
 
-    if (statDaysNextPeriod) statDaysNextPeriod.textContent = `${status.daysUntilNextPeriod} days`;
+    if (statDaysNextPeriod) {
+      statDaysNextPeriod.textContent = status.isLate
+        ? `${status.daysLate}d late`
+        : `${status.daysUntilNextPeriod} days`;
+    }
     if (statPeriodStartDate) {
       const nextDate = parseDateKey(status.nextPeriodStart);
       statPeriodStartDate.textContent = nextDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
@@ -276,22 +290,23 @@ export class UIComponents {
     if (resetTodayBtn) resetTodayBtn.style.display = isToday ? 'none' : 'inline-block';
 
     if (dialPhaseTitle) {
-      dialPhaseTitle.innerHTML = `${phase.icon} ${phase.name}`;
+      dialPhaseTitle.textContent = `${phase.icon} ${phase.name}`;
       dialPhaseTitle.style.color = phase.color;
     }
 
     if (dialFertilityBadge) {
-      let fertilityText = 'Low';
+      let fertilityText = 'Est. Low';
       let badgeClass = 'fertility-low';
       if (dayNumber === ovulationDay) {
-        fertilityText = 'Peak (Ovulation)';
+        fertilityText = 'Est. Peak (Ovulation)';
         badgeClass = 'fertility-peak';
       } else if (dayNumber >= fertileStart && dayNumber <= fertileEnd) {
-        fertilityText = 'High Chance';
+        fertilityText = 'Est. High';
         badgeClass = 'fertility-high';
       }
       dialFertilityBadge.className = `dial-fertility-badge ${badgeClass}`;
-      dialFertilityBadge.innerHTML = `<span class="badge-dot"></span> Fertility: ${fertilityText}`;
+      dialFertilityBadge.title = 'Calendar estimate only — not a method of contraception.';
+      dialFertilityBadge.innerHTML = `<span class="badge-dot"></span> ${escapeHtml(fertilityText)}`;
     }
 
     if (dialCountdownPill) {
@@ -322,13 +337,20 @@ export class UIComponents {
     }
 
     if (bannerPhaseText) {
-      bannerPhaseText.textContent = `${status.phase.name} • Day ${status.cycleDay}`;
+      bannerPhaseText.textContent = status.isLate
+        ? `${status.phase.name} • ${status.daysLate}d overdue`
+        : `${status.phase.name} • Day ${status.cycleDay}`;
     }
 
     if (bannerFertility) {
-      bannerFertility.textContent = status.cycleDay === (profile.cycleLength - 14) ? '✨ Peak Ovulation Today' :
-                                    status.fertilityChance.includes('High') ? '✨ Fertile Window Open' :
-                                    `${status.fertilityChance} Fertility`;
+      bannerFertility.title = 'Calendar estimate only — not contraception.';
+      bannerFertility.textContent = status.isLate
+        ? '⏳ Late Cycle • Not contraception'
+        : status.isOvulationDay
+          ? '✨ Est. Ovulation (not contraception)'
+          : status.isFertileWindow
+            ? '✨ Est. Fertile Window (not contraception)'
+            : `${status.fertilityChance} • Not contraception`;
     }
 
     // 2. Timeline Ribbon Active Cursor
@@ -488,8 +510,11 @@ export class UIComponents {
         cell.classList.add('today');
       }
 
-      if (dayItem.status.isPeriodDay) {
+      if (dayItem.hasLoggedFlow || dayItem.status.isPeriodDay) {
         cell.classList.add('period-day');
+        if (dayItem.isPredictedPeriod) cell.classList.add('predicted-day');
+      } else if (dayItem.status.isLate) {
+        cell.classList.add('late-day');
       } else if (dayItem.status.isOvulationDay) {
         cell.classList.add('ovulation-day');
       } else if (dayItem.status.isFertileWindow) {
@@ -498,20 +523,27 @@ export class UIComponents {
 
       // Build inner cell markup
       let badgeHtml = '';
-      if (dayItem.status.isPeriodDay) {
-        badgeHtml = `<span class="indicator-badge badge-period" title="Period Day"><span class="badge-icon">🩸</span><span class="badge-text">Period</span></span>`;
+      if (dayItem.hasLoggedFlow) {
+        badgeHtml = `<span class="indicator-badge badge-period" title="Logged Period Flow"><span class="badge-icon">🩸</span><span class="badge-text">Logged</span></span>`;
+      } else if (dayItem.isPredictedPeriod || dayItem.status.isPeriodDay) {
+        badgeHtml = `<span class="indicator-badge badge-period" style="opacity:0.75;" title="Estimated Period Day"><span class="badge-icon">🩸</span><span class="badge-text">Est. Period</span></span>`;
+      } else if (dayItem.status.isLate) {
+        badgeHtml = `<span class="indicator-badge" title="Period Late (Day +${dayItem.status.daysLate})"><span class="badge-icon">⏳</span><span class="badge-text">Late</span></span>`;
       } else if (dayItem.status.isOvulationDay) {
-        badgeHtml = `<span class="indicator-badge badge-ovulation" title="Ovulation Peak"><span class="badge-icon">✨</span><span class="badge-text">Ovulation</span></span>`;
+        badgeHtml = `<span class="indicator-badge badge-ovulation" title="Estimated Ovulation (not contraception)"><span class="badge-icon">✨</span><span class="badge-text">Est. Ov.</span></span>`;
       } else if (dayItem.status.isFertileWindow) {
-        badgeHtml = `<span class="indicator-badge badge-fertile" title="Fertile Window"><span class="badge-icon">🌿</span><span class="badge-text">Fertile</span></span>`;
+        badgeHtml = `<span class="indicator-badge badge-fertile" title="Estimated Fertile Window (not contraception)"><span class="badge-icon">🌿</span><span class="badge-text">Est. Fertile</span></span>`;
       }
 
       const symptomDotHtml = dayItem.hasSymptoms ? `<span class="badge-symptom-dot" title="Logged symptoms/notes"></span>` : '';
+      const phaseDotHtml = dayItem.status.isBeforeHistory
+        ? ''
+        : `<span class="day-phase-dot" style="background-color: ${dayItem.status.phase.color}"></span>`;
 
       cell.innerHTML = `
         <div class="day-cell-top">
           <span class="day-number">${dayItem.dayNumber}</span>
-          <span class="day-phase-dot" style="background-color: ${dayItem.status.phase.color}"></span>
+          ${phaseDotHtml}
         </div>
         <div class="day-indicator-row">
           ${badgeHtml}
@@ -553,7 +585,7 @@ export class UIComponents {
     if (isLoading) {
       if (refreshBtn) {
         refreshBtn.classList.add('loading');
-        refreshBtn.innerHTML = `<span class="refresh-icon spinning">✨</span> <span class="refresh-text">Consulting Gemini 3.6...</span>`;
+        refreshBtn.innerHTML = `<span class="refresh-icon spinning">✨</span> <span class="refresh-text">Refreshing AI Insights...</span>`;
       }
       const skeletonItems = `
         <li class="skeleton-shimmer" style="height: 16px; border-radius: 6px; margin-bottom: 6px;"></li>
@@ -570,22 +602,24 @@ export class UIComponents {
 
     if (refreshBtn) {
       refreshBtn.classList.remove('loading');
-      refreshBtn.innerHTML = `<span class="refresh-icon">✨</span> <span class="refresh-text">Refresh with Gemini</span>`;
+      refreshBtn.innerHTML = `<span class="refresh-icon">✨</span> <span class="refresh-text">Refresh AI Insights</span>`;
     }
 
     // Default hormone description and energy capacity by phase if not returned by Gemini
     const defaultHormones = {
-      menstrual: 'Estrogen & progesterone at lowest baseline • Uterine lining shedding',
+      menstrual: 'Estrogen & progesterone at baseline • Uterine lining shedding',
       follicular: 'FSH stimulates follicle recruitment • Estrogen steadily rising',
       ovulatory: 'Estrogen peak • LH surge triggering follicle release',
-      luteal: 'Progesterone surge from corpus luteum • Thermogenic body temp rise'
+      luteal: 'Progesterone rises from corpus luteum, then tapers before next period',
+      late: 'Cycle duration can vary naturally with stress, travel, sleep, or hormonal shifts'
     };
 
     const defaultEnergy = {
-      menstrual: 'Restorative Inward Energy (40-50%)',
-      follicular: 'Rising Creative Vitality (75-85%)',
-      ovulatory: 'Peak Dynamic Power (95-100%)',
-      luteal: 'Grounded Focused Energy (65-75%)'
+      menstrual: 'Restorative & Gentle',
+      follicular: 'Rising & Creative',
+      ovulatory: 'Vibrant & Social',
+      luteal: 'Grounded & Steady',
+      late: 'Gentle & Mindful'
     };
 
     if (phaseTitleEl) {
@@ -595,27 +629,27 @@ export class UIComponents {
       phaseTaglineEl.textContent = insights?.tagline || status.phase.tagline;
     }
     if (hormoneDescEl) {
-      hormoneDescEl.textContent = insights?.hormoneSnapshot || defaultHormones[status.phase.key] || 'Natural endocrine rhythm in progress';
+      hormoneDescEl.textContent = insights?.hormoneSnapshot || defaultHormones[status.phase.key] || 'Natural cycle rhythm in progress';
     }
     if (energyDescEl) {
-      energyDescEl.textContent = insights?.energyCapacity || defaultEnergy[status.phase.key] || 'Normal bio-rhythm energy';
+      energyDescEl.textContent = insights?.energyCapacity || defaultEnergy[status.phase.key] || 'Steady daily rhythm';
     }
 
-    // Render lists with rich formatting
+    // Render lists safely (escaped to prevent AI-driven XSS)
     const foods = (insights && Array.isArray(insights.foods) && insights.foods.length > 0) ? insights.foods : guide.foods;
     const workouts = (insights && Array.isArray(insights.workouts) && insights.workouts.length > 0) ? insights.workouts : guide.workouts;
     const mindset = (insights && Array.isArray(insights.mindset) && insights.mindset.length > 0) ? insights.mindset : guide.mindset;
 
     if (nutritionListEl) {
-      nutritionListEl.innerHTML = foods.map(item => `<li><span class="sync-item-bullet">🥑</span><span>${item}</span></li>`).join('');
+      nutritionListEl.innerHTML = foods.map(item => `<li><span class="sync-item-bullet">🥑</span><span>${escapeHtml(item)}</span></li>`).join('');
     }
 
     if (workoutListEl) {
-      workoutListEl.innerHTML = workouts.map(item => `<li><span class="sync-item-bullet">⚡</span><span>${item}</span></li>`).join('');
+      workoutListEl.innerHTML = workouts.map(item => `<li><span class="sync-item-bullet">⚡</span><span>${escapeHtml(item)}</span></li>`).join('');
     }
 
     if (mindsetListEl) {
-      mindsetListEl.innerHTML = mindset.map(item => `<li><span class="sync-item-bullet">💡</span><span>${item}</span></li>`).join('');
+      mindsetListEl.innerHTML = mindset.map(item => `<li><span class="sync-item-bullet">💡</span><span>${escapeHtml(item)}</span></li>`).join('');
     }
 
     if (partnerNoteEl) {
@@ -626,13 +660,13 @@ export class UIComponents {
       if (insights?.scientificWhy) {
         scientificWhyEl.innerHTML = `
           <div class="ai-scientific-pill">
-            <span>🧬</span> <strong>Endocrine Rationale (Gemini 3.6):</strong> ${insights.scientificWhy}
+            <span>🧬</span> <strong>Wellness Context (AI):</strong> ${escapeHtml(insights.scientificWhy)}
           </div>
         `;
       } else {
         scientificWhyEl.innerHTML = `
           <div class="ai-scientific-pill">
-            <span>🧬</span> <strong>Phase Biology:</strong> Tailored to support your natural hormone shifts during the ${status.phase.name}.
+            <span>🧬</span> <strong>Phase Overview:</strong> General wellness ideas for the ${escapeHtml(status.phase.name)} (educational only, not medical advice).
           </div>
         `;
       }
@@ -641,7 +675,7 @@ export class UIComponents {
 
 
   /**
-   * Render History & Analytics Screen
+   * Render History & Analytics Screen (uses real logged history averages when available)
    */
   renderHistoryAnalytics(profile, logs) {
     const avgCycleEl = document.getElementById('metric-avg-cycle');
@@ -649,8 +683,19 @@ export class UIComponents {
     const totalLoggedEl = document.getElementById('metric-total-logged');
     const timelineListEl = document.getElementById('cycle-timeline-list');
 
-    if (avgCycleEl) avgCycleEl.textContent = `${profile.cycleLength || 28}d`;
-    if (avgPeriodEl) avgPeriodEl.textContent = `${profile.periodLength || 5}d`;
+    const stats = computeCycleStats(logs, profile);
+    if (avgCycleEl) {
+      avgCycleEl.textContent = `${stats.averageCycleLength}d`;
+      avgCycleEl.title = stats.hasHistoricalCycleAvg
+        ? `Computed from ${stats.recordedCyclesCount} logged cycle interval(s)`
+        : 'Based on your profile setting (log 2+ periods to auto-learn)';
+    }
+    if (avgPeriodEl) {
+      avgPeriodEl.textContent = `${stats.averagePeriodLength}d`;
+      avgPeriodEl.title = stats.hasHistoricalPeriodAvg
+        ? `Computed from ${stats.runs.length} logged period(s)`
+        : 'Based on your profile setting';
+    }
 
     const logKeys = Object.keys(logs || {});
     if (totalLoggedEl) totalLoggedEl.textContent = logKeys.length;
@@ -658,7 +703,6 @@ export class UIComponents {
     if (timelineListEl) {
       timelineListEl.innerHTML = '';
 
-      // Render recent log entries
       const sortedKeys = logKeys.sort().reverse().slice(0, 10);
       if (sortedKeys.length === 0) {
         timelineListEl.innerHTML = `<p style="color: var(--text-muted); font-size: 0.9rem;">No logs recorded yet. Start logging your days to see trends!</p>`;
@@ -673,14 +717,14 @@ export class UIComponents {
         const row = document.createElement('div');
         row.className = 'timeline-row';
 
-        const flowTag = item.flow ? `<span class="pill-tag" style="background: rgba(255,107,139,0.2); color: var(--color-rose);">🩸 ${item.flow}</span>` : '';
-        const moodTags = (item.moods || []).map(m => `<span class="pill-tag" style="background: rgba(132,94,194,0.2); color: var(--color-fuchsia);">${m}</span>`).join(' ');
-        const symptomTags = (item.symptoms || []).map(s => `<span class="pill-tag" style="background: rgba(0,201,167,0.15); color: var(--color-teal);">${s}</span>`).join(' ');
+        const flowTag = item.flow ? `<span class="pill-tag" style="background: rgba(255,107,139,0.2); color: var(--color-rose);">🩸 ${escapeHtml(item.flow)}</span>` : '';
+        const moodTags = (item.moods || []).map(m => `<span class="pill-tag" style="background: rgba(132,94,194,0.2); color: var(--color-fuchsia);">${escapeHtml(m)}</span>`).join(' ');
+        const symptomTags = (item.symptoms || []).map(s => `<span class="pill-tag" style="background: rgba(0,201,167,0.15); color: var(--color-teal);">${escapeHtml(s)}</span>`).join(' ');
 
         row.innerHTML = `
           <div class="timeline-dates">
-            <span class="timeline-dates-main">${dateFormatted}</span>
-            <span class="timeline-dates-sub">${item.notes ? `"${item.notes}"` : 'Daily log entry'}</span>
+            <span class="timeline-dates-main">${escapeHtml(dateFormatted)}</span>
+            <span class="timeline-dates-sub">${item.notes ? `"${escapeHtml(item.notes)}"` : 'Daily log entry'}</span>
           </div>
           <div class="timeline-tags">
             ${flowTag}
@@ -692,7 +736,6 @@ export class UIComponents {
       });
     }
 
-    // Render Data Privacy & Usage Telemetry section
     this.renderTelemetryDashboard();
   }
 
@@ -707,7 +750,6 @@ export class UIComponents {
     const consentStatusEl = document.getElementById('telemetry-consent-status');
     const auditListEl = document.getElementById('telemetry-audit-list');
 
-    // Dynamically retrieve summary from storage/tracker
     let telemetry = {};
     let auditLogs = [];
     try {
@@ -730,10 +772,11 @@ export class UIComponents {
     }
     const storageKb = (totalStorageBytes / 1024).toFixed(2);
 
-    let isConsentActive = true;
+    // Explicit opt-in default (false unless user opted in)
+    let isConsentActive = false;
     try {
       const consentRaw = localStorage.getItem('aifycycle_consent_v1');
-      if (consentRaw) isConsentActive = JSON.parse(consentRaw).analyticsAllowed !== false;
+      if (consentRaw) isConsentActive = JSON.parse(consentRaw).analyticsAllowed === true;
     } catch (e) {}
 
     if (aiQueriesEl) aiQueriesEl.textContent = totalQueries;
@@ -741,7 +784,7 @@ export class UIComponents {
     if (aiLatencyEl) aiLatencyEl.textContent = avgLatency > 0 ? `${avgLatency}ms` : '< 200ms';
     if (storageKbEl) storageKbEl.textContent = `${storageKb} KB`;
     if (consentStatusEl) {
-      consentStatusEl.textContent = isConsentActive ? 'Active' : 'Disabled';
+      consentStatusEl.textContent = isConsentActive ? 'Opted In' : 'Off (Default)';
       consentStatusEl.style.color = isConsentActive ? 'var(--color-teal)' : 'var(--text-muted)';
     }
 
@@ -749,7 +792,7 @@ export class UIComponents {
       auditListEl.innerHTML = '';
       const recent = auditLogs.slice(0, 8);
       if (recent.length === 0) {
-        auditListEl.innerHTML = '<p style="color: var(--text-muted); font-size: 0.8rem;">No audit records recorded yet.</p>';
+        auditListEl.innerHTML = '<p style="color: var(--text-muted); font-size: 0.8rem;">No activity records yet.</p>';
         return;
       }
 
@@ -760,9 +803,9 @@ export class UIComponents {
         const dateFormatted = new Date(log.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' });
 
         item.innerHTML = `
-          <div class="audit-log-badge">${log.action}</div>
-          <div class="audit-log-detail">${log.detail}</div>
-          <div class="audit-log-time">${dateFormatted} ${timeFormatted}</div>
+          <div class="audit-log-badge">${escapeHtml(log.action)}</div>
+          <div class="audit-log-detail">${escapeHtml(log.detail)}</div>
+          <div class="audit-log-time">${escapeHtml(dateFormatted)} ${escapeHtml(timeFormatted)}</div>
         `;
         auditListEl.appendChild(item);
       });

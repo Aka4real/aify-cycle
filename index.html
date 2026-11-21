@@ -642,10 +642,10 @@
                 <span class="vitals-emoji-badge">✨</span>
                 <div>
                   <h3 class="card-title">AI Wellness Whisper</h3>
-                  <span class="vitals-sub">Gemini 3.8 Flash • Personalized Guidance</span>
+                  <span class="vitals-sub">AI Coach • Educational Wellness Guidance</span>
                 </div>
               </div>
-              <button onclick="document.querySelector('[data-tab=\'ai-coach\']').click()" class="btn-micro" title="Open AI Coach Chat">Chat →</button>
+              <button type="button" id="btn-open-ai-coach-banner" class="btn-micro" title="Open AI Coach Chat">Chat →</button>
             </div>
 
             <blockquote id="hero-partner-care-note" class="ai-whisper-quote">
@@ -1119,39 +1119,39 @@
           <input type="date" id="setting-lastperiod" class="form-input">
         </div>
 
-        <!-- Aify Intelligence & Privacy Architecture (Powered by Gemini 3.6 Flash) -->
+        <!-- Aify Intelligence & Privacy Architecture -->
         <div id="setting-ai-section" class="form-section apple-intelligence-panel" style="border-top: 1px solid var(--border-subtle); padding-top: 1.25rem;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.65rem;">
             <div style="display: flex; align-items: center; gap: 0.5rem;">
               <div class="apple-ai-icon-badge">✨</div>
               <div>
-                <span class="form-label" style="margin-bottom: 0; font-size: 0.95rem; font-weight: 700;">Aify Intelligence</span>
-                <span style="font-size: 0.74rem; color: var(--text-muted); display: block;">Autonomous Endocrine &amp; Cycle Synthesis</span>
+                <span class="form-label" style="margin-bottom: 0; font-size: 0.95rem; font-weight: 700;">Aify AI Coach</span>
+                <span style="font-size: 0.74rem; color: var(--text-muted); display: block;">General Wellness &amp; Cycle Education</span>
               </div>
             </div>
-            <span id="ai-settings-status" class="ai-status-pill pill-server">✨ Gemini 3.6 Flash Active</span>
+            <span id="ai-settings-status" class="ai-status-pill pill-server">Checking...</span>
           </div>
 
           <div class="apple-ai-info-card">
             <div class="ai-feature-row">
               <span class="ai-check-icon">✓</span>
               <div>
-                <strong>Gemini 3.6 Flash Foundation Intelligence</strong>
-                <p>Generates tailored Cycle Syncing nutrition, dynamic movement, cognitive focus, and conversational wellness advice.</p>
+                <strong>Server-Side Gemini Gateway</strong>
+                <p>Generates general wellness suggestions and conversational cycle education. Prompts are validated server-side and API keys never reach your browser.</p>
               </div>
             </div>
             <div class="ai-feature-row">
               <span class="ai-check-icon">✓</span>
               <div>
-                <strong>Zero-Knowledge Privacy Sandbox</strong>
-                <p>Protected by secure server-side transit. In compliance with enterprise HIPAA and GDPR standards, personal health logs are never used to train external models.</p>
+                <strong>User-Confirmed Log Updates</strong>
+                <p>When you mention symptoms or period dates in chat, Aify drafts a preview card so you can confirm or dismiss before anything is saved.</p>
               </div>
             </div>
             <div class="ai-feature-row">
               <span class="ai-check-icon">✓</span>
               <div>
-                <strong>Autonomous On-Device Fallback</strong>
-                <p>Cycle algorithms and historical logs run independently in your local browser sandbox even if offline.</p>
+                <strong>Local-First Offline Fallback</strong>
+                <p>Cycle calculations and saved logs stay available in your browser even when offline or when AI insights are turned off.</p>
               </div>
             </div>
           </div>
@@ -1220,7 +1220,7 @@
           <span class="form-label">Data Privacy, Consent &amp; Compliance</span>
           <div style="margin-bottom: 0.85rem;">
             <label class="checkbox-container" style="display: flex; align-items: flex-start; gap: 0.6rem; cursor: pointer; font-size: 0.82rem; color: var(--text-primary); line-height: 1.45;">
-              <input type="checkbox" id="setting-analytics-toggle" checked style="margin-top: 0.15rem;" />
+              <input type="checkbox" id="setting-analytics-toggle" style="margin-top: 0.15rem;" />
               <span>Enable anonymous feature &amp; performance telemetry (helps improve prediction algorithms; stored locally and never sold).</span>
             </label>
           </div>

@@ -1,27 +1,17 @@
-// api/gemini/status.js - Vercel Serverless Function for Gemini Status Check
+/**
+ * Vercel Serverless Function: Gemini Status Check (/api/gemini/status)
+ */
 
-const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
-const FALLBACK_GEMINI_MODELS = ['gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
+const { applyCors, applySecurityHeaders } = require('../../lib/http-security');
+const { getGeminiStatus } = require('../../lib/gemini');
 
 module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  applySecurityHeaders(res);
+  const cors = applyCors(req, res, 'GET, OPTIONS');
 
   if (req.method === 'OPTIONS') {
-    return res.status(204).end();
+    return res.status(cors.allowed ? 204 : 403).end();
   }
 
-  const GEMINI_MODEL = (process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL)
-    .replace(/^models\//i, '')
-    .trim();
-  const isConfigured = Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim());
-
-  return res.status(200).json({
-    configured: isConfigured,
-    model: GEMINI_MODEL,
-    fallbackModels: FALLBACK_GEMINI_MODELS,
-    cascadeEnabled: true,
-    mode: isConfigured ? 'server_proxy' : 'unconfigured'
-  });
+  return res.status(200).json(getGeminiStatus());
 };

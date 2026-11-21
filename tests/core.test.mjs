@@ -235,3 +235,35 @@ test('buildDiscreetGreetingText uses first name only and never exposes cycle pha
   assert.match(evening, /Good evening, Sarah/);
   assert.doesNotMatch(evening, /\b(?:Phase|Day\s+\d+|Ovulat|Menstrual|Period|Fertile)/i);
 });
+
+test('Open Graph, Twitter card, favicon, and 1200x630 <300KB social preview image requirements are met', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const root = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
+  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+
+  assert.match(html, /<meta\s+property="og:type"\s+content="website">/);
+  assert.match(html, /<meta\s+property="og:url"\s+content="https:\/\/aifycycle\.vercel\.app\/">/);
+  assert.match(html, /<meta\s+property="og:image"\s+content="https:\/\/aifycycle\.vercel\.app\/og-image\.png">/);
+  assert.match(html, /<meta\s+property="og:image:secure_url"\s+content="https:\/\/aifycycle\.vercel\.app\/og-image\.png">/);
+  assert.match(html, /<meta\s+property="og:image:type"\s+content="image\/png">/);
+  assert.match(html, /<meta\s+property="og:image:width"\s+content="1200">/);
+  assert.match(html, /<meta\s+property="og:image:height"\s+content="630">/);
+  assert.match(html, /<meta\s+name="twitter:card"\s+content="summary_large_image">/);
+  assert.match(html, /<meta\s+name="twitter:image"\s+content="https:\/\/aifycycle\.vercel\.app\/og-image\.png">/);
+  assert.match(html, /<link\s+rel="icon"\s+type="image\/x-icon"\s+href="\/favicon\.ico">/);
+  assert.match(html, /<link\s+rel="apple-touch-icon"\s+sizes="180x180"\s+href="\/apple-touch-icon\.png">/);
+
+  const pngStat = fs.statSync(path.join(root, 'og-image.png'));
+  const jpgStat = fs.statSync(path.join(root, 'og-image.jpg'));
+  const icoStat = fs.statSync(path.join(root, 'favicon.ico'));
+
+  assert.ok(pngStat.size > 10000 && pngStat.size < 300000, `og-image.png size ${pngStat.size} must be < 300KB`);
+  assert.ok(jpgStat.size > 10000 && jpgStat.size < 300000, `og-image.jpg size ${jpgStat.size} must be < 300KB`);
+  assert.ok(icoStat.size > 100, 'favicon.ico must exist');
+
+  // Verify PNG IHDR header width=1200, height=630
+  const pngBuf = fs.readFileSync(path.join(root, 'og-image.png'));
+  assert.equal(pngBuf.readUInt32BE(16), 1200);
+  assert.equal(pngBuf.readUInt32BE(20), 630);
+});

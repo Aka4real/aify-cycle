@@ -12,7 +12,9 @@ const DIST = path.join(ROOT, 'dist');
 
 const STATIC_FILES = [
   'index.html',
+  'robots.txt',
   'site.webmanifest',
+  'favicon.ico',
   'favicon.svg',
   'favicon.png',
   'favicon-16x16.png',
@@ -20,6 +22,7 @@ const STATIC_FILES = [
   'apple-touch-icon.png',
   'icon-192.png',
   'icon-512.png',
+  'og-image.png',
   'og-image.jpg'
 ];
 

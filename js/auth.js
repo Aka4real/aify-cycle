@@ -118,10 +118,11 @@ export class AuthManager {
 
     if (oauthError || oauthErrorDesc) {
       window.history.replaceState({}, document.title, window.location.pathname);
-      const message = oauthErrorDesc
-        ? decodeURIComponent(oauthErrorDesc.replace(/\+/g, ' '))
-        : `Sign-in failed (${oauthError}).`;
-      return { user: null, error: message };
+      const rawMessage = (oauthErrorDesc || `Sign-in failed (${oauthError}).`).trim();
+      const friendlyMessage = /unable to exchange external code/i.test(rawMessage)
+        ? 'Google sign-in could not complete the token exchange in Supabase. Verify that your Google OAuth Client Secret in Supabase (Authentication → Providers → Google) matches your Web OAuth client in Google Cloud Console, then try again.'
+        : rawMessage;
+      return { user: null, error: friendlyMessage };
     }
 
     const hasCallbackParams =
@@ -149,6 +150,12 @@ export class AuthManager {
       if (session?.user) {
         const user = await this._applySupabaseUser(session.user, { notifyRoute: false });
         return { user, error: null };
+      }
+      if (hasCallbackParams) {
+        return {
+          user: null,
+          error: 'Sign-in callback could not establish a session (the link or code may have expired or been opened in a different browser). Please try signing in again.'
+        };
       }
       // If local cached session belonged to a cloud user whose session expired, clear stale local flag
       if (this.currentUser && !this.currentUser.isGuest) {
@@ -219,12 +226,20 @@ export class AuthManager {
         return { success: false, errors: [error.message] };
       }
 
+      // Existing email when email confirmation is enabled (Supabase returns empty identities)
+      if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        return {
+          success: false,
+          errors: ['An account with this email already exists. Try logging in or using Continue with Google.']
+        };
+      }
+
       // Supabase requires email confirmation before granting a session
       if (data?.user && !data?.session) {
         return {
           success: false,
           requiresEmailConfirmation: true,
-          errors: ['Account created! Please check your email and click the confirmation link before logging in.']
+          notice: `Account created! Check ${cleanEmail} (including Spam) for your confirmation link, then log in.`
         };
       }
 
@@ -298,15 +313,6 @@ export class AuthManager {
       return {
         success: false,
         error: `Cloud authentication is not configured yet. Set SUPABASE_URL and SUPABASE_ANON_KEY to enable ${providerLabel} sign-in, or continue as Guest.`
-      };
-    }
-
-    const isEnabledOnBackend = await supabaseService.isProviderEnabled(provider);
-    if (isEnabledOnBackend === false) {
-      return {
-        success: false,
-        providerNotConfiguredOnServer: true,
-        error: `${providerLabel} sign-in is not enabled in your Supabase project yet (Authentication → Providers → ${providerLabel}).`
       };
     }
 

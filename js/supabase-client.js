@@ -109,21 +109,26 @@ class SupabaseService {
       };
     }
 
-    // 3. Fetch from backend config endpoint (reads SUPABASE_URL + SUPABASE_ANON_KEY from env)
-    try {
-      const res = await fetch(CONFIG_ENDPOINT, { signal: AbortSignal.timeout(5000) });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.configured && data.url && data.anonKey) {
-          return {
-            url: data.url.trim().replace(/\/+$/, ''),
-            anonKey: data.anonKey.trim(),
-            source: 'server'
-          };
+    // 3. Fetch from backend config endpoint (with 1 automatic retry for flaky networks)
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const res = await fetch(CONFIG_ENDPOINT, { signal: AbortSignal.timeout(10000) });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.configured && data.url && data.anonKey) {
+            return {
+              url: data.url.trim().replace(/\/+$/, ''),
+              anonKey: data.anonKey.trim(),
+              source: 'server'
+            };
+          }
+          break;
+        }
+      } catch (e) {
+        if (attempt === 0) {
+          await new Promise(r => setTimeout(r, 400));
         }
       }
-    } catch (e) {
-      // Backend not running or static host
     }
 
     return null;

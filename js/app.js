@@ -183,14 +183,17 @@ class AifyCycleApp {
     if (loginForm) {
       loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        this._clearAuthErrors();
         const email = document.getElementById('login-email').value;
         const password = document.getElementById('login-password').value;
         const submitBtn = loginForm.querySelector('button[type="submit"]');
-        const origText = submitBtn ? submitBtn.textContent : '';
+        const labelSpan = submitBtn?.querySelector('span');
+        const origText = labelSpan ? labelSpan.textContent : (submitBtn ? submitBtn.textContent : '');
 
         if (submitBtn) {
           submitBtn.disabled = true;
-          submitBtn.textContent = 'Connecting...';
+          if (labelSpan) labelSpan.textContent = 'Connecting...';
+          else submitBtn.textContent = 'Connecting...';
         }
 
         try {
@@ -203,7 +206,8 @@ class AifyCycleApp {
         } finally {
           if (submitBtn) {
             submitBtn.disabled = false;
-            submitBtn.textContent = origText;
+            if (labelSpan) labelSpan.textContent = origText;
+            else submitBtn.textContent = origText;
           }
         }
       });
@@ -213,16 +217,19 @@ class AifyCycleApp {
     if (signupForm) {
       signupForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        this._clearAuthErrors();
         const name = document.getElementById('signup-name').value;
         const email = document.getElementById('signup-email').value;
         const password = document.getElementById('signup-password').value;
         const dateOfBirth = document.getElementById('signup-dob').value || null;
         const submitBtn = signupForm.querySelector('button[type="submit"]');
-        const origText = submitBtn ? submitBtn.textContent : '';
+        const labelSpan = submitBtn?.querySelector('span');
+        const origText = labelSpan ? labelSpan.textContent : (submitBtn ? submitBtn.textContent : '');
 
         if (submitBtn) {
           submitBtn.disabled = true;
-          submitBtn.textContent = 'Creating Account...';
+          if (labelSpan) labelSpan.textContent = 'Creating Account...';
+          else submitBtn.textContent = 'Creating Account...';
         }
 
         try {
@@ -232,13 +239,16 @@ class AifyCycleApp {
             profile.userName = name.trim();
             storage.saveProfile(profile);
             this._routeUser();
+          } else if (result.requiresEmailConfirmation && result.notice) {
+            this._showAuthNotice(result.notice);
           } else {
             this._showAuthErrors(result.errors);
           }
         } finally {
           if (submitBtn) {
             submitBtn.disabled = false;
-            submitBtn.textContent = origText;
+            if (labelSpan) labelSpan.textContent = origText;
+            else submitBtn.textContent = origText;
           }
         }
       });
@@ -298,16 +308,32 @@ class AifyCycleApp {
     const display = document.getElementById('auth-error-display');
     if (display) {
       display.style.display = 'block';
+      display.style.background = '';
+      display.style.borderColor = '';
+      display.style.color = '';
       display.textContent = '';
       (errors || []).forEach(errText => {
         const p = document.createElement('p');
         p.textContent = `⚠️ ${errText}`;
         display.appendChild(p);
       });
-      // Shake animation
       display.classList.remove('shake');
       void display.offsetWidth;
       display.classList.add('shake');
+    }
+  }
+
+  _showAuthNotice(message) {
+    const display = document.getElementById('auth-error-display');
+    if (display) {
+      display.style.display = 'block';
+      display.style.background = 'rgba(0, 142, 155, 0.12)';
+      display.style.borderColor = 'rgba(0, 142, 155, 0.4)';
+      display.style.color = 'var(--color-teal, #008E9B)';
+      display.textContent = '';
+      const p = document.createElement('p');
+      p.textContent = `✉️ ${message}`;
+      display.appendChild(p);
     }
   }
 

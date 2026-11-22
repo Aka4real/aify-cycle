@@ -325,33 +325,33 @@
       </header>
 
       <!-- 2. Interactive 28-Day Biological Cycle Timeline Ribbon -->
-      <section class="cycle-timeline-ribbon glass-card" aria-label="Cycle Progress Timeline">
+      <section id="cycle-timeline-ribbon" class="cycle-timeline-ribbon glass-card" data-phase="ovulatory" aria-label="Cycle Progress Timeline">
         <div class="timeline-header-flex">
           <div class="timeline-title-wrap">
             <span class="timeline-icon">🧭</span>
-            <h3 class="timeline-title">28-Day Cycle Horizon</h3>
+            <h3 id="timeline-horizon-title" class="timeline-title">28-Day Cycle Horizon</h3>
           </div>
           <div class="timeline-phase-pills">
-            <span class="timeline-legend-item"><span class="phase-legend-dot dot-menstrual"></span><span>Period (1-5)</span></span>
-            <span class="timeline-legend-item"><span class="phase-legend-dot dot-follicular"></span><span>Follicular (6-11)</span></span>
-            <span class="timeline-legend-item"><span class="phase-legend-dot dot-ovulatory"></span><span>Ovulation (12-16)</span></span>
-            <span class="timeline-legend-item"><span class="phase-legend-dot dot-luteal"></span><span>Luteal (17-28)</span></span>
+            <span class="timeline-legend-item" data-phase="menstrual"><span class="phase-legend-dot dot-menstrual"></span><span class="timeline-legend-label">Period (1-5)</span></span>
+            <span class="timeline-legend-item" data-phase="follicular"><span class="phase-legend-dot dot-follicular"></span><span class="timeline-legend-label">Follicular (6-8)</span></span>
+            <span class="timeline-legend-item" data-phase="ovulatory"><span class="phase-legend-dot dot-ovulatory"></span><span class="timeline-legend-label">Ovulation (9-15)</span></span>
+            <span class="timeline-legend-item" data-phase="luteal"><span class="phase-legend-dot dot-luteal"></span><span class="timeline-legend-label">Luteal (16-28)</span></span>
           </div>
         </div>
 
         <!-- The Proportional Track -->
         <div class="timeline-track-wrap">
-          <div class="timeline-track-segment seg-menstrual" style="flex: 5;" title="Menstrual Phase: Days 1-5">
+          <div class="timeline-track-segment seg-menstrual" data-phase="menstrual" style="flex: 5;" title="Menstrual Phase: Days 1-5">
             <span class="track-seg-label">🩸 Days 1-5</span>
           </div>
-          <div class="timeline-track-segment seg-follicular" style="flex: 6;" title="Follicular Phase: Days 6-11">
-            <span class="track-seg-label">🌱 Days 6-11</span>
+          <div class="timeline-track-segment seg-follicular" data-phase="follicular" style="flex: 3;" title="Follicular Phase: Days 6-8">
+            <span class="track-seg-label">🌱 Days 6-8</span>
           </div>
-          <div class="timeline-track-segment seg-ovulatory" style="flex: 5;" title="Ovulatory Window: Days 12-16">
-            <span class="track-seg-label">✨ Days 12-16</span>
+          <div class="timeline-track-segment seg-ovulatory" data-phase="ovulatory" style="flex: 7;" title="Ovulatory Window: Days 9-15">
+            <span class="track-seg-label">✨ Days 9-15</span>
           </div>
-          <div class="timeline-track-segment seg-luteal" style="flex: 12;" title="Luteal Phase: Days 17-28">
-            <span class="track-seg-label">🌙 Days 17-28</span>
+          <div class="timeline-track-segment seg-luteal" data-phase="luteal" style="flex: 13;" title="Luteal Phase: Days 16-28">
+            <span class="track-seg-label">🌙 Days 16-28</span>
           </div>
 
           <!-- Active Today Cursor on Ribbon -->
@@ -366,7 +366,7 @@
       <div class="hero-cycle-grid">
         
         <!-- Left: Grand Biological Cycle Wheel -->
-        <section class="cycle-dial-card glass-card">
+        <section id="cycle-dial-card" class="cycle-dial-card glass-card" data-phase="ovulatory">
           <div class="dial-card-header">
             <div class="dial-header-title">
               <span class="dial-badge-gem">🌸</span>
@@ -385,74 +385,80 @@
             <!-- Dynamic Phase Ambient Glow Backdrop -->
             <div id="dial-ambient-glow" class="dial-ambient-glow"></div>
 
-            <svg class="dial-svg" viewBox="0 0 340 340">
+            <svg class="dial-svg" viewBox="0 0 340 340" role="img" aria-label="Biological Cycle Compass">
               <defs>
-                <!-- Menstrual Arc Gradient -->
-                <linearGradient id="grad-menstrual" x1="0%" y1="0%" x2="100%" y2="100%">
+                <!-- Menstrual Arc Gradient (12:00 -> ~2:00) -->
+                <linearGradient id="grad-menstrual" gradientUnits="userSpaceOnUse" x1="170" y1="40" x2="292" y2="120">
                   <stop offset="0%" stop-color="#FF2E63" />
                   <stop offset="100%" stop-color="#FF6B8B" />
                 </linearGradient>
 
-                <!-- Follicular Arc Gradient -->
-                <linearGradient id="grad-follicular" x1="0%" y1="0%" x2="100%" y2="100%">
+                <!-- Follicular Arc Gradient (~2:00 -> ~3:30) -->
+                <linearGradient id="grad-follicular" gradientUnits="userSpaceOnUse" x1="285" y1="100" x2="298" y2="215">
                   <stop offset="0%" stop-color="#7B2CBF" />
                   <stop offset="100%" stop-color="#C77DFF" />
                 </linearGradient>
 
-                <!-- Fertile / Ovulation Arc Gradient -->
-                <linearGradient id="grad-ovulatory" x1="0%" y1="0%" x2="100%" y2="100%">
+                <!-- Fertile / Ovulation Arc Gradient (~3:30 -> ~6:30) -->
+                <linearGradient id="grad-ovulatory" gradientUnits="userSpaceOnUse" x1="296" y1="185" x2="132" y2="300">
                   <stop offset="0%" stop-color="#FF9E00" />
                   <stop offset="50%" stop-color="#FF6D00" />
                   <stop offset="100%" stop-color="#FFD166" />
                 </linearGradient>
 
-                <!-- Luteal Arc Gradient -->
-                <linearGradient id="grad-luteal" x1="0%" y1="0%" x2="100%" y2="100%">
+                <!-- Luteal Arc Gradient (~6:30 -> 12:00) -->
+                <linearGradient id="grad-luteal" gradientUnits="userSpaceOnUse" x1="140" y1="298" x2="170" y2="40">
                   <stop offset="0%" stop-color="#2C73D2" />
-                  <stop offset="100%" stop-color="#00B4D8" />
-                </linearGradient>
-
-                <!-- Progress Ring Master Gradient -->
-                <linearGradient id="dial-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="#FF4D6D" />
-                  <stop offset="35%" stop-color="#C77DFF" />
-                  <stop offset="65%" stop-color="#FF9E00" />
                   <stop offset="100%" stop-color="#00B4D8" />
                 </linearGradient>
               </defs>
 
               <!-- Concentric Outer Guide Ring -->
               <circle class="dial-guide-ring" cx="170" cy="170" r="148" />
+              <!-- Subtle Inner Precision Guide Ring -->
+              <circle class="dial-inner-ring" cx="170" cy="170" r="113" />
+              <!-- 12 o'clock Cycle Start Marker -->
+              <path class="dial-north-marker" d="M 170 11 L 173.5 16.5 L 166.5 16.5 Z" />
 
               <!-- Base Background Track -->
               <circle class="dial-track" cx="170" cy="170" r="130" />
 
-              <!-- Fertile Window Glow Underlay Arc -->
+              <!-- Soft Translucent Active-Phase & Fertile Halo Underlays -->
               <path id="dial-fertile-underlay" class="dial-fertile-underlay" d="" />
+              <path id="dial-active-halo" class="dial-active-halo" d="" />
 
-              <!-- 4 Segmented Biological Phase Arcs -->
-              <path id="arc-menstrual" class="dial-phase-arc arc-menstrual" d="" />
-              <path id="arc-follicular" class="dial-phase-arc arc-follicular" d="" />
-              <path id="arc-ovulatory" class="dial-phase-arc arc-ovulatory" d="" />
-              <path id="arc-luteal" class="dial-phase-arc arc-luteal" d="" />
-
-              <!-- Main Progress Arc with Smooth Stroke -->
-              <circle id="dial-progress" class="dial-progress" cx="170" cy="170" r="130" />
-
-              <!-- 28 Radial Day Pips (Populated by JS) -->
-              <g id="dial-day-ticks" class="dial-day-ticks"></g>
-
-              <!-- Dedicated Ovulation Star Marker -->
-              <g id="dial-ovulation-marker" class="dial-ovulation-marker">
-                <circle id="ovulation-marker-glow" cx="170" cy="40" r="10" class="ovulation-star-glow" />
-                <circle id="ovulation-marker-core" cx="170" cy="40" r="4.5" class="ovulation-star-core" />
+              <!-- Full-Cycle Soft Phase Preview Arcs (Always True Phase Colors) -->
+              <g id="dial-phase-arcs-bg" class="dial-phase-arcs-bg">
+                <path id="arc-bg-menstrual" class="dial-phase-arc-bg arc-menstrual" d="" />
+                <path id="arc-bg-follicular" class="dial-phase-arc-bg arc-follicular" d="" />
+                <path id="arc-bg-ovulatory" class="dial-phase-arc-bg arc-ovulatory" d="" />
+                <path id="arc-bg-luteal" class="dial-phase-arc-bg arc-luteal" d="" />
               </g>
 
-              <!-- Orbital Glowing Bead (Today's Celestial Cursor) -->
+              <!-- 4 Vibrant Elapsed Biological Phase Arcs (True Phase Colors up to Active Day) -->
+              <g id="dial-phase-arcs-elapsed" class="dial-phase-arcs-elapsed">
+                <path id="arc-menstrual" class="dial-phase-arc arc-menstrual" d="" />
+                <path id="arc-follicular" class="dial-phase-arc arc-follicular" d="" />
+                <path id="arc-ovulatory" class="dial-phase-arc arc-ovulatory" d="" />
+                <path id="arc-luteal" class="dial-phase-arc arc-luteal" d="" />
+              </g>
+
+              <!-- Radial Day Pips (Populated by JS) -->
+              <g id="dial-day-ticks" class="dial-day-ticks"></g>
+
+              <!-- Dedicated Ovulation Peak Star Marker (Centered at 0,0 for translate) -->
+              <g id="dial-ovulation-marker" class="dial-ovulation-marker" transform="translate(170, 300)">
+                <circle id="ovulation-marker-glow" cx="0" cy="0" r="11" class="ovulation-star-glow" />
+                <circle id="ovulation-marker-core" cx="0" cy="0" r="5" class="ovulation-star-core" />
+                <path class="ovulation-star-spark" d="M 0 -4 L 1.1 -1.1 L 4 0 L 1.1 1.1 L 0 4 L -1.1 1.1 L -4 0 L -1.1 -1.1 Z" />
+              </g>
+
+              <!-- Orbital Glowing Bead (Active Day Celestial Cursor) -->
               <g id="dial-orbital-bead" class="dial-orbital-bead" transform="translate(170, 40)">
-                <circle class="bead-halo-outer" cx="0" cy="0" r="14" />
-                <circle class="bead-halo-inner" cx="0" cy="0" r="9" />
-                <circle class="bead-core" cx="0" cy="0" r="5" />
+                <circle class="bead-halo-outer" cx="0" cy="0" r="15" />
+                <circle class="bead-halo-inner" cx="0" cy="0" r="9.5" />
+                <circle class="bead-core" cx="0" cy="0" r="5.5" />
+                <circle class="bead-center-dot" cx="0" cy="0" r="2.2" />
               </g>
             </svg>
 
@@ -465,9 +471,9 @@
               </div>
               <h2 id="dial-phase-title" class="dial-phase-title">✨ Ovulatory Phase</h2>
               <span id="dial-fertility-badge" class="dial-fertility-badge fertility-peak">
-                <span class="badge-dot"></span> Fertility: Peak
+                <span class="badge-dot"></span> Est. Peak (Ovulation)
               </span>
-              <span id="dial-countdown-pill" class="dial-countdown-pill">Next period in 14 days</span>
+              <span id="dial-countdown-pill" class="dial-countdown-pill">14 days until est. next period</span>
               <button id="btn-dial-reset-today" class="btn-dial-reset" style="display:none;" title="Return to today's active day">
                 ↩ Return to Today
               </button>
@@ -482,15 +488,15 @@
             </button>
             <button type="button" class="wheel-legend-pill pill-follicular" data-phase="follicular" title="Click to view Follicular phase info">
               <span class="legend-pip">🌱</span>
-              <span class="legend-text">Follicular (6-11)</span>
+              <span class="legend-text">Follicular (6-8)</span>
             </button>
-            <button type="button" class="wheel-legend-pill pill-ovulatory active-phase" data-phase="ovulatory" title="Click to view Ovulation phase info">
+            <button type="button" class="wheel-legend-pill pill-ovulatory" data-phase="ovulatory" title="Click to view Ovulation phase info">
               <span class="legend-pip">✨</span>
-              <span class="legend-text">Ovulation (12-16)</span>
+              <span class="legend-text">Ovulation (9-15)</span>
             </button>
             <button type="button" class="wheel-legend-pill pill-luteal" data-phase="luteal" title="Click to view Luteal phase info">
               <span class="legend-pip">🌙</span>
-              <span class="legend-text">Luteal (17-28)</span>
+              <span class="legend-text">Luteal (16-28)</span>
             </button>
           </div>
 

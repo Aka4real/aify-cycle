@@ -771,6 +771,92 @@ body {
   opacity: 0.9;
 }
 
+.cycle-timeline-ribbon,
+.cycle-dial-card {
+  --dial-active-color: #FF9E00;
+  --dial-active-text: #C26B00;
+  --dial-active-soft: rgba(255, 158, 0, 0.14);
+  --dial-active-ring: rgba(255, 158, 0, 0.34);
+  --dial-active-glow: rgba(255, 158, 0, 0.24);
+  --dial-active-contrast: #1C1317;
+}
+
+.cycle-timeline-ribbon[data-phase="menstrual"],
+.cycle-dial-card[data-phase="menstrual"] {
+  --dial-active-color: #FF2E63;
+  --dial-active-text: #D81B51;
+  --dial-active-soft: rgba(255, 46, 99, 0.12);
+  --dial-active-ring: rgba(255, 46, 99, 0.34);
+  --dial-active-glow: rgba(255, 46, 99, 0.22);
+  --dial-active-contrast: #FFFFFF;
+}
+
+.cycle-timeline-ribbon[data-phase="follicular"],
+.cycle-dial-card[data-phase="follicular"] {
+  --dial-active-color: #845EC2;
+  --dial-active-text: #6B3FA8;
+  --dial-active-soft: rgba(132, 94, 194, 0.13);
+  --dial-active-ring: rgba(155, 93, 229, 0.36);
+  --dial-active-glow: rgba(155, 93, 229, 0.22);
+  --dial-active-contrast: #FFFFFF;
+}
+
+.cycle-timeline-ribbon[data-phase="ovulatory"],
+.cycle-dial-card[data-phase="ovulatory"] {
+  --dial-active-color: #FF9E00;
+  --dial-active-text: #C26B00;
+  --dial-active-soft: rgba(255, 158, 0, 0.14);
+  --dial-active-ring: rgba(255, 158, 0, 0.36);
+  --dial-active-glow: rgba(255, 158, 0, 0.26);
+  --dial-active-contrast: #1C1317;
+}
+
+.cycle-timeline-ribbon[data-phase="luteal"],
+.cycle-dial-card[data-phase="luteal"] {
+  --dial-active-color: #2C73D2;
+  --dial-active-text: #1B6CA8;
+  --dial-active-soft: rgba(44, 115, 210, 0.12);
+  --dial-active-ring: rgba(0, 180, 216, 0.38);
+  --dial-active-glow: rgba(44, 115, 210, 0.22);
+  --dial-active-contrast: #FFFFFF;
+}
+
+.cycle-timeline-ribbon[data-phase="late"],
+.cycle-dial-card[data-phase="late"] {
+  --dial-active-color: #E07A5F;
+  --dial-active-text: #B8523A;
+  --dial-active-soft: rgba(224, 122, 95, 0.14);
+  --dial-active-ring: rgba(224, 122, 95, 0.36);
+  --dial-active-glow: rgba(224, 122, 95, 0.22);
+  --dial-active-contrast: #FFFFFF;
+}
+
+[data-theme="dark"] .cycle-timeline-ribbon[data-phase="menstrual"],
+[data-theme="dark"] .cycle-dial-card[data-phase="menstrual"] {
+  --dial-active-text: #FF7B9C;
+}
+
+[data-theme="dark"] .cycle-timeline-ribbon[data-phase="follicular"],
+[data-theme="dark"] .cycle-dial-card[data-phase="follicular"] {
+  --dial-active-text: #D09BFF;
+}
+
+[data-theme="dark"] .cycle-timeline-ribbon[data-phase="ovulatory"],
+[data-theme="dark"] .cycle-dial-card[data-phase="ovulatory"] {
+  --dial-active-text: #FFC857;
+}
+
+[data-theme="dark"] .cycle-timeline-ribbon[data-phase="luteal"],
+[data-theme="dark"] .cycle-dial-card[data-phase="luteal"] {
+  --dial-active-color: #00B4D8;
+  --dial-active-text: #4CC9F0;
+}
+
+[data-theme="dark"] .cycle-timeline-ribbon[data-phase="late"],
+[data-theme="dark"] .cycle-dial-card[data-phase="late"] {
+  --dial-active-text: #F2A68D;
+}
+
 .timeline-active-cursor {
   position: absolute;
   top: 50%;
@@ -780,6 +866,7 @@ body {
   align-items: center;
   pointer-events: none;
   z-index: 10;
+  transition: left 0.55s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .cursor-glow-beacon {
@@ -787,8 +874,8 @@ body {
   height: 18px;
   border-radius: 50%;
   background: #FFFFFF;
-  border: 3px solid #FF9E00;
-  box-shadow: 0 0 14px #FF9E00, 0 2px 6px rgba(0,0,0,0.3);
+  border: 3px solid var(--dial-active-color);
+  box-shadow: 0 0 12px var(--dial-active-ring), 0 2px 6px rgba(0,0,0,0.28);
   animation: beaconPulse 1.8s infinite;
 }
 
@@ -796,14 +883,14 @@ body {
   font-size: 0.62rem;
   font-weight: 800;
   text-transform: uppercase;
-  background: #FF9E00;
-  color: #000000;
-  padding: 0.15rem 0.45rem;
+  background: var(--dial-active-color);
+  color: var(--dial-active-contrast);
+  padding: 0.15rem 0.5rem;
   border-radius: var(--radius-full);
   margin-top: 4px;
   letter-spacing: 0.05em;
   white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.22);
 }
 
 /* ===================================================================
@@ -894,9 +981,9 @@ body {
   position: absolute;
   inset: -16px;
   border-radius: 50%;
-  background: radial-gradient(circle at 50% 50%, rgba(255, 158, 0, 0.24) 0%, rgba(255,255,255,0) 70%);
+  background: radial-gradient(circle at 50% 50%, var(--dial-active-glow) 0%, rgba(255,255,255,0) 70%);
   pointer-events: none;
-  transition: background 1.2s ease-in-out;
+  transition: background 0.9s ease-in-out;
 }
 
 .dial-svg {
@@ -913,6 +1000,19 @@ body {
   opacity: 0.55;
 }
 
+.dial-inner-ring {
+  fill: none;
+  stroke: var(--border-secondary);
+  stroke-width: 1;
+  stroke-dasharray: 1.5 5;
+  opacity: 0.42;
+}
+
+.dial-north-marker {
+  fill: #FF2E63;
+  opacity: 0.78;
+}
+
 .dial-track {
   fill: none;
   stroke: var(--bg-tertiary);
@@ -925,16 +1025,41 @@ body {
 
 .dial-fertile-underlay {
   fill: none;
-  stroke: rgba(255, 158, 0, 0.24);
+  stroke: rgba(255, 158, 0, 0.16);
   stroke-width: 24;
   stroke-linecap: round;
+}
+
+.dial-active-halo {
+  fill: none;
+  stroke: var(--dial-active-ring);
+  stroke-width: 25;
+  stroke-linecap: round;
+  opacity: 0.55;
+  transition: stroke 0.45s ease, opacity 0.45s ease;
+}
+
+[data-theme="dark"] .dial-active-halo {
+  opacity: 0.45;
+}
+
+.dial-phase-arc-bg {
+  fill: none;
+  stroke-width: 16;
+  stroke-linecap: round;
+  opacity: 0.24;
+  transition: opacity 0.35s ease;
+}
+
+[data-theme="dark"] .dial-phase-arc-bg {
+  opacity: 0.28;
 }
 
 .dial-phase-arc {
   fill: none;
   stroke-width: 16;
   stroke-linecap: round;
-  transition: stroke 0.4s;
+  transition: opacity 0.35s ease;
 }
 
 .arc-menstrual { stroke: url(#grad-menstrual); }
@@ -942,79 +1067,91 @@ body {
 .arc-ovulatory { stroke: url(#grad-ovulatory); }
 .arc-luteal { stroke: url(#grad-luteal); }
 
-.dial-progress {
-  fill: none;
-  stroke: url(#dial-gradient);
-  stroke-width: 16;
-  stroke-linecap: round;
-  transition: stroke-dashoffset 1.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
 /* Day Pips */
 .dial-tick-pip {
   fill: var(--bg-tertiary);
   stroke: var(--border-secondary);
-  stroke-width: 1.5;
+  stroke-width: 1.4;
   cursor: pointer;
-  transition: fill 0.2s ease, stroke 0.2s ease;
+  transition: fill 0.2s ease, stroke 0.2s ease, opacity 0.2s ease;
 }
 
 .dial-tick-pip:hover {
-  stroke-width: 2.5;
+  stroke-width: 2.6;
   stroke: #FFFFFF;
 }
 
-.dial-tick-pip.phase-period { fill: #FF2E63; stroke: rgba(255, 46, 99, 0.6); }
-.dial-tick-pip.phase-follicular { fill: #845EC2; stroke: rgba(132, 94, 194, 0.6); }
-.dial-tick-pip.phase-fertile { fill: #FF9E00; stroke: rgba(255, 158, 0, 0.7); }
-.dial-tick-pip.phase-luteal { fill: #2C73D2; stroke: rgba(44, 115, 210, 0.6); }
+.dial-tick-pip.phase-period { fill: #FF2E63; stroke: rgba(255, 46, 99, 0.55); }
+.dial-tick-pip.phase-follicular { fill: #845EC2; stroke: rgba(132, 94, 194, 0.55); }
+.dial-tick-pip.phase-fertile { fill: #FF9E00; stroke: rgba(255, 158, 0, 0.65); }
+.dial-tick-pip.phase-luteal { fill: #2C73D2; stroke: rgba(44, 115, 210, 0.55); }
+
+.dial-tick-pip.upcoming {
+  opacity: 0.45;
+}
 
 .dial-tick-pip.completed {
-  opacity: 0.7;
+  opacity: 0.9;
 }
 
 .dial-tick-pip.active-today {
   fill: #FFFFFF !important;
-  stroke: #FF9E00 !important;
+  stroke: var(--dial-active-color) !important;
   stroke-width: 3 !important;
+  opacity: 1 !important;
 }
 
 /* Ovulation Star Marker */
+.dial-ovulation-marker {
+  pointer-events: none;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 .ovulation-star-glow {
-  fill: rgba(255, 158, 0, 0.35);
-  animation: pulseBeacon 2s infinite ease-in-out;
+  fill: rgba(255, 158, 0, 0.34);
+  animation: pulseBeacon 2.2s infinite ease-in-out;
 }
 
 .ovulation-star-core {
-  fill: #FFD166;
+  fill: #FFB703;
   stroke: #FFFFFF;
-  stroke-width: 1.5;
+  stroke-width: 1.6;
+}
+
+.ovulation-star-spark {
+  fill: #FFFFFF;
 }
 
 /* Orbital Bead */
 .dial-orbital-bead {
   pointer-events: none;
-  transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .bead-halo-outer {
-  fill: rgba(255, 158, 0, 0.28);
+  fill: var(--dial-active-color);
+  opacity: 0.22;
   animation: orbitalBeadPulse 2s infinite ease-in-out;
 }
 
 .bead-halo-inner {
-  fill: rgba(255, 158, 0, 0.5);
+  fill: var(--dial-active-color);
+  opacity: 0.42;
 }
 
 .bead-core {
   fill: #FFFFFF;
-  stroke: #FF9E00;
-  stroke-width: 2;
+  stroke: var(--dial-active-color);
+  stroke-width: 2.4;
+}
+
+.bead-center-dot {
+  fill: var(--dial-active-color);
 }
 
 @keyframes orbitalBeadPulse {
-  0%, 100% { opacity: 0.55; }
-  50% { opacity: 0.2; }
+  0%, 100% { opacity: 0.32; }
+  50% { opacity: 0.12; }
 }
 
 @keyframes pulseBeacon {
@@ -1036,9 +1173,9 @@ body {
   width: 63%;
   height: 63%;
   border-radius: 50%;
-  background: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.97), rgba(255, 255, 255, 0.92));
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  box-shadow: 0 10px 28px rgba(180, 140, 160, 0.16), inset 0 1px 0 #FFFFFF;
+  background: radial-gradient(circle at 50% 28%, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.93));
+  border: 1.5px solid var(--dial-active-ring);
+  box-shadow: 0 10px 28px rgba(180, 140, 160, 0.16), 0 0 0 4px rgba(255, 255, 255, 0.55), inset 0 1px 0 #FFFFFF;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1046,12 +1183,13 @@ body {
   text-align: center;
   padding: 0.65rem;
   z-index: 5;
+  transition: border-color 0.4s ease;
 }
 
 [data-theme="dark"] .dial-phase-indicator {
-  background: radial-gradient(circle at 50% 30%, rgba(38, 30, 38, 0.97), rgba(24, 18, 25, 0.94));
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  background: radial-gradient(circle at 50% 28%, rgba(38, 30, 38, 0.98), rgba(22, 17, 24, 0.95));
+  border: 1.5px solid var(--dial-active-ring);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55), 0 0 0 4px rgba(255, 255, 255, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .dial-day-badge {
@@ -1060,11 +1198,12 @@ body {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  padding: 0.18rem 0.55rem;
+  padding: 0.18rem 0.58rem;
   border-radius: var(--radius-full);
-  background: var(--color-rose-bg);
-  color: var(--color-rose);
+  background: var(--dial-active-soft);
+  color: var(--dial-active-text);
   margin-bottom: 0.18rem;
+  transition: background-color 0.35s ease, color 0.35s ease;
 }
 
 .dial-day-counter-flex {
@@ -1152,20 +1291,21 @@ body {
 
 .btn-dial-reset {
   margin-top: 0.28rem;
-  padding: 0.18rem 0.55rem;
+  padding: 0.2rem 0.6rem;
   font-size: 0.64rem;
   font-weight: 700;
-  background: var(--color-rose-bg);
-  color: var(--color-rose);
-  border: 1px solid var(--border-accent);
+  background: var(--dial-active-soft);
+  color: var(--dial-active-text);
+  border: 1px solid var(--dial-active-ring);
   border-radius: var(--radius-full);
   cursor: pointer;
-  transition: background-color 0.2s, color 0.2s;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
 }
 
 .btn-dial-reset:hover {
-  background: var(--color-rose);
-  color: #FFFFFF;
+  background: var(--dial-active-color);
+  color: var(--dial-active-contrast);
+  border-color: var(--dial-active-color);
 }
 
 /* Horizon Legend Pills */
@@ -1183,7 +1323,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.35rem 0.75rem;
+  padding: 0.36rem 0.78rem;
   border-radius: var(--radius-full);
   font-size: 0.72rem;
   font-weight: 600;
@@ -1191,21 +1331,68 @@ body {
   border: 1px solid var(--border-secondary);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.25s;
+  transition: transform 0.22s ease, border-color 0.22s ease, background-color 0.22s ease, color 0.22s ease, box-shadow 0.22s ease;
 }
 
 .wheel-legend-pill:hover,
 .wheel-legend-pill.active-phase {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   color: var(--text-primary);
-  border-color: var(--border-accent);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
-.wheel-legend-pill.pill-menstrual:hover { border-color: #FF2E63; color: #FF2E63; }
-.wheel-legend-pill.pill-follicular:hover { border-color: #845EC2; color: #845EC2; }
-.wheel-legend-pill.pill-ovulatory:hover { border-color: #FF9E00; color: #FF9E00; }
-.wheel-legend-pill.pill-luteal:hover { border-color: #2C73D2; color: #2C73D2; }
+.wheel-legend-pill.pill-menstrual:hover,
+.wheel-legend-pill.pill-menstrual.active-phase {
+  border-color: rgba(255, 46, 99, 0.55);
+  background: rgba(255, 46, 99, 0.11);
+  color: #D81B51;
+}
+
+.wheel-legend-pill.pill-follicular:hover,
+.wheel-legend-pill.pill-follicular.active-phase {
+  border-color: rgba(132, 94, 194, 0.55);
+  background: rgba(132, 94, 194, 0.12);
+  color: #6B3FA8;
+}
+
+.wheel-legend-pill.pill-ovulatory:hover,
+.wheel-legend-pill.pill-ovulatory.active-phase {
+  border-color: rgba(255, 158, 0, 0.6);
+  background: rgba(255, 158, 0, 0.13);
+  color: #B86500;
+}
+
+.wheel-legend-pill.pill-luteal:hover,
+.wheel-legend-pill.pill-luteal.active-phase {
+  border-color: rgba(44, 115, 210, 0.55);
+  background: rgba(44, 115, 210, 0.11);
+  color: #1B6CA8;
+}
+
+[data-theme="dark"] .wheel-legend-pill.pill-menstrual:hover,
+[data-theme="dark"] .wheel-legend-pill.pill-menstrual.active-phase {
+  background: rgba(255, 46, 99, 0.18);
+  color: #FF7B9C;
+}
+
+[data-theme="dark"] .wheel-legend-pill.pill-follicular:hover,
+[data-theme="dark"] .wheel-legend-pill.pill-follicular.active-phase {
+  background: rgba(155, 93, 229, 0.2);
+  color: #D09BFF;
+}
+
+[data-theme="dark"] .wheel-legend-pill.pill-ovulatory:hover,
+[data-theme="dark"] .wheel-legend-pill.pill-ovulatory.active-phase {
+  background: rgba(255, 158, 0, 0.18);
+  color: #FFC857;
+}
+
+[data-theme="dark"] .wheel-legend-pill.pill-luteal:hover,
+[data-theme="dark"] .wheel-legend-pill.pill-luteal.active-phase {
+  border-color: rgba(0, 180, 216, 0.55);
+  background: rgba(0, 180, 216, 0.16);
+  color: #4CC9F0;
+}
 
 /* 3 Bottom Stat Micro-Cards */
 .dial-footer-stats {

@@ -55,15 +55,211 @@ export class UIComponents {
    * Helper to calculate SVG arc path between degrees (0 deg is 12 o'clock top)
    */
   _describeArc(cx, cy, r, startAngleDeg, endAngleDeg) {
+    if (endAngleDeg <= startAngleDeg) return '';
+    const clampedEnd = Math.min(endAngleDeg, startAngleDeg + 359.95);
     const startRad = (startAngleDeg - 90) * Math.PI / 180;
-    const endRad = (endAngleDeg - 90) * Math.PI / 180;
+    const endRad = (clampedEnd - 90) * Math.PI / 180;
     const x1 = cx + r * Math.cos(startRad);
     const y1 = cy + r * Math.sin(startRad);
     const x2 = cx + r * Math.cos(endRad);
     const y2 = cy + r * Math.sin(endRad);
-    const diff = endAngleDeg - startAngleDeg;
+    const diff = clampedEnd - startAngleDeg;
     const largeArcFlag = diff <= 180 ? '0' : '1';
     return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${largeArcFlag} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
+  }
+
+  /**
+   * Compute canonical cycle phase windows aligned 1-to-1 with cycle-engine.js
+   */
+  _getPhaseWindows(status, profile) {
+    const totalDays = Math.max(15, Number(status?.cycleLength || profile?.cycleLength || 28));
+    const periodLength = Math.max(1, Math.min(Number(status?.periodLength || profile?.periodLength || 5), totalDays - 4));
+    const ovulationDay = Math.max(totalDays - 14, periodLength + 2);
+    const fertileStart = Math.max(ovulationDay - 5, periodLength + 1);
+    const fertileEnd = Math.min(ovulationDay + 1, totalDays - 1);
+
+    const degPerDay = 360 / totalDays;
+    const buildWindow = (key, name, shortLabel, icon, startDay, endDay) => {
+      const count = endDay >= startDay ? (endDay - startDay + 1) : 0;
+      const rawStartDeg = (startDay - 1) * degPerDay;
+      const rawEndDeg = endDay * degPerDay;
+      const spanDeg = Math.max(0, rawEndDeg - rawStartDeg);
+      // Inset rounded stroke caps (stroke-width 16 on r=130 => ~3.53deg protrusion) so adjacent phases have a crisp gap
+      const capInset = count > 0 ? Math.min(4.2, Math.max(0.6, spanDeg * 0.22)) : 0;
+      const startDeg = rawStartDeg + capInset;
+      const endDeg = rawEndDeg - capInset;
+      const rangeText = count <= 0 ? '' : (startDay === endDay ? `${startDay}` : `${startDay}-${endDay}`);
+      return {
+        key,
+        name,
+        shortLabel,
+        icon,
+        startDay,
+        endDay,
+        count,
+        rawStartDeg,
+        rawEndDeg,
+        startDeg,
+        endDeg,
+        rangeText
+      };
+    };
+
+    const windows = {
+      menstrual: buildWindow('menstrual', 'Menstrual Phase', 'Period', '🩸', 1, periodLength),
+      follicular: buildWindow('follicular', 'Follicular Phase', 'Follicular', '🌱', periodLength + 1, fertileStart - 1),
+      ovulatory: buildWindow('ovulatory', 'Ovulatory Window', 'Ovulation', '✨', fertileStart, fertileEnd),
+      luteal: buildWindow('luteal', 'Luteal Phase', 'Luteal', '🌙', fertileEnd + 1, totalDays)
+    };
+
+    return { totalDays, periodLength, ovulationDay, fertileStart, fertileEnd, degPerDay, windows };
+  }
+
+  /**
+   * Synchronize the SVG phase arcs, active halo, orbital bead, day pips, and legend pills
+   */
+  _updateDialVisuals({ activeDay, activePhaseKey, meta, isLate = false }) {
+    const cx = 170;
+    const cy = 170;
+    const r = 130;
+    const { totalDays, ovulationDay, windows } = meta;
+    const clampedDay = Math.min(Math.max(Number(activeDay) || 1, 1), totalDays);
+    const beadDeg = ((clampedDay - 0.5) / totalDays) * 360;
+
+    // 1. Apply active phase theme token to card (syncs bead, halo, active pip, center border, badge)
+    const dialCard = document.getElementById('cycle-dial-card') || document.querySelector('.cycle-dial-card');
+    if (dialCard) {
+      dialCard.setAttribute('data-phase', activePhaseKey || 'ovulatory');
+    }
+
+    // 2. Full-cycle soft background arcs + vibrant elapsed phase arcs (100% true phase colors)
+    const phaseKeys = ['menstrual', 'follicular', 'ovulatory', 'luteal'];
+    phaseKeys.forEach(key => {
+      const win = windows[key];
+      const bgArc = document.getElementById(`arc-bg-${key}`);
+      const fgArc = document.getElementById(`arc-${key}`);
+
+      if (!win || win.count <= 0 || win.endDeg <= win.startDeg) {
+        if (bgArc) bgArc.setAttribute('d', '');
+        if (fgArc) fgArc.setAttribute('d', '');
+        return;
+      }
+
+      const fullPath = this._describeArc(cx, cy, r, win.startDeg, win.endDeg);
+      if (bgArc) bgArc.setAttribute('d', fullPath);
+
+      if (fgArc) {
+        if (isLate || clampedDay >= win.endDay) {
+          fgArc.setAttribute('d', fullPath);
+        } else if (clampedDay >= win.startDay) {
+          const partialEnd = Math.max(win.startDeg + 0.35, Math.min(win.endDeg, beadDeg));
+          fgArc.setAttribute('d', this._describeArc(cx, cy, r, win.startDeg, partialEnd));
+        } else {
+          fgArc.setAttribute('d', '');
+        }
+      }
+    });
+
+    // 3. Soft fertile window underlay + active-phase outer accent halo
+    const fertileUnderlay = document.getElementById('dial-fertile-underlay');
+    const ovWin = windows.ovulatory;
+    if (fertileUnderlay) {
+      fertileUnderlay.setAttribute(
+        'd',
+        ovWin && ovWin.count > 0 ? this._describeArc(cx, cy, r, ovWin.startDeg, ovWin.endDeg) : ''
+      );
+    }
+
+    const activeHalo = document.getElementById('dial-active-halo');
+    const activeWin = windows[activePhaseKey];
+    if (activeHalo) {
+      activeHalo.setAttribute(
+        'd',
+        activeWin && activeWin.count > 0 ? this._describeArc(cx, cy, r, activeWin.startDeg, activeWin.endDeg) : ''
+      );
+    }
+
+    // 4. Orbital Celestial Bead Position
+    const bead = document.getElementById('dial-orbital-bead');
+    if (bead) {
+      const beadRad = (beadDeg - 90) * Math.PI / 180;
+      const bx = cx + r * Math.cos(beadRad);
+      const by = cy + r * Math.sin(beadRad);
+      bead.setAttribute('transform', `translate(${bx.toFixed(2)}, ${by.toFixed(2)})`);
+    }
+
+    // 5. Update Day Pips active/completed/upcoming state
+    const dayTicksGroup = document.getElementById('dial-day-ticks');
+    if (dayTicksGroup) {
+      dayTicksGroup.querySelectorAll('.dial-tick-pip').forEach(pip => {
+        const d = Number(pip.getAttribute('data-day'));
+        const isActive = d === clampedDay;
+        const isCompleted = isLate ? true : d < clampedDay;
+        const isUpcoming = !isLate && d > clampedDay;
+        const isOvulation = d === ovulationDay;
+
+        pip.classList.toggle('active-today', isActive);
+        pip.classList.toggle('completed', isCompleted);
+        pip.classList.toggle('upcoming', isUpcoming);
+        pip.setAttribute('r', isActive ? '4.8' : isOvulation ? '3.5' : '2.4');
+      });
+    }
+
+    // 6. Sync interactive phase legend pills active state
+    document.querySelectorAll('.wheel-legend-pill').forEach(pill => {
+      pill.classList.toggle('active-phase', pill.getAttribute('data-phase') === activePhaseKey);
+    });
+  }
+
+  /**
+   * Sync both the Cycle Horizon ribbon and the Compass legend pills to exact engine phase windows
+   */
+  _syncPhaseRangeLabels(meta) {
+    const { totalDays, windows } = meta;
+
+    const horizonTitle = document.getElementById('timeline-horizon-title');
+    if (horizonTitle) {
+      horizonTitle.textContent = `${totalDays}-Day Cycle Horizon`;
+    }
+
+    ['menstrual', 'follicular', 'ovulatory', 'luteal'].forEach(key => {
+      const win = windows[key];
+      const hasDays = win && win.count > 0;
+
+      // Top Cycle Horizon legend label
+      const horizonLegend = document.querySelector(`.timeline-legend-item[data-phase="${key}"]`);
+      if (horizonLegend) {
+        horizonLegend.style.display = hasDays ? '' : 'none';
+        const labelEl = horizonLegend.querySelector('.timeline-legend-label');
+        if (labelEl && hasDays) {
+          labelEl.textContent = `${win.shortLabel} (${win.rangeText})`;
+        }
+      }
+
+      // Top Cycle Horizon track segment proportions & text
+      const seg = document.querySelector(`.timeline-track-segment[data-phase="${key}"]`);
+      if (seg) {
+        seg.style.display = hasDays ? '' : 'none';
+        if (hasDays) {
+          seg.style.flex = String(win.count);
+          seg.title = `${win.name}: ${win.startDay === win.endDay ? `Day ${win.startDay}` : `Days ${win.rangeText}`}`;
+          const segLabel = seg.querySelector('.track-seg-label');
+          if (segLabel) {
+            segLabel.textContent = `${win.icon} ${win.startDay === win.endDay ? `Day ${win.startDay}` : `Days ${win.rangeText}`}`;
+          }
+        }
+      }
+
+      // Compass bottom interactive legend pills
+      const wheelPill = document.querySelector(`.wheel-legend-pill[data-phase="${key}"]`);
+      if (wheelPill) {
+        wheelPill.style.display = hasDays ? '' : 'none';
+        const pillText = wheelPill.querySelector('.legend-text');
+        if (pillText && hasDays) {
+          pillText.textContent = `${win.shortLabel} (${win.rangeText})`;
+        }
+      }
+    });
   }
 
   /**
@@ -73,54 +269,14 @@ export class UIComponents {
     const cx = 170;
     const cy = 170;
     const r = 130;
-    const totalDays = profile.cycleLength || 28;
-    const periodLength = profile.periodLength || 5;
-    const ovulationDay = Math.max(totalDays - 14, periodLength + 2);
-    const fertileStart = Math.max(ovulationDay - 5, periodLength + 1);
-    const fertileEnd = Math.min(ovulationDay + 1, totalDays - 1);
+    const meta = this._getPhaseWindows(status, profile);
+    const { totalDays, periodLength, ovulationDay, fertileStart, fertileEnd, windows } = meta;
+    const activeDay = status.cycleDay ? Math.min(Math.max(status.cycleDay, 1), totalDays) : 1;
 
-    // 1. Calculate Arc Angles (in degrees, 0 is top)
-    const degPerDay = 360 / totalDays;
-    
-    // Menstrual Arc: Days 0 to periodLength
-    const menstrualEndDeg = periodLength * degPerDay;
-    // Follicular Arc: Days periodLength to fertileStart - 1
-    const follicularEndDeg = (fertileStart - 1) * degPerDay;
-    // Fertile Arc: Days fertileStart - 1 to fertileEnd
-    const fertileEndDeg = fertileEnd * degPerDay;
-    // Luteal Arc: Days fertileEnd to totalDays (359.99 for clean SVG render)
-    const lutealEndDeg = 359.99;
+    // 1. Sync phase labels across Horizon ribbon & Compass legend pills
+    this._syncPhaseRangeLabels(meta);
 
-    const arcMenstrual = document.getElementById('arc-menstrual');
-    const arcFollicular = document.getElementById('arc-follicular');
-    const arcOvulatory = document.getElementById('arc-ovulatory');
-    const arcLuteal = document.getElementById('arc-luteal');
-    const fertileUnderlay = document.getElementById('dial-fertile-underlay');
-
-    if (arcMenstrual) arcMenstrual.setAttribute('d', this._describeArc(cx, cy, r, 0.5, menstrualEndDeg - 0.5));
-    if (arcFollicular && follicularEndDeg > menstrualEndDeg) {
-      arcFollicular.setAttribute('d', this._describeArc(cx, cy, r, menstrualEndDeg + 0.5, follicularEndDeg - 0.5));
-    }
-    if (arcOvulatory && fertileEndDeg > follicularEndDeg) {
-      arcOvulatory.setAttribute('d', this._describeArc(cx, cy, r, follicularEndDeg + 0.5, fertileEndDeg - 0.5));
-    }
-    if (arcLuteal && lutealEndDeg > fertileEndDeg) {
-      arcLuteal.setAttribute('d', this._describeArc(cx, cy, r, fertileEndDeg + 0.5, lutealEndDeg));
-    }
-    if (fertileUnderlay && fertileEndDeg > follicularEndDeg) {
-      fertileUnderlay.setAttribute('d', this._describeArc(cx, cy, r + 2, follicularEndDeg, fertileEndDeg));
-    }
-
-    // 2. Main Progress Ring
-    const circumference = 2 * Math.PI * r; // ~816.81
-    const progressOffset = circumference - (circumference * (status.cycleDay / totalDays));
-    const dialProgress = document.getElementById('dial-progress');
-    if (dialProgress) {
-      dialProgress.style.strokeDasharray = `${circumference}`;
-      dialProgress.style.strokeDashoffset = `${progressOffset}`;
-    }
-
-    // 3. Radial Day Pips
+    // 2. Radial Day Pips
     const dayTicksGroup = document.getElementById('dial-day-ticks');
     if (dayTicksGroup) {
       dayTicksGroup.innerHTML = '';
@@ -131,24 +287,22 @@ export class UIComponents {
         const px = cx + pipRadius * Math.cos(rad);
         const py = cy + pipRadius * Math.sin(rad);
 
-        const isCompleted = d < status.cycleDay;
-        const isToday = d === status.cycleDay;
         const isOvulation = d === ovulationDay;
         const isFertile = d >= fertileStart && d <= fertileEnd;
         const isPeriod = d <= periodLength;
 
-        let phaseClass = isPeriod ? 'phase-period' : isFertile ? 'phase-fertile' : d < fertileStart ? 'phase-follicular' : 'phase-luteal';
+        const phaseClass = isPeriod ? 'phase-period' : isFertile ? 'phase-fertile' : d < fertileStart ? 'phase-follicular' : 'phase-luteal';
 
         const pip = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         pip.setAttribute('cx', px.toFixed(2));
         pip.setAttribute('cy', py.toFixed(2));
-        pip.setAttribute('r', isToday ? '4.5' : isOvulation ? '3.5' : '2.2');
-        pip.setAttribute('class', `dial-tick-pip ${phaseClass} ${isCompleted ? 'completed' : ''} ${isToday ? 'active-today' : ''}`);
+        pip.setAttribute('r', d === activeDay ? '4.8' : isOvulation ? '3.5' : '2.4');
+        pip.setAttribute('class', `dial-tick-pip ${phaseClass}`);
         pip.setAttribute('data-day', d);
         pip.innerHTML = `<title>Day ${d}: ${isPeriod ? 'Period' : isOvulation ? 'Ovulation Peak' : isFertile ? 'Fertile Window' : d < fertileStart ? 'Follicular' : 'Luteal Phase'}</title>`;
 
         pip.addEventListener('click', () => {
-          this.inspectDialDay(d, profile, status);
+          this.inspectDialDay(d, profile, status, onDaySelect);
           if (typeof onDaySelect === 'function') onDaySelect(d);
         });
 
@@ -156,7 +310,7 @@ export class UIComponents {
       }
     }
 
-    // 4. Dedicated Ovulation Star Marker Position
+    // 3. Dedicated Ovulation Star Marker Position (centered at 0,0 inside SVG group)
     const ovMarker = document.getElementById('dial-ovulation-marker');
     if (ovMarker) {
       const ovMidDeg = ((ovulationDay - 0.5) / totalDays) * 360 - 90;
@@ -166,27 +320,15 @@ export class UIComponents {
       ovMarker.setAttribute('transform', `translate(${ovX.toFixed(2)}, ${ovY.toFixed(2)})`);
     }
 
-    // 5. Orbital Celestial Bead Position
-    const bead = document.getElementById('dial-orbital-bead');
-    if (bead) {
-      const beadMidDeg = ((status.cycleDay - 0.5) / totalDays) * 360 - 90;
-      const beadRad = beadMidDeg * Math.PI / 180;
-      const bx = cx + r * Math.cos(beadRad);
-      const by = cy + r * Math.sin(beadRad);
-      bead.setAttribute('transform', `translate(${bx.toFixed(2)}, ${by.toFixed(2)})`);
-    }
+    // 4. Sync True-Color Phase Arcs, Active Halo, Orbital Bead, Day Pips, and Legend Pills
+    this._updateDialVisuals({
+      activeDay,
+      activePhaseKey: status.phase.key,
+      meta,
+      isLate: Boolean(status.isLate)
+    });
 
-    // 6. Dynamic Ambient Glow Backdrop
-    const ambientGlow = document.getElementById('dial-ambient-glow');
-    if (ambientGlow) {
-      const phaseColor = status.phase.key === 'menstrual' ? 'rgba(255, 46, 99, 0.22)' :
-                         status.phase.key === 'follicular' ? 'rgba(199, 125, 255, 0.18)' :
-                         status.phase.key === 'ovulatory' ? 'rgba(255, 158, 0, 0.28)' :
-                         'rgba(44, 115, 210, 0.22)';
-      ambientGlow.style.background = `radial-gradient(circle at 50% 50%, ${phaseColor} 0%, rgba(255,255,255,0) 70%)`;
-    }
-
-    // 7. Center Phase Console Text
+    // 5. Center Phase Console Text
     const dialDayNumber = document.getElementById('dial-day-number');
     const dialTotalDays = document.getElementById('dial-total-days');
     const dialPhaseTitle = document.getElementById('dial-phase-title');
@@ -196,7 +338,7 @@ export class UIComponents {
     const resetTodayBtn = document.getElementById('btn-dial-reset-today');
 
     if (dialDayNumber) dialDayNumber.textContent = status.cycleDay ?? '—';
-    if (dialTotalDays) dialTotalDays.textContent = `/ ${status.cycleLength} days`;
+    if (dialTotalDays) dialTotalDays.textContent = `/ ${totalDays} days`;
     if (dialCycleTag) dialCycleTag.textContent = status.isLate ? 'LATE CYCLE' : 'CURRENT CYCLE';
     if (resetTodayBtn) resetTodayBtn.style.display = 'none';
 
@@ -208,53 +350,66 @@ export class UIComponents {
     if (dialFertilityBadge) {
       dialFertilityBadge.className = `dial-fertility-badge ${status.fertilityBadgeClass}`;
       dialFertilityBadge.title = 'Calendar estimate only — not a method of contraception.';
-      dialFertilityBadge.innerHTML = `<span class="badge-dot"></span> ${escapeHtml(status.fertilityChance)} • Est.`;
+      dialFertilityBadge.innerHTML = `<span class="badge-dot"></span> ${escapeHtml(status.fertilityChance)}`;
     }
 
     if (dialCountdownPill) {
-      dialCountdownPill.textContent = status.isLate
-        ? `Period ${status.daysLate} ${status.daysLate === 1 ? 'day' : 'days'} late`
-        : `${status.daysUntilNextPeriod} days until est. next period`;
+      if (status.isLate) {
+        dialCountdownPill.textContent = `Period ${status.daysLate} ${status.daysLate === 1 ? 'day' : 'days'} late`;
+      } else if (status.daysUntilNextPeriod === 0) {
+        dialCountdownPill.textContent = 'Est. next period expected today';
+      } else if (status.daysUntilNextPeriod != null) {
+        dialCountdownPill.textContent = `${status.daysUntilNextPeriod} ${status.daysUntilNextPeriod === 1 ? 'day' : 'days'} until est. next period`;
+      } else {
+        dialCountdownPill.textContent = status.phase.tagline || status.phase.energy;
+      }
     }
 
-    // 8. Bottom Stats Cards
+    // 6. Bottom Stats Cards
     const statDaysNextPeriod = document.getElementById('stat-days-next-period');
     const statPeriodStartDate = document.getElementById('stat-period-start-date');
     const statOvulationDate = document.getElementById('stat-ovulation-date');
 
     if (statDaysNextPeriod) {
-      statDaysNextPeriod.textContent = status.isLate
-        ? `${status.daysLate}d late`
-        : `${status.daysUntilNextPeriod} days`;
+      if (status.isLate) {
+        statDaysNextPeriod.textContent = `${status.daysLate}d late`;
+      } else if (status.daysUntilNextPeriod != null) {
+        statDaysNextPeriod.textContent = `${status.daysUntilNextPeriod} ${status.daysUntilNextPeriod === 1 ? 'day' : 'days'}`;
+      } else {
+        statDaysNextPeriod.textContent = '—';
+      }
     }
-    if (statPeriodStartDate) {
+    if (statPeriodStartDate && status.nextPeriodStart) {
       const nextDate = parseDateKey(status.nextPeriodStart);
       statPeriodStartDate.textContent = nextDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     }
-    if (statOvulationDate) {
-      const ovDate = parseDateKey(status.nextOvulationDate);
-      statOvulationDate.textContent = ovDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    if (statOvulationDate && status.nextOvulationDate) {
+      if (status.isOvulationDay) {
+        statOvulationDate.textContent = 'Today';
+      } else {
+        const ovDate = parseDateKey(status.nextOvulationDate);
+        statOvulationDate.textContent = ovDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      }
     }
 
-    // 9. Reset Today button callback
+    // 7. Reset Today button callback
     if (resetTodayBtn) {
       resetTodayBtn.onclick = () => {
         this.renderCycleDial(status, profile, onDaySelect);
       };
     }
 
-    // 10. Horizon Legend interactive clicks
+    // 8. Horizon Legend interactive clicks
     document.querySelectorAll('.wheel-legend-pill').forEach(pill => {
       pill.onclick = () => {
         const phaseKey = pill.getAttribute('data-phase');
-        document.querySelectorAll('.wheel-legend-pill').forEach(p => p.classList.remove('active-phase'));
-        pill.classList.add('active-phase');
+        const win = windows[phaseKey];
+        if (!win || win.count <= 0) return;
 
-        const targetDay = phaseKey === 'menstrual' ? 2 :
-                          phaseKey === 'follicular' ? Math.floor((periodLength + fertileStart) / 2) :
-                          phaseKey === 'ovulatory' ? ovulationDay :
-                          Math.floor((fertileEnd + totalDays) / 2);
-        this.inspectDialDay(targetDay, profile, status);
+        const targetDay = phaseKey === 'ovulatory'
+          ? ovulationDay
+          : Math.floor((win.startDay + win.endDay) / 2);
+        this.inspectDialDay(targetDay, profile, status, onDaySelect);
       };
     });
   }
@@ -262,19 +417,29 @@ export class UIComponents {
   /**
    * Inspect a specific day around the wheel
    */
-  inspectDialDay(dayNumber, profile, todayStatus) {
-    const totalDays = profile.cycleLength || 28;
-    const periodLength = profile.periodLength || 5;
-    const ovulationDay = Math.max(totalDays - 14, periodLength + 2);
-    const fertileStart = Math.max(ovulationDay - 5, periodLength + 1);
-    const fertileEnd = Math.min(ovulationDay + 1, totalDays - 1);
+  inspectDialDay(dayNumber, profile, todayStatus, onDaySelect = null) {
+    const meta = this._getPhaseWindows(todayStatus, profile);
+    const { totalDays, periodLength, ovulationDay, fertileStart, fertileEnd } = meta;
 
     let phase = PHASES.LUTEAL;
     if (dayNumber <= periodLength) phase = PHASES.MENSTRUAL;
     else if (dayNumber < fertileStart) phase = PHASES.FOLLICULAR;
     else if (dayNumber <= fertileEnd) phase = PHASES.OVULATORY;
 
-    const isToday = dayNumber === todayStatus.cycleDay;
+    const isToday = dayNumber === todayStatus.cycleDay && !todayStatus.isLate;
+
+    if (isToday) {
+      this.renderCycleDial(todayStatus, profile, onDaySelect);
+      return;
+    }
+
+    // Update rings, active halo, orbital bead, pips, and legend pills to inspected day
+    this._updateDialVisuals({
+      activeDay: dayNumber,
+      activePhaseKey: phase.key,
+      meta,
+      isLate: false
+    });
 
     const dialDayNumber = document.getElementById('dial-day-number');
     const dialTotalDays = document.getElementById('dial-total-days');
@@ -286,8 +451,13 @@ export class UIComponents {
 
     if (dialDayNumber) dialDayNumber.textContent = dayNumber;
     if (dialTotalDays) dialTotalDays.textContent = `/ ${totalDays} days`;
-    if (dialCycleTag) dialCycleTag.textContent = isToday ? 'TODAY' : `DAY ${dayNumber} PREVIEW`;
-    if (resetTodayBtn) resetTodayBtn.style.display = isToday ? 'none' : 'inline-block';
+    if (dialCycleTag) dialCycleTag.textContent = `DAY ${dayNumber} PREVIEW`;
+    if (resetTodayBtn) {
+      resetTodayBtn.style.display = 'inline-block';
+      resetTodayBtn.onclick = () => {
+        this.renderCycleDial(todayStatus, profile, onDaySelect);
+      };
+    }
 
     if (dialPhaseTitle) {
       dialPhaseTitle.textContent = `${phase.icon} ${phase.name}`;
@@ -353,11 +523,20 @@ export class UIComponents {
             : `${status.fertilityChance} • Not contraception`;
     }
 
-    // 2. Timeline Ribbon Active Cursor
+    // 2. Timeline Ribbon Active Cursor & Phase Accent Sync
+    const timelineRibbon = document.getElementById('cycle-timeline-ribbon') || document.querySelector('.cycle-timeline-ribbon');
+    if (timelineRibbon) {
+      timelineRibbon.setAttribute('data-phase', status.phase?.key || 'ovulatory');
+    }
     const cursor = document.getElementById('timeline-active-cursor');
     if (cursor) {
-      const pct = Math.min(Math.max((status.cycleDay / (profile.cycleLength || 28)) * 100, 6), 94);
-      cursor.style.left = `${pct}%`;
+      const totalDays = Math.max(15, Number(status?.cycleLength || profile?.cycleLength || 28));
+      const clampedDay = status.cycleDay ? Math.min(Math.max(status.cycleDay, 1), totalDays) : 1;
+      const pct = Math.min(Math.max(((clampedDay - 0.5) / totalDays) * 100, 4), 96);
+      cursor.style.left = `${pct.toFixed(2)}%`;
+      cursor.title = status.isLate
+        ? `Period ${status.daysLate} ${status.daysLate === 1 ? 'day' : 'days'} late`
+        : `You are here: Day ${status.cycleDay ?? 1}`;
     }
 
     // 3. Hydration Glasses Rack

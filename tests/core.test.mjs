@@ -312,3 +312,24 @@ test('CSS GPU compositor safety: no backdrop-filter, blur filter, r: keyframe, v
   const missingVars = usedVars.filter(v => !definedVars.has(v));
   assert.deepEqual(missingVars, [], `Undefined CSS variables: ${missingVars.join(', ')}`);
 });
+
+test('Biological Cycle Compass SVG uses true phase arcs without rainbow overlay and centers ovulation marker at (0,0)', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const root = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
+  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+
+  assert.doesNotMatch(html, /id="dial-progress"/);
+  assert.doesNotMatch(html, /id="dial-gradient"/);
+  assert.match(html, /id="arc-bg-menstrual"/);
+  assert.match(html, /id="arc-bg-follicular"/);
+  assert.match(html, /id="arc-bg-ovulatory"/);
+  assert.match(html, /id="arc-bg-luteal"/);
+  assert.match(html, /id="arc-menstrual"/);
+  assert.match(html, /id="arc-follicular"/);
+  assert.match(html, /id="arc-ovulatory"/);
+  assert.match(html, /id="arc-luteal"/);
+  assert.match(html, /id="ovulation-marker-glow"[^>]*cx="0"\s+cy="0"/);
+  assert.match(html, /id="ovulation-marker-core"[^>]*cx="0"\s+cy="0"/);
+  assert.doesNotMatch(html, /wheel-legend-pill[^>]*active-phase/);
+});

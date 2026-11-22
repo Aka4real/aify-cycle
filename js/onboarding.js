@@ -5,6 +5,7 @@
 
 import { storage } from './storage.js';
 import { formatDateKey } from './cycle-engine.js';
+import { escapeHtml } from './dom-utils.js';
 
 const ONBOARDING_STEPS = [
   {
@@ -50,6 +51,8 @@ export class OnboardingWizard {
     this.currentStep = 0;
     this.totalSteps = ONBOARDING_STEPS.length;
     this.onComplete = onComplete;
+    this._renderTimer = null;
+    this._hasRenderedOnce = false;
 
     // Collected data
     this.data = {
@@ -83,6 +86,7 @@ export class OnboardingWizard {
   renderStep() {
     const step = this.getCurrentStep();
     const container = document.getElementById('onboarding-step-content');
+    const screen = document.getElementById('view-onboarding');
     const progressBar = document.getElementById('onboarding-progress-fill');
     const stepLabel = document.getElementById('onboarding-step-label');
     const prevBtn = document.getElementById('onboarding-prev');
@@ -90,6 +94,15 @@ export class OnboardingWizard {
     const skipBtn = document.getElementById('onboarding-skip');
 
     if (!container) return;
+
+    if (this._renderTimer) {
+      clearTimeout(this._renderTimer);
+      this._renderTimer = null;
+    }
+
+    if (screen) {
+      screen.scrollTop = 0;
+    }
 
     // Progress
     const progress = ((this.currentStep) / (this.totalSteps - 1)) * 100;
@@ -108,20 +121,34 @@ export class OnboardingWizard {
       }
     }
 
-    // Animate transition
-    container.style.opacity = '0';
-    container.style.transform = 'translateX(30px)';
-
-    setTimeout(() => {
+    const applyStepContent = () => {
       container.innerHTML = this._getStepHTML(step.id);
       this._attachStepListeners(step.id);
-
+      container.style.transform = '';
+      container.style.transition = 'opacity 0.2s ease';
       requestAnimationFrame(() => {
-        container.style.transition = 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
         container.style.opacity = '1';
-        container.style.transform = 'translateX(0)';
       });
-    }, 200);
+    };
+
+    if (!this._hasRenderedOnce) {
+      this._hasRenderedOnce = true;
+      container.style.transition = '';
+      container.style.transform = '';
+      container.style.opacity = '1';
+      container.innerHTML = this._getStepHTML(step.id);
+      this._attachStepListeners(step.id);
+      return;
+    }
+
+    // Opacity-only transition (avoids lingering GPU transform layers on mobile)
+    container.style.transition = 'opacity 0.12s ease';
+    container.style.opacity = '0';
+
+    this._renderTimer = setTimeout(() => {
+      this._renderTimer = null;
+      applyStepContent();
+    }, 120);
   }
 
   /**
@@ -166,9 +193,9 @@ export class OnboardingWizard {
     const nextBtn = document.getElementById('onboarding-next');
     const skipBtn = document.getElementById('onboarding-skip');
 
-    if (prevBtn) prevBtn.addEventListener('click', () => this.prev());
-    if (nextBtn) nextBtn.addEventListener('click', () => this.next());
-    if (skipBtn) skipBtn.addEventListener('click', () => this.skip());
+    if (prevBtn) prevBtn.onclick = () => this.prev();
+    if (nextBtn) nextBtn.onclick = () => this.next();
+    if (skipBtn) skipBtn.onclick = () => this.skip();
   }
 
   // --- Private Methods ---
@@ -203,7 +230,7 @@ export class OnboardingWizard {
             </div>
             <div class="onboarding-name-field">
               <label for="onboarding-name" class="form-label">What should we call you?</label>
-              <input type="text" id="onboarding-name" class="form-input" placeholder="Enter your name" value="${this.data.userName}" autocomplete="given-name" />
+              <input type="text" id="onboarding-name" class="form-input" placeholder="Enter your name" value="${escapeHtml(this.data.userName)}" autocomplete="given-name" />
             </div>
           </div>
         `;
@@ -352,7 +379,7 @@ export class OnboardingWizard {
               <h4>Your Settings</h4>
               <div class="summary-row">
                 <span>👤 Name</span>
-                <strong>${this.data.userName || 'Guest'}</strong>
+                <strong>${escapeHtml(this.data.userName || 'Guest')}</strong>
               </div>
               <div class="summary-row">
                 <span>🔄 Cycle Length</span>

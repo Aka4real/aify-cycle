@@ -356,7 +356,7 @@ export class UIComponents {
     // 2. Timeline Ribbon Active Cursor
     const cursor = document.getElementById('timeline-active-cursor');
     if (cursor) {
-      const pct = Math.min(Math.max((status.cycleDay / (profile.cycleLength || 28)) * 100, 2), 98);
+      const pct = Math.min(Math.max((status.cycleDay / (profile.cycleLength || 28)) * 100, 6), 94);
       cursor.style.left = `${pct}%`;
     }
 

@@ -28,6 +28,8 @@ class AifyCycleApp {
     this.aiCoach = null;
     this._authListenersAttached = false;
     this._mainListenersAttached = false;
+    this._activeScreen = null;
+    this._activeUserId = null;
   }
 
   async init() {
@@ -127,6 +129,10 @@ class AifyCycleApp {
   // =============================================
 
   _showAuthScreen() {
+    this._activeScreen = 'auth';
+    this._activeUserId = null;
+    this.onboarding = null;
+
     document.getElementById('view-auth').style.display = '';
     document.getElementById('view-onboarding').style.display = 'none';
     document.getElementById('main-app-container').style.display = 'none';
@@ -280,8 +286,8 @@ class AifyCycleApp {
     wireOAuthButton('btn-oauth-google', 'google', 'Google');
     wireOAuthButton('btn-oauth-apple', 'apple', 'Apple');
 
-    // Modal close buttons (for legal modals accessible on auth screen)
-    document.querySelectorAll('.modal-overlay .btn-close-modal').forEach(btn => {
+    // Modal close/cancel buttons (for legal modals accessible on auth screen)
+    document.querySelectorAll('.modal-overlay .btn-close-modal, .modal-overlay .btn-modal-cancel').forEach(btn => {
       btn.addEventListener('click', () => {
         const modal = btn.closest('.modal-overlay');
         if (modal) modal.classList.remove('active');
@@ -350,13 +356,21 @@ class AifyCycleApp {
   // =============================================
 
   _showOnboardingScreen() {
+    const user = this.auth.currentUser;
+    const userId = user?.id || 'guest';
+
+    // Avoid tearing down an active wizard if auth state re-fires for the same user
+    if (this._activeScreen === 'onboarding' && this._activeUserId === userId && this.onboarding) {
+      return;
+    }
+
+    this._activeScreen = 'onboarding';
+    this._activeUserId = userId;
+
     document.getElementById('view-auth').style.display = 'none';
     document.getElementById('view-onboarding').style.display = '';
     document.getElementById('main-app-container').style.display = 'none';
 
-    // Pre-fill name from auth
-    const user = this.auth.currentUser;
-    
     this.onboarding = new OnboardingWizard((data) => {
       // Onboarding complete callback
       this.auth.completeOnboarding();
@@ -376,6 +390,9 @@ class AifyCycleApp {
   // =============================================
 
   _showMainApp() {
+    this._activeScreen = 'main';
+    this._activeUserId = this.auth.currentUser?.id || 'guest';
+
     document.getElementById('view-auth').style.display = 'none';
     document.getElementById('view-onboarding').style.display = 'none';
     document.getElementById('main-app-container').style.display = '';
@@ -557,6 +574,26 @@ class AifyCycleApp {
       bannerProvider.textContent = user?.provider === 'google' ? 'G' :
                                    user?.provider === 'apple' ? '' : '🌸';
       bannerProvider.title = user?.provider ? `Signed in with ${user.provider}` : 'Private Account';
+    }
+
+    // Update active date display label & consecutive logging streak
+    const nowToday = new Date();
+    const activeDateLabel = document.getElementById('dashboard-active-date-label');
+    if (activeDateLabel) {
+      const isActualToday = formatDateKey(this.today) === formatDateKey(nowToday);
+      const formattedDate = this.today.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      activeDateLabel.textContent = isActualToday ? `Today, ${formattedDate}` : formattedDate;
+    }
+
+    const streakCountEl = document.getElementById('streak-days-count');
+    if (streakCountEl) {
+      let streak = 0;
+      let cursorDate = logs[formatDateKey(nowToday)] ? nowToday : addDays(nowToday, -1);
+      while (logs[formatDateKey(cursorDate)]) {
+        streak++;
+        cursorDate = addDays(cursorDate, -1);
+      }
+      streakCountEl.textContent = String(streak);
     }
 
     // Render Grand Biological Cycle Dial
@@ -1190,16 +1227,12 @@ class AifyCycleApp {
     if (btnDashPrev) {
       btnDashPrev.addEventListener('click', () => {
         this.today = addDays(this.today, -1);
-        const label = document.getElementById('dashboard-active-date-label');
-        if (label) label.textContent = this.today.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
         this.renderAll();
       });
     }
     if (btnDashNext) {
       btnDashNext.addEventListener('click', () => {
         this.today = addDays(this.today, 1);
-        const label = document.getElementById('dashboard-active-date-label');
-        if (label) label.textContent = this.today.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
         this.renderAll();
       });
     }

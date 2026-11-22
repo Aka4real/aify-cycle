@@ -1176,7 +1176,9 @@ export class AICoach {
     if (orb) orb.style.display = 'none';
     this._renderMessages();
     this._scrollToBottom();
-    if (input) setTimeout(() => input.focus(), 80);
+    if (input && window.matchMedia?.('(pointer: fine)').matches) {
+      setTimeout(() => input.focus(), 80);
+    }
   }
 
   closeFloatingDrawer() {

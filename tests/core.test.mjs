@@ -267,3 +267,48 @@ test('Open Graph, Twitter card, favicon, and 1200x630 <300KB social preview imag
   assert.equal(pngBuf.readUInt32BE(16), 1200);
   assert.equal(pngBuf.readUInt32BE(20), 630);
 });
+
+test('HTML structure integrity: modal-terms-service closes properly, viewport-fit=cover set, no SVG blur filter', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const root = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
+  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+
+  assert.match(html, /<meta\s+name="viewport"\s+content="[^"]*viewport-fit=cover[^"]*">/);
+  assert.doesNotMatch(html, /id="dial-glow"/);
+  assert.match(html, /class="timeline-legend-item"/);
+
+  const termsStart = html.indexOf('id="modal-terms-service"');
+  const aiArchStart = html.indexOf('id="modal-ai-architecture"');
+  const consentStart = html.indexOf('id="privacy-consent-banner"');
+  assert.ok(termsStart !== -1 && aiArchStart !== -1 && consentStart !== -1);
+  assert.ok(termsStart < aiArchStart && aiArchStart < consentStart);
+
+  const termsDivStart = html.lastIndexOf('<div', termsStart);
+  const aiArchDivStart = html.lastIndexOf('<div', aiArchStart);
+  const consentDivStart = html.lastIndexOf('<div', consentStart);
+  assert.ok(termsDivStart < aiArchDivStart && aiArchDivStart < consentDivStart);
+
+  // Verify #modal-terms-service has balanced <div>...</div> tags before #modal-ai-architecture
+  const termsSlice = html.slice(termsDivStart, aiArchDivStart);
+  const opens = (termsSlice.match(/<div\b/g) || []).length;
+  const closes = (termsSlice.match(/<\/div>/g) || []).length;
+  assert.equal(opens, closes, `#modal-terms-service div balance mismatch: ${opens} opens vs ${closes} closes`);
+});
+
+test('CSS GPU compositor safety: no backdrop-filter, blur filter, r: keyframe, view-panel forwards, or undefined vars', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const root = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
+  const css = fs.readFileSync(path.join(root, 'css', 'styles.css'), 'utf8');
+
+  assert.doesNotMatch(css, /backdrop-filter\s*:/i);
+  assert.doesNotMatch(css, /filter\s*:\s*blur\(/i);
+  assert.doesNotMatch(css, /\{\s*r\s*:/i);
+  assert.doesNotMatch(css, /\.view-panel\s*\{[^}]*forwards/is);
+
+  const definedVars = new Set([...css.matchAll(/(--[a-zA-Z0-9_-]+)\s*:/g)].map(m => m[1]));
+  const usedVars = [...new Set([...css.matchAll(/var\((--[a-zA-Z0-9_-]+)/g)].map(m => m[1]))];
+  const missingVars = usedVars.filter(v => !definedVars.has(v));
+  assert.deepEqual(missingVars, [], `Undefined CSS variables: ${missingVars.join(', ')}`);
+});

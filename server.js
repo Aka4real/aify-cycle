@@ -160,9 +160,12 @@ async function handleRequest(req, res) {
   }
 
   const normalizedReqPath = path.normalize(reqPath).replace(/^(\.\.[\/\\])+/, '');
-  const relativePath = normalizedReqPath === '/' || normalizedReqPath === '' || normalizedReqPath === '\\'
+  const trimmedPath = normalizedReqPath.replace(/[\/\\]+$/, '');
+  const relativePath = trimmedPath === '' || trimmedPath === '/'
     ? 'index.html'
-    : normalizedReqPath.replace(/^[\/\\]+/, '');
+    : (trimmedPath === '/admin' || trimmedPath === '\\admin')
+      ? 'admin.html'
+      : normalizedReqPath.replace(/^[\/\\]+/, '');
 
   const filePath = path.resolve(PUBLIC_DIR, relativePath);
 

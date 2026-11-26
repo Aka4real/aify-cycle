@@ -12,6 +12,7 @@ const DIST = path.join(ROOT, 'dist');
 
 const STATIC_FILES = [
   'index.html',
+  'admin.html',
   'robots.txt',
   'site.webmanifest',
   'favicon.ico',
@@ -26,7 +27,7 @@ const STATIC_FILES = [
   'og-image.jpg'
 ];
 
-const STATIC_DIRS = ['css', 'js'];
+const STATIC_DIRS = ['assets', 'css', 'js'];
 
 function copyDirSync(src, dest) {
   fs.mkdirSync(dest, { recursive: true });

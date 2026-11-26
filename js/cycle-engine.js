@@ -9,10 +9,10 @@ export const PHASES = {
     key: 'menstrual',
     name: 'Menstrual Phase',
     shortName: 'Menstrual',
-    color: '#FF6B8B',
-    bgGradient: 'linear-gradient(135deg, #FF6B8B, #FF8E53)',
-    icon: '🩸',
-    energy: 'Restorative & Gentle',
+    color: '#C4324E',
+    bgGradient: 'linear-gradient(135deg, #C4324E, #E35D75)',
+    icon: '',
+    energy: 'Restorative and gentle',
     tagline: 'Time to rest, nourish, and reset.',
     description: 'Estrogen and progesterone are near their baseline. Prioritize rest, warm meals, hydration, and gentle movement.'
   },
@@ -20,10 +20,10 @@ export const PHASES = {
     key: 'follicular',
     name: 'Follicular Phase',
     shortName: 'Follicular',
-    color: '#845EC2',
-    bgGradient: 'linear-gradient(135deg, #845EC2, #D65DB1)',
-    icon: '🌱',
-    energy: 'Rising & Creative',
+    color: '#227A58',
+    bgGradient: 'linear-gradient(135deg, #1E6E50, #43A47E)',
+    icon: '',
+    energy: 'Rising and creative',
     tagline: 'Energy, motivation, and focus are rising.',
     description: 'Estrogen rises steadily as a follicle matures. Many people feel comfortable ramping up cardio, learning, and creative work.'
   },
@@ -31,10 +31,10 @@ export const PHASES = {
     key: 'ovulatory',
     name: 'Ovulatory Phase',
     shortName: 'Ovulation',
-    color: '#FF9671',
-    bgGradient: 'linear-gradient(135deg, #FF9671, #FFC75F)',
-    icon: '✨',
-    energy: 'Vibrant & Social',
+    color: '#BF710E',
+    bgGradient: 'linear-gradient(135deg, #BF710E, #EBA335)',
+    icon: '',
+    energy: 'Vibrant and social',
     tagline: 'Estimated peak fertility window and strong vitality.',
     description: 'Estrogen peaks and luteinizing hormone (LH) triggers egg release. Calendar estimates are approximate and not a substitute for contraception.'
   },
@@ -42,10 +42,10 @@ export const PHASES = {
     key: 'luteal',
     name: 'Luteal Phase',
     shortName: 'Luteal',
-    color: '#008E9B',
-    bgGradient: 'linear-gradient(135deg, #2C73D2, #008E9B)',
-    icon: '🌙',
-    energy: 'Grounded & Steady',
+    color: '#285C8E',
+    bgGradient: 'linear-gradient(135deg, #23507B, #4A85BC)',
+    icon: '',
+    energy: 'Grounded and steady',
     tagline: 'Turning inward with steady, mindful pacing.',
     description: 'Progesterone rises and later tapers if pregnancy does not occur. Focus on steady movement, balanced meals, hydration, and sleep.'
   },
@@ -53,10 +53,10 @@ export const PHASES = {
     key: 'late',
     name: 'Period Late',
     shortName: 'Late',
-    color: '#E07A5F',
-    bgGradient: 'linear-gradient(135deg, #E07A5F, #F2CC8F)',
-    icon: '⏳',
-    energy: 'Gentle & Mindful',
+    color: '#A85334',
+    bgGradient: 'linear-gradient(135deg, #A85334, #D98A68)',
+    icon: '',
+    energy: 'Gentle and mindful',
     tagline: 'Your period has not been logged yet past your typical cycle length.',
     description: 'Normal cycle variation can come from stress, travel, sleep shifts, or illness. Log your period when it begins, or consider a pregnancy test or speaking with a clinician if unexpectedly delayed.'
   }
@@ -439,34 +439,34 @@ export const CYCLE_SYNCING_GUIDE = {
     foods: ['Iron-rich leafy greens (spinach, kale)', 'Warm soups and broths', 'Berries and dark chocolate', 'Chamomile or ginger herbal tea'],
     workouts: ['Gentle restorative yoga', 'Easy walks outdoors', 'Passive mobility and stretching', 'Extra rest when needed'],
     mindset: ['Journaling and light reflection', 'Setting simple intentions for the cycle', 'Protecting quiet recharge time', 'Keeping commitments manageable'],
-    partnerTip: 'Care Note: Offer a warm drink, a cozy blanket, or quiet support — small comforts go a long way during period days.'
+    partnerTip: 'Care note: Offer a warm drink, a cozy blanket, or quiet support. Small comforts go a long way during period days.'
   },
   follicular: {
     title: 'Follicular Phase (Rising Energy)',
     foods: ['Colorful salads, avocado, and citrus', 'Fermented foods (yogurt, kimchi, sauerkraut)', 'Whole grains and pumpkin seeds', 'Balanced lean proteins'],
     workouts: ['Cardio or brisk cycling', 'Upbeat dance or group classes', 'Hiking or steady jogging', 'Flow yoga'],
     mindset: ['Brainstorming new ideas', 'Starting fresh projects', 'Planning upcoming outings or goals', 'Connecting with friends or collaborators'],
-    partnerTip: 'Care Note: Rising energy is a great time to plan a fun outing, try a new activity, or brainstorm shared plans together.'
+    partnerTip: 'Care note: Rising energy is a great time to plan an outing, try a new activity, or sketch shared plans together.'
   },
   ovulatory: {
     title: 'Ovulatory Phase (Estimated Peak)',
     foods: ['Cruciferous vegetables (broccoli, greens)', 'Berries, figs, and chia seeds', 'Light balanced proteins (salmon, quinoa, legumes)', 'Plenty of water and electrolytes'],
     workouts: ['Strength training or resistance sessions', 'Higher-intensity interval work if feeling good', 'Fast-paced running or swimming', 'Active group sports'],
     mindset: ['Important conversations and presentations', 'Collaborative work and social plans', 'Celebrating recent wins', 'Channeling high energy intentionally'],
-    partnerTip: 'Care Note: Social energy and confidence often feel strong around mid-cycle — celebrate the moment and enjoy quality time together.'
+    partnerTip: 'Care note: Social energy and confidence often feel strong around mid-cycle. Enjoy quality time together.'
   },
   luteal: {
     title: 'Luteal Phase (Grounded)',
     foods: ['Complex carbs (sweet potatoes, oats, brown rice)', 'Magnesium-rich snacks (dark chocolate, pumpkin seeds)', 'Warm roasted vegetables and soups', 'Peppermint or ginger tea for comfort'],
     workouts: ['Pilates and steady strength maintenance', 'Brisk low-impact walking', 'Resistance band routines', 'Mindful breathwork and stretching'],
     mindset: ['Wrapping up ongoing projects', 'Detail-oriented organizing and editing', 'Prioritizing consistent bedtime routines', 'Checking in gently with your mood'],
-    partnerTip: 'Care Note: Energy and mood can fluctuate in the late luteal window — keep favorite comfort snacks handy and offer extra patience.'
+    partnerTip: 'Care note: Energy and mood can fluctuate in the late luteal window. Keep favorite comfort foods handy and offer extra patience.'
   },
   late: {
     title: 'Late Cycle Check-In',
     foods: ['Balanced regular meals to keep blood sugar steady', 'Magnesium-rich foods and leafy greens', 'Warm herbal infusions (ginger, chamomile)', 'Steady hydration throughout the day'],
     workouts: ['Gentle walking or restorative stretching', 'Low-stress movement that feels supportive', 'Avoid overtraining while your body adjusts', 'Prioritize sleep recovery'],
-    mindset: ['Take a deep breath — cycle shifts of a few days are common', 'Note any recent stress, travel, or sleep changes', 'Log your period as soon as bleeding starts', 'Consider a pregnancy test or speaking with a clinician if unexpectedly delayed'],
-    partnerTip: 'Care Note: A late period can feel stressful — offer calm reassurance without pressure, and support whatever next step feels right.'
+    mindset: ['Take a deep breath, as cycle shifts of a few days are common', 'Note any recent stress, travel, or sleep changes', 'Log your period as soon as bleeding starts', 'Consider a pregnancy test or speaking with a clinician if unexpectedly delayed'],
+    partnerTip: 'Care note: A late period can feel stressful. Offer calm reassurance without pressure and support whatever next step feels right.'
   }
 };

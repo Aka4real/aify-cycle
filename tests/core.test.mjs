@@ -333,3 +333,37 @@ test('Biological Cycle Compass SVG uses true phase arcs without rainbow overlay 
   assert.match(html, /id="ovulation-marker-core"[^>]*cx="0"\s+cy="0"/);
   assert.doesNotMatch(html, /wheel-legend-pill[^>]*active-phase/);
 });
+
+test('Vercel Web Analytics dependency and rewrite exclusion are configured', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const root = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
+  const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  const vercelCfg = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
+
+  assert.ok(pkg.dependencies?.['@vercel/analytics'], '@vercel/analytics should be in package.json dependencies');
+  const rewriteSource = vercelCfg.rewrites?.[0]?.source || '';
+  assert.match(rewriteSource, /_vercel\//, 'vercel.json SPA rewrite must exclude _vercel/ insights scripts');
+});
+
+test('Admin System Console page, assets, and routing are configured', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const root = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
+
+  const adminHtml = fs.readFileSync(path.join(root, 'admin.html'), 'utf8');
+  const adminJs = fs.readFileSync(path.join(root, 'js', 'admin.js'), 'utf8');
+  const vercelCfg = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
+  const css = fs.readFileSync(path.join(root, 'css', 'styles.css'), 'utf8');
+
+  assert.match(adminHtml, /id="gw-cascade-tbody"/);
+  assert.match(adminHtml, /id="admin-supabase-form"/);
+  assert.match(adminHtml, /id="admin-audit-tbody"/);
+  assert.match(adminHtml, /id="admin-storage-tbody"/);
+  assert.match(adminHtml, /src="js\/admin\.js"/);
+  assert.match(adminJs, /\/api\/gemini\/status/);
+  assert.ok(fs.existsSync(path.join(root, 'assets', 'botanical-entry-hero.jpg')));
+  assert.ok(fs.existsSync(path.join(root, 'assets', 'botanical-sync-canopy.jpg')));
+  assert.equal(vercelCfg.rewrites.some(r => r.source === '/admin' && r.destination === '/admin.html'), true);
+  assert.doesNotMatch(css, /transition\s*:\s*all\b/i, 'CSS must not use transition: all');
+});

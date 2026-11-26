@@ -66,7 +66,7 @@ export class OnboardingWizard {
   }
 
   /**
-   * Initialize the wizard — render step 0
+   * Initialize the wizard and render step 0
    */
   init() {
     this.renderStep();
@@ -115,9 +115,9 @@ export class OnboardingWizard {
 
     if (nextBtn) {
       if (this.currentStep === this.totalSteps - 1) {
-        nextBtn.innerHTML = '<span>Start Tracking</span><span>🚀</span>';
+        nextBtn.innerHTML = '<span>Start tracking</span>';
       } else {
-        nextBtn.innerHTML = '<span>Continue</span><span>→</span>';
+        nextBtn.innerHTML = '<span>Continue</span>';
       }
     }
 
@@ -205,27 +205,22 @@ export class OnboardingWizard {
       case 'welcome':
         return `
           <div class="onboarding-welcome">
-            <div class="onboarding-hero-icon">🌸</div>
-            <h2 class="onboarding-hero-title">Welcome to Aify Cycle</h2>
+            <h2 class="onboarding-hero-title">Welcome to AifyCycle</h2>
             <p class="onboarding-hero-subtitle">
-              Your intelligent, beautiful companion for period tracking, cycle syncing, and holistic wellness — powered by AI.
+              A private companion for cycle forecasting, biological phase tracking, and adaptive wellness guidance.
             </p>
             <div class="onboarding-features-grid">
               <div class="onboarding-feature-card">
-                <span class="feature-icon">🔄</span>
-                <span class="feature-text">Smart Cycle Predictions</span>
+                <span class="feature-text">Adaptive cycle forecasting</span>
               </div>
               <div class="onboarding-feature-card">
-                <span class="feature-icon">🤖</span>
-                <span class="feature-text">AI Health Coach</span>
+                <span class="feature-text">Private AI wellness guide</span>
               </div>
               <div class="onboarding-feature-card">
-                <span class="feature-icon">🥗</span>
-                <span class="feature-text">Cycle Syncing Guide</span>
+                <span class="feature-text">Phase syncing nutrition</span>
               </div>
               <div class="onboarding-feature-card">
-                <span class="feature-icon">📊</span>
-                <span class="feature-text">Health Insights</span>
+                <span class="feature-text">Local-first privacy</span>
               </div>
             </div>
             <div class="onboarding-name-field">
@@ -238,26 +233,25 @@ export class OnboardingWizard {
       case 'cycle-basics':
         return `
           <div class="onboarding-cycle-basics">
-            <div class="onboarding-section-icon">📅</div>
-            <h3>Tell us about your cycle</h3>
-            <p class="onboarding-help-text">Don't worry — you can always adjust these later in settings.</p>
+            <h2 class="onboarding-step-heading">Tell us about your cycle</h2>
+            <p class="onboarding-help-text">You can refine these estimates anytime in settings, and AifyCycle adapts automatically as you log.</p>
 
             <div class="onboarding-slider-group">
-              <label class="form-label">Average Cycle Length</label>
+              <label for="ob-cycle-length" class="form-label">Average cycle length</label>
               <div class="onboarding-slider-row">
                 <input type="range" id="ob-cycle-length" class="range-slider" min="20" max="45" step="1" value="${this.data.cycleLength}" />
                 <span id="ob-cycle-length-val" class="range-value-lg">${this.data.cycleLength} days</span>
               </div>
-              <p class="onboarding-slider-hint">Most cycles are 24–35 days. The average is 28 days.</p>
+              <p class="onboarding-slider-hint">Most cycles range between 24 and 35 days, with 28 days as the median.</p>
             </div>
 
             <div class="onboarding-slider-group">
-              <label class="form-label">Average Period Duration</label>
+              <label for="ob-period-length" class="form-label">Average period duration</label>
               <div class="onboarding-slider-row">
                 <input type="range" id="ob-period-length" class="range-slider" min="2" max="10" step="1" value="${this.data.periodLength}" />
                 <span id="ob-period-length-val" class="range-value-lg">${this.data.periodLength} days</span>
               </div>
-              <p class="onboarding-slider-hint">Typical periods last 3–7 days.</p>
+              <p class="onboarding-slider-hint">Typical menstrual flow lasts 3 to 7 days.</p>
             </div>
           </div>
         `;
@@ -265,101 +259,86 @@ export class OnboardingWizard {
       case 'last-period':
         return `
           <div class="onboarding-last-period">
-            <div class="onboarding-section-icon">🩸</div>
-            <h3>When did your last period start?</h3>
-            <p class="onboarding-help-text">This helps us predict your upcoming cycles accurately.</p>
+            <h2 class="onboarding-step-heading">When did your last period start?</h2>
+            <p class="onboarding-help-text">This anchor date calibrates your current cycle day, phase window, and upcoming forecasts.</p>
 
             <div class="onboarding-date-picker-wrap">
               <input type="date" id="ob-last-period" class="form-input form-input-lg" value="${this.data.lastPeriodStart}" />
             </div>
 
             <div class="onboarding-info-box">
-              <span>💡</span>
-              <p>If you're not sure, pick your best estimate. The app learns and improves over time.</p>
+              <p>If you are not certain of the exact date, pick your closest estimate. Predictions calibrate automatically as you log future cycles.</p>
             </div>
           </div>
         `;
 
-      case 'symptoms':
+      case 'symptoms': {
         const symptoms = [
-          { value: 'Cramps', icon: '⚡', label: 'Cramps' },
-          { value: 'Headache', icon: '💆', label: 'Headaches' },
-          { value: 'Bloating', icon: '🎈', label: 'Bloating' },
-          { value: 'Tender Breasts', icon: '🌸', label: 'Breast Tenderness' },
-          { value: 'Acne', icon: '✨', label: 'Acne' },
-          { value: 'Fatigue', icon: '😴', label: 'Fatigue' },
-          { value: 'Mood Swings', icon: '🎭', label: 'Mood Swings' },
-          { value: 'Back Pain', icon: '🦴', label: 'Back Pain' },
-          { value: 'Cravings', icon: '🍫', label: 'Food Cravings' },
-          { value: 'Insomnia', icon: '🌙', label: 'Sleep Issues' },
-          { value: 'Anxiety', icon: '🌪️', label: 'Anxiety' },
-          { value: 'Nausea', icon: '🍃', label: 'Nausea' }
+          { value: 'Cramps', label: 'Cramps' },
+          { value: 'Headache', label: 'Headaches' },
+          { value: 'Bloating', label: 'Bloating' },
+          { value: 'Tender Breasts', label: 'Breast tenderness' },
+          { value: 'Acne', label: 'Acne' },
+          { value: 'Fatigue', label: 'Fatigue' },
+          { value: 'Mood Swings', label: 'Mood shifts' },
+          { value: 'Back Pain', label: 'Lower back pain' },
+          { value: 'Cravings', label: 'Food cravings' },
+          { value: 'Insomnia', label: 'Sleep disruption' },
+          { value: 'Anxiety', label: 'Anxiety' },
+          { value: 'Nausea', label: 'Nausea' }
         ];
 
         const chipsHtml = symptoms.map(s => {
           const isActive = this.data.trackedSymptoms.includes(s.value);
-          return `<button type="button" class="ob-symptom-chip ${isActive ? 'active' : ''}" data-value="${s.value}">
-            <span>${s.icon}</span> <span>${s.label}</span>
-          </button>`;
+          return `<button type="button" class="ob-symptom-chip ${isActive ? 'active' : ''}" data-value="${s.value}">${s.label}</button>`;
         }).join('');
 
         return `
           <div class="onboarding-symptoms">
-            <div class="onboarding-section-icon">📝</div>
-            <h3>What do you want to track?</h3>
-            <p class="onboarding-help-text">Select the symptoms you commonly experience. Tap to select/deselect.</p>
+            <h2 class="onboarding-step-heading">What do you want to track?</h2>
+            <p class="onboarding-help-text">Select the symptoms you commonly notice. Tap to toggle each item.</p>
 
             <div class="onboarding-symptom-grid">
               ${chipsHtml}
             </div>
           </div>
         `;
+      }
 
       case 'ai-coach':
         return `
           <div class="onboarding-ai-coach">
-            <div class="onboarding-ai-avatar">
-              <span class="ai-avatar-glow">🤖</span>
-            </div>
-            <h3>Meet Your AI Health Coach</h3>
+            <h2 class="onboarding-step-heading">Meet your private wellness guide</h2>
             <p class="onboarding-help-text">
-              Powered by <strong>Google Gemini</strong>, your personal AI advisor is ready to help with:
+              Powered by Google Gemini with full offline fallback, your guide answers cycle questions and drafts log updates only with your confirmation.
             </p>
 
             <div class="onboarding-ai-features">
               <div class="ai-feature-row">
-                <span class="ai-feature-icon">💬</span>
+                <span class="ai-check-icon" aria-hidden="true">&#10003;</span>
                 <div>
-                  <strong>Period & Cycle Q&A</strong>
-                  <p>Ask anything about your cycle, phases, and symptoms</p>
+                  <strong>Cycle and phase education</strong>
+                  <p>Clear explanations of hormonal transitions, fertility windows, and normal cycle variation.</p>
                 </div>
               </div>
               <div class="ai-feature-row">
-                <span class="ai-feature-icon">🥗</span>
+                <span class="ai-check-icon" aria-hidden="true">&#10003;</span>
                 <div>
-                  <strong>Nutrition & Fitness Tips</strong>
-                  <p>Phase-specific diet and workout recommendations</p>
+                  <strong>Nutrition and movement guidance</strong>
+                  <p>Practical food and activity suggestions matched to your current phase and symptoms.</p>
                 </div>
               </div>
               <div class="ai-feature-row">
-                <span class="ai-feature-icon">💊</span>
+                <span class="ai-check-icon" aria-hidden="true">&#10003;</span>
                 <div>
-                  <strong>Symptom Guidance</strong>
-                  <p>Understand your symptoms and when to seek help</p>
-                </div>
-              </div>
-              <div class="ai-feature-row">
-                <span class="ai-feature-icon">🧘</span>
-                <div>
-                  <strong>Wellness Support</strong>
-                  <p>Emotional wellbeing and self-care advice</p>
+                  <strong>User-confirmed record updates</strong>
+                  <p>No health log is ever written silently. You review and approve every proposed update.</p>
                 </div>
               </div>
             </div>
 
             <div class="onboarding-info-box" style="margin-top: 1.5rem;">
-              <span>🔒</span>
-              <p>Your conversations are private and stored only on your device.</p>
+              <p>Conversations stay local in your browser sandbox unless you sign in to enable encrypted cloud sync.</p>
             </div>
           </div>
         `;
@@ -367,35 +346,32 @@ export class OnboardingWizard {
       case 'complete':
         return `
           <div class="onboarding-complete">
-            <div class="onboarding-confetti-wrap">
-              <div class="confetti-emoji">🎉</div>
-            </div>
-            <h2 class="onboarding-hero-title">You're All Set!</h2>
+            <h2 class="onboarding-hero-title">Your tracker is ready</h2>
             <p class="onboarding-hero-subtitle">
-              Your personalized Aify Cycle tracker is configured and ready to go.
+              Review your initial cycle calibration below before opening your live dashboard.
             </p>
 
             <div class="onboarding-summary-card">
-              <h4>Your Settings</h4>
+              <h4>Initial profile summary</h4>
               <div class="summary-row">
-                <span>👤 Name</span>
+                <span>Name</span>
                 <strong>${escapeHtml(this.data.userName || 'Guest')}</strong>
               </div>
               <div class="summary-row">
-                <span>🔄 Cycle Length</span>
+                <span>Cycle length</span>
                 <strong>${this.data.cycleLength} days</strong>
               </div>
               <div class="summary-row">
-                <span>🩸 Period Duration</span>
+                <span>Period duration</span>
                 <strong>${this.data.periodLength} days</strong>
               </div>
               <div class="summary-row">
-                <span>📅 Last Period</span>
+                <span>Last period start</span>
                 <strong>${this.data.lastPeriodStart}</strong>
               </div>
               <div class="summary-row">
-                <span>📝 Tracking</span>
-                <strong>${this.data.trackedSymptoms.length > 0 ? this.data.trackedSymptoms.join(', ') : 'All symptoms'}</strong>
+                <span>Tracked symptoms</span>
+                <strong>${this.data.trackedSymptoms.length > 0 ? escapeHtml(this.data.trackedSymptoms.join(', ')) : 'All symptoms'}</strong>
               </div>
             </div>
           </div>

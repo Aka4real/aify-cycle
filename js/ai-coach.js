@@ -25,14 +25,14 @@ const GREETING_STORAGE_KEY = 'aifycycle_aify_greeting_v1';
 export { evaluateFloatingGreetingSchedule, buildDiscreetGreetingText };
 
 const SUGGESTED_QUESTIONS = [
-  { icon: '🩸', text: 'My period started today' },
-  { icon: '⚡', text: 'I have cramps and bloating today, flow is heavy' },
-  { icon: '🍵', text: 'I prefer chamomile tea and a heating pad for cramps' },
-  { icon: '🔄', text: 'My cycle length is 30 days' },
-  { icon: '🌙', text: 'What phase am I in right now?' },
-  { icon: '🥗', text: 'What should I eat during this phase?' },
-  { icon: '🌿', text: 'Best exercises for my current cycle phase?' },
-  { icon: '😴', text: 'I slept 6 hours and feel exhausted today' }
+  { text: 'My period started today' },
+  { text: 'I have cramps and bloating today, flow is heavy' },
+  { text: 'I prefer chamomile tea and a heating pad for cramps' },
+  { text: 'My cycle length is 30 days' },
+  { text: 'What phase am I in right now?' },
+  { text: 'What should I eat during this phase?' },
+  { text: 'Best exercises for my current cycle phase?' },
+  { text: 'I slept 6 hours and feel exhausted today' }
 ];
 
 function formatModelDisplayName(modelId) {
@@ -100,11 +100,11 @@ export class AICoach {
     if (badgeEl) {
       if (status.active) {
         badgeEl.className = 'ai-engine-badge badge-active';
-        badgeEl.innerHTML = `<span class="engine-dot live"></span><span>✨ ${escapeHtml(status.label)}</span>`;
+        badgeEl.innerHTML = `<span class="engine-dot live"></span><span>${escapeHtml(status.label)}</span>`;
         badgeEl.title = `Live ${status.label} connected via secure server gateway.`;
       } else {
         badgeEl.className = 'ai-engine-badge badge-local';
-        badgeEl.innerHTML = `<span class="engine-dot local"></span><span>🧠 Local Intelligence</span>`;
+        badgeEl.innerHTML = `<span class="engine-dot local"></span><span>Local mode</span>`;
         badgeEl.title = 'Running in offline local wellness mode.';
       }
     }
@@ -617,14 +617,14 @@ export class AICoach {
     const name = profile.userName || 'there';
 
     if (actionCard && actionCard.items && actionCard.items.length > 0) {
-      return `Got it, ${name}! ✨ I drafted the cycle update below based on your message — tap **Save to Log** if everything looks right, or **Dismiss** to skip it.`;
+      return `Got it, ${name}. I drafted the cycle update below based on your message. Select **Save to log** if everything looks right, or **Dismiss** to skip it.`;
     }
 
     if (status.isLate) {
-      return `Hi ${name}! Your period is currently **${status.daysLate} ${status.daysLate === 1 ? 'day' : 'days'} past** your estimated cycle length. Small shifts can happen due to stress, sleep, or travel — let me know when it starts so I can draft a log entry, or consider checking with a clinician if you have concerns.`;
+      return `Hi ${name}, your period is currently **${status.daysLate} ${status.daysLate === 1 ? 'day' : 'days'} past** your estimated cycle length. Small shifts can happen due to stress, sleep, or travel. Let me know when it starts so I can draft a log entry, or consider checking with a clinician if you have concerns.`;
     }
 
-    return `Hello ${name}! ✨ You are currently on **Day ${status.cycleDay} (${status.phase.name})**. ${status.phase.description}\n\nTell me if your period started, share symptoms like cramps or fatigue, or ask any wellness question — I'll always ask before saving changes to your logs.`;
+    return `Hello ${name}. You are currently on **Day ${status.cycleDay} (${status.phase.name})**. ${status.phase.description}\n\nTell me if your period started, share symptoms like cramps or fatigue, or ask any wellness question. I will always ask before saving changes to your logs.`;
   }
 
   renderChatUI() {
@@ -644,13 +644,12 @@ export class AICoach {
     if (this.chatHistory.length === 0) {
       const emptyHtml = `
         <div class="ai-chat-empty">
-          <div class="ai-chat-empty-icon">🌸</div>
-          <h3>Hi! I'm AiFy, your wellness guide</h3>
-          <p>Ask cycle questions or tell me about symptoms — I'll draft log updates for you to confirm before saving.</p>
+          <h3>Ask AiFy about your cycle</h3>
+          <p>Ask questions about phases, nutrition, or symptoms. Any log updates mentioned in chat are drafted for your confirmation before saving.</p>
           <div class="ai-chat-quick-hints">
-            <span>✨ "My period started today"</span>
-            <span>⚡ "I have cramps and bloating today"</span>
-            <span>🍵 "I prefer chamomile tea for cramps"</span>
+            <span>"My period started today"</span>
+            <span>"I have cramps and bloating today"</span>
+            <span>"I prefer chamomile tea for cramps"</span>
           </div>
         </div>
       `;
@@ -668,23 +667,23 @@ export class AICoach {
         const cardStatus = msg.actionCard.status || 'applied';
         const hasUndo = this._undoSnapshots.has(idx);
 
-        let statusBadge = '<span class="action-live-indicator"><span class="live-dot"></span> Saved</span>';
+        let statusBadge = '<span class="action-live-indicator">Saved</span>';
         let controlsHtml = '';
 
         if (cardStatus === 'pending') {
-          statusBadge = '<span class="action-live-indicator">Confirm to Save</span>';
+          statusBadge = '<span class="action-live-indicator">Confirm to save</span>';
           controlsHtml = `
-            <div style="display:flex; gap:0.5rem; margin-top:0.6rem;">
-              <button type="button" class="btn-primary btn-apply-actions" data-msg-idx="${idx}" style="padding:0.35rem 0.75rem; font-size:0.78rem;">✓ Save to Log</button>
-              <button type="button" class="btn-secondary btn-dismiss-actions" data-msg-idx="${idx}" style="padding:0.35rem 0.75rem; font-size:0.78rem;">Dismiss</button>
+            <div style="display:flex; gap:0.5rem; margin-top:0.65rem;">
+              <button type="button" class="btn-primary btn-apply-actions" data-msg-idx="${idx}" style="min-height: 34px; padding:0.35rem 0.85rem; font-size:0.8125rem;">Save to log</button>
+              <button type="button" class="btn-secondary btn-dismiss-actions" data-msg-idx="${idx}" style="min-height: 34px; padding:0.35rem 0.85rem; font-size:0.8125rem;">Dismiss</button>
             </div>
           `;
         } else if (cardStatus === 'dismissed') {
           statusBadge = '<span class="action-live-indicator" style="opacity:0.7;">Dismissed</span>';
         } else if (hasUndo) {
           controlsHtml = `
-            <div style="margin-top:0.45rem;">
-              <button type="button" class="btn-ghost btn-undo-actions" data-msg-idx="${idx}" style="font-size:0.74rem; padding:0.2rem 0.4rem; text-decoration:underline;">↩ Undo this update</button>
+            <div style="margin-top:0.5rem;">
+              <button type="button" class="btn-text-link btn-undo-actions" data-msg-idx="${idx}" style="font-size:0.8125rem;">Undo this update</button>
             </div>
           `;
         }
@@ -692,14 +691,12 @@ export class AICoach {
         actionCardHtml = `
           <div class="agent-action-card" style="${cardStatus === 'dismissed' ? 'opacity:0.6;' : ''}">
             <div class="action-card-header">
-              <span class="action-card-sparkle">✨</span>
-              <span class="action-card-title">${cardStatus === 'pending' ? 'Proposed Cycle Update' : 'Cycle Update'}</span>
+              <span class="action-card-title">${cardStatus === 'pending' ? 'Proposed cycle update' : 'Cycle update'}</span>
               ${statusBadge}
             </div>
             <div class="action-card-chips">
               ${msg.actionCard.items.map(item => `
                 <div class="action-chip-item">
-                  <span class="action-chip-icon">${escapeHtml(item.icon || '✨')}</span>
                   <div class="action-chip-text">
                     <strong>${escapeHtml(item.title)}</strong>
                     <span>${escapeHtml(item.detail)}</span>
@@ -715,7 +712,7 @@ export class AICoach {
       return `
         <div class="chat-message ${isUser ? 'chat-message-user' : 'chat-message-ai'}" data-idx="${idx}">
           <div class="chat-bubble ${isUser ? 'bubble-user' : 'bubble-ai'}">
-            ${!isUser ? '<div class="chat-ai-avatar">🌸</div>' : ''}
+            ${!isUser ? '<div class="chat-ai-avatar" aria-hidden="true">A</div>' : ''}
             <div class="chat-bubble-content">
               <div class="chat-text">${formattedContent}</div>
               ${actionCardHtml}
@@ -739,8 +736,7 @@ export class AICoach {
     const shuffled = [...SUGGESTED_QUESTIONS].sort(() => Math.random() - 0.5).slice(0, 4);
     const html = shuffled.map(q => `
       <button type="button" class="suggested-question-btn" data-question="${escapeHtml(q.text)}">
-        <span>${q.icon}</span>
-        <span>${escapeHtml(q.text)}</span>
+        ${escapeHtml(q.text)}
       </button>
     `).join('');
 
@@ -905,42 +901,29 @@ export class AICoach {
     if (memories.length === 0) {
       container.innerHTML = `
         <div class="memory-empty-state">
-          <span style="font-size: 2rem;">🧠</span>
-          <p>No saved insights in this category yet. Chat with Aify or add one below!</p>
+          <p>No saved notes in this category yet. Chat with AiFy or add one below.</p>
         </div>
       `;
       return;
     }
 
-    const categoryIcons = {
-      remedy_preference: '🍵',
-      cycle_pattern: '🌸',
-      lifestyle_habit: '🏃‍♀️',
-      personal_goal: '🎯',
-      sensitivity_trigger: '⚠️',
-      general: '💡'
-    };
-
     const categoryLabels = {
-      remedy_preference: 'Remedy & Soothing',
-      cycle_pattern: 'Cycle Rhythm',
-      lifestyle_habit: 'Lifestyle & Habit',
-      personal_goal: 'Health Goal',
+      remedy_preference: 'Remedy and soothing',
+      cycle_pattern: 'Cycle rhythm',
+      lifestyle_habit: 'Lifestyle and habit',
+      personal_goal: 'Health goal',
       sensitivity_trigger: 'Sensitivity',
-      general: 'General Insight'
+      general: 'General insight'
     };
 
     container.innerHTML = memories.map(m => `
       <div class="memory-item" data-id="${escapeHtml(m.id)}">
-        <div class="memory-item-left">
-          <span class="memory-item-cat-icon">${categoryIcons[m.category] || '💡'}</span>
-          <div class="memory-item-content">
-            <div class="memory-item-badge">${escapeHtml(categoryLabels[m.category] || m.category)}</div>
-            <p class="memory-item-fact">${escapeHtml(m.fact)}</p>
-            <span class="memory-item-date">Saved ${escapeHtml(new Date(m.createdAt).toLocaleDateString())} • ${escapeHtml(m.source || 'Conversation')}</span>
-          </div>
+        <div class="memory-item-content">
+          <div class="memory-item-badge">${escapeHtml(categoryLabels[m.category] || m.category)}</div>
+          <p class="memory-item-fact">${escapeHtml(m.fact)}</p>
+          <span class="memory-item-date">Saved ${escapeHtml(new Date(m.createdAt).toLocaleDateString())} · ${escapeHtml(m.source || 'Conversation')}</span>
         </div>
-        <button class="btn-delete-memory" data-id="${escapeHtml(m.id)}" title="Remove this note" aria-label="Delete note">&times;</button>
+        <button type="button" class="btn-delete-memory" data-id="${escapeHtml(m.id)}" title="Remove this note" aria-label="Delete note">&times;</button>
       </div>
     `).join('');
 
@@ -970,7 +953,7 @@ export class AICoach {
       indicator.className = 'chat-message chat-message-ai';
       indicator.innerHTML = `
         <div class="chat-bubble bubble-ai">
-          <div class="chat-ai-avatar">🌸</div>
+          <div class="chat-ai-avatar" aria-hidden="true">A</div>
           <div class="chat-bubble-content">
             <div class="typing-dots">
               <span></span><span></span><span></span>

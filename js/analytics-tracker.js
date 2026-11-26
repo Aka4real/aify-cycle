@@ -14,7 +14,39 @@ class AnalyticsTracker {
   constructor() {
     this.sessionStartTime = Date.now();
     this.sessionId = this._generateSessionId();
+    this._vercelInjected = false;
     this._initStorage();
+  }
+
+  /**
+   * Wire up Vercel Web Analytics (/_vercel/insights/script.js) for static/vanilla deployments.
+   * Mirrors @vercel/analytics inject() queue + script injection without requiring a bundler or Next.js.
+   */
+  initVercelAnalytics() {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    if (this._vercelInjected) return;
+    this._vercelInjected = true;
+
+    if (!window.va) {
+      window.va = function (...params) {
+        if (!window.vaq) window.vaq = [];
+        window.vaq.push(params);
+      };
+    }
+
+    const host = window.location.hostname;
+    const isLocalhost = host === 'localhost' || host === '127.0.0.1' || host === '';
+    if (isLocalhost) return;
+
+    const scriptSrc = '/_vercel/insights/script.js';
+    if (document.head.querySelector(`script[src*="${scriptSrc}"]`)) return;
+
+    const script = document.createElement('script');
+    script.src = scriptSrc;
+    script.defer = true;
+    script.dataset.sdkn = '@vercel/analytics';
+    script.dataset.sdkv = '2.0.1';
+    document.head.appendChild(script);
   }
 
   _initStorage() {
@@ -138,6 +170,11 @@ class AnalyticsTracker {
       }
 
       this._saveTelemetryData(data);
+
+      // Forward non-PII interaction counts to Vercel Web Analytics when opted in
+      if (typeof window !== 'undefined' && typeof window.va === 'function') {
+        window.va('event', { name: `${category}:${action}` });
+      }
     } catch (e) {
       console.warn('Telemetry tracking error:', e);
     }

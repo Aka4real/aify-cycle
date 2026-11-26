@@ -401,18 +401,18 @@ export function buildDiscreetGreetingText({ userName = '', isFirstLogin = false,
 
   if (isFirstLogin) {
     return firstName
-      ? `Welcome, ${firstName}! 🌸 I'm AiFy, your private wellness companion — ready whenever you'd like to chat.`
-      : `Welcome! 🌸 I'm AiFy, your private wellness companion — ready whenever you'd like to chat.`;
+      ? `Welcome, ${firstName}! I am AiFy, your private wellness companion, ready whenever you would like to chat.`
+      : `Welcome! I am AiFy, your private wellness companion, ready whenever you would like to chat.`;
   }
 
   if (hour >= 17) {
     return firstName
-      ? `Good evening, ${firstName} 🌸 How are you feeling today? I'm here if you'd like to chat.`
-      : `Good evening 🌸 How are you feeling today? I'm here if you'd like to chat.`;
+      ? `Good evening, ${firstName}. How are you feeling today? I am here if you would like to chat.`
+      : `Good evening. How are you feeling today? I am here if you would like to chat.`;
   }
 
   const timeGreeting = hour < 12 ? 'Good morning' : 'Good afternoon';
   return firstName
-    ? `${timeGreeting}, ${firstName} 🌸 Ready for a quick wellness check-in?`
-    : `${timeGreeting} 🌸 Ready for a quick wellness check-in?`;
+    ? `${timeGreeting}, ${firstName}. Ready for a quick wellness check-in?`
+    : `${timeGreeting}. Ready for a quick wellness check-in?`;
 }

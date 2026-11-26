@@ -34,6 +34,8 @@ class AifyCycleApp {
 
   async init() {
     this.setupTheme();
+    this._setupScrollHeader();
+    analytics.initVercelAnalytics();
     this._initComplianceAndConsent();
 
     // Register auth redirect callback for OAuth return / background session restore
@@ -419,13 +421,44 @@ class AifyCycleApp {
     this.aiCoach.onTabChanged?.(this.currentView);
   }
 
+  _setupScrollHeader() {
+    const header = document.getElementById('app-top-header');
+    if (!header) return;
+    const onScroll = () => {
+      header.classList.toggle('is-scrolled', window.scrollY > 8);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+
+  _themeIconSvg(theme) {
+    if (theme === 'dark') {
+      return '<svg class="ui-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>';
+    }
+    return '<svg class="ui-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>';
+  }
+
+  _syncThemeIcons(theme) {
+    const svg = this._themeIconSvg(theme);
+    const themeIcon = document.getElementById('theme-toggle-icon');
+    if (themeIcon) themeIcon.innerHTML = svg;
+    document.querySelectorAll('.js-theme-toggle').forEach(btn => {
+      if (btn.id !== 'btn-theme-toggle') {
+        btn.innerHTML = svg;
+      }
+    });
+  }
+
   setupTheme() {
     const savedTheme = storage.getTheme();
     document.documentElement.setAttribute('data-theme', savedTheme);
-    const themeIcon = document.getElementById('theme-toggle-icon');
-    if (themeIcon) {
-      themeIcon.textContent = savedTheme === 'light' ? '🌙' : '☀️';
-    }
+    this._syncThemeIcons(savedTheme);
+    document.querySelectorAll('.js-theme-toggle').forEach(btn => {
+      if (!btn.dataset.themeBound) {
+        btn.dataset.themeBound = 'true';
+        btn.addEventListener('click', () => this.toggleTheme());
+      }
+    });
   }
 
   toggleTheme() {
@@ -433,12 +466,8 @@ class AifyCycleApp {
     const nextTheme = currentTheme === 'light' ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', nextTheme);
     storage.saveTheme(nextTheme);
-
-    const themeIcon = document.getElementById('theme-toggle-icon');
-    if (themeIcon) {
-      themeIcon.textContent = nextTheme === 'light' ? '🌙' : '☀️';
-    }
-    ui.showToast(`Switched to ${nextTheme === 'light' ? 'Light' : 'Dark'} mode`, '🎨');
+    this._syncThemeIcons(nextTheme);
+    ui.showToast(`Switched to ${nextTheme === 'light' ? 'light' : 'dark'} theme`, '');
   }
 
   async _refreshAiSettingsStatus() {
@@ -463,10 +492,10 @@ class AifyCycleApp {
       const displayModel = modelName
         ? modelName.split('-').map(p => (p ? p[0].toUpperCase() + p.slice(1) : '')).join(' ')
         : 'Gemini AI';
-      statusPill.textContent = `✨ ${displayModel} Active`;
+      statusPill.textContent = `${displayModel} active`;
       statusPill.className = 'ai-status-pill pill-server';
     } else {
-      statusPill.textContent = '🧠 Local Intelligence Active';
+      statusPill.textContent = 'Local intelligence active';
       statusPill.className = 'ai-status-pill pill-local';
     }
   }
@@ -496,16 +525,16 @@ class AifyCycleApp {
       const info = supabaseService.getConnectionInfo();
       if (info.configured) {
         const label = info.source === 'custom'
-          ? `☁️ Custom Override (${info.host})`
-          : `☁️ Cloud Active (${info.host})`;
+          ? `Custom override (${info.host})`
+          : `Cloud active (${info.host})`;
         statusPill.textContent = label;
         statusPill.className = 'ai-status-pill pill-server';
       } else {
-        statusPill.textContent = '📱 Local-First Sandbox';
+        statusPill.textContent = 'Local-first sandbox';
         statusPill.className = 'ai-status-pill pill-local';
       }
     } catch (e) {
-      statusPill.textContent = '📱 Local-First Sandbox';
+      statusPill.textContent = 'Local-first sandbox';
       statusPill.className = 'ai-status-pill pill-local';
     }
   }
@@ -554,7 +583,7 @@ class AifyCycleApp {
     const headerGreetingEl = document.getElementById('header-user-greeting');
     const hour = new Date().getHours();
     const timeGreeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-    const greetingText = profile.userName ? `${timeGreeting}, ${profile.userName} 🌸` : `${timeGreeting} 🌸`;
+    const greetingText = profile.userName ? `${timeGreeting}, ${profile.userName}` : timeGreeting;
     if (greetingEl) {
       greetingEl.textContent = greetingText;
     }
@@ -562,13 +591,26 @@ class AifyCycleApp {
       headerGreetingEl.textContent = greetingText;
     }
 
-    // User avatar & provider badge in banner
+    // User avatar or Fraunces monogram fallback in masthead
     const bannerAvatar = document.getElementById('banner-user-avatar');
+    const bannerMonogram = document.getElementById('banner-avatar-monogram');
     const bannerProvider = document.getElementById('banner-provider-badge');
     const user = this.auth.currentUser;
-    if (bannerAvatar) {
+    const displayName = (profile.userName || user?.name || 'A').trim();
+    if (bannerAvatar && bannerMonogram) {
+      if (user?.avatarUrl) {
+        bannerAvatar.src = user.avatarUrl;
+        bannerAvatar.alt = displayName;
+        bannerAvatar.style.display = 'block';
+        bannerMonogram.style.display = 'none';
+      } else {
+        bannerAvatar.style.display = 'none';
+        bannerMonogram.textContent = displayName.charAt(0).toUpperCase();
+        bannerMonogram.style.display = 'inline';
+      }
+    } else if (bannerAvatar) {
       bannerAvatar.src = user?.avatarUrl || '/icon-192.png';
-      bannerAvatar.alt = profile.userName || user?.name || 'User Profile';
+      bannerAvatar.alt = displayName;
     }
     if (bannerProvider) {
       bannerProvider.textContent = user?.provider === 'google' ? 'G' :
@@ -841,9 +883,10 @@ class AifyCycleApp {
       });
     }
 
-    // Theme Toggle
+    // Theme Toggle already bound in setupTheme() via .js-theme-toggle; guard against duplicate binding
     const btnThemeToggle = document.getElementById('btn-theme-toggle');
-    if (btnThemeToggle) {
+    if (btnThemeToggle && !btnThemeToggle.dataset.themeBound) {
+      btnThemeToggle.dataset.themeBound = 'true';
       btnThemeToggle.addEventListener('click', () => this.toggleTheme());
     }
 

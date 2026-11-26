@@ -31,6 +31,9 @@ class AifyCycleApp {
     this.currentYear = this.today.getFullYear();
     this.currentMonth = this.today.getMonth();
     this.activeLogDate = formatDateKey(this.today);
+    this.calendarSelectedDate = formatDateKey(this.today);
+    this.calendarEditPeriodMode = false;
+    this.calendarFilter = null;
     this.waterCount = 8;
 
     // New modules
@@ -546,13 +549,24 @@ class AifyCycleApp {
     // Render Dynamic Dashboard Vitals (Hydration, Sleep, Hormones, Timeline)
     ui.renderDashboardVitals(todayStatus, profile, todayLog, (type, val) => this._handleVitalChange(type, val));
 
-    // Render Calendar
+    // Render Calendar (Master-Detail Grid + Day Inspector + Milestones)
     ui.renderCalendar(
       this.currentYear,
       this.currentMonth,
       profile,
       logs,
-      (dateKey) => this.openLoggerModalForDate(dateKey)
+      {
+        selectedDateKey: this.calendarSelectedDate,
+        editPeriodMode: this.calendarEditPeriodMode,
+        activeFilter: this.calendarFilter,
+        onSelectDate: (dateKey, opts) => this.selectCalendarDate(dateKey, opts),
+        onOpenLogger: (dateKey) => this.openLoggerModalForDate(dateKey),
+        onQuickFlow: (dateKey, flowVal) => this.quickUpdateFlow(dateKey, flowVal),
+        onTogglePeriodDay: (dateKey) => this.toggleCalendarPeriodDay(dateKey),
+        onMarkCycleStart: (dateKey) => this.markPeriodStartedOnDate(dateKey),
+        onStepDay: (delta) => this.stepCalendarDay(delta),
+        onJumpToDate: (dateKey) => this.selectCalendarDate(dateKey, { jumpMonth: true })
+      }
     );
 
     // Render Syncing Guide
@@ -701,16 +715,9 @@ class AifyCycleApp {
     };
 
     storage.saveLog(targetDateKey, newLog);
+    this.calendarSelectedDate = targetDateKey;
+    this._syncLastPeriodStartAfterFlowChange(targetDateKey, selectedFlow);
 
-    // Sync profile.lastPeriodStart from extracted period runs (never shifts Day 1 to Day 2-7 or isolated spotting)
-    if (selectedFlow && selectedFlow !== 'none' && selectedFlow !== 'spotting') {
-      const profile = storage.getProfile();
-      const resolvedStart = resolveLastPeriodStart(storage.getAllLogs(), profile.lastPeriodStart);
-      if (resolvedStart && resolvedStart !== profile.lastPeriodStart) {
-        profile.lastPeriodStart = resolvedStart;
-        storage.saveProfile(profile);
-      }
-    }
     analytics.trackEvent('symptom', 'logged', targetDateKey);
     analytics.logAuditAction('SYMPTOMS_LOGGED', `Updated wellness & flow for ${targetDateKey}`);
     this.closeModal('logger-modal');
@@ -718,25 +725,119 @@ class AifyCycleApp {
     ui.showToast(`Logged for ${targetDateKey}`, 'check');
   }
 
-  markPeriodStartedToday() {
-    const todayKey = formatDateKey(this.today);
+  _syncLastPeriodStartAfterFlowChange(dateKey, flowValue) {
     const profile = storage.getProfile();
-    profile.lastPeriodStart = todayKey;
+    const allLogs = storage.getAllLogs();
+    const isRealFlow = Boolean(flowValue && flowValue !== 'none' && flowValue !== 'spotting');
+
+    if (isRealFlow) {
+      const resolvedStart = resolveLastPeriodStart(allLogs, profile.lastPeriodStart);
+      if (resolvedStart && resolvedStart !== profile.lastPeriodStart) {
+        profile.lastPeriodStart = resolvedStart;
+        storage.saveProfile(profile);
+      }
+      return;
+    }
+
+    // If user cleared flow on the date currently saved as lastPeriodStart, reconcile cleanly
+    if (dateKey === profile.lastPeriodStart) {
+      const fallbackStart = resolveLastPeriodStart(allLogs, null);
+      if (fallbackStart && fallbackStart !== profile.lastPeriodStart) {
+        profile.lastPeriodStart = fallbackStart;
+        storage.saveProfile(profile);
+      }
+    }
+  }
+
+  selectCalendarDate(dateKey, { jumpMonth = false } = {}) {
+    if (!dateKey) return;
+    const parsed = parseDateKey(dateKey);
+    if (!parsed) return;
+
+    this.calendarSelectedDate = dateKey;
+    if (jumpMonth) {
+      this.currentYear = parsed.getFullYear();
+      this.currentMonth = parsed.getMonth();
+    }
+    analytics.trackEvent('calendar', 'select_day', dateKey);
+    this.renderAll();
+  }
+
+  stepCalendarDay(delta) {
+    const baseDate = parseDateKey(this.calendarSelectedDate) || this.today;
+    const nextDate = addDays(baseDate, delta);
+    const nextKey = formatDateKey(nextDate);
+    this.calendarSelectedDate = nextKey;
+    this.currentYear = nextDate.getFullYear();
+    this.currentMonth = nextDate.getMonth();
+    this.renderAll();
+  }
+
+  quickUpdateFlow(dateKey, flowValue) {
+    const existingLog = storage.getLog(dateKey) || {
+      flow: null,
+      symptoms: [],
+      moods: [],
+      waterGlasses: 0,
+      sleepHours: 0,
+      notes: ''
+    };
+    const nextFlow = flowValue === 'none' ? 'none' : flowValue;
+    storage.saveLog(dateKey, {
+      ...existingLog,
+      flow: nextFlow
+    });
+    this.calendarSelectedDate = dateKey;
+    this._syncLastPeriodStartAfterFlowChange(dateKey, nextFlow);
+
+    analytics.trackEvent('calendar', 'quick_flow', `${dateKey}:${nextFlow}`);
+    this.renderAll();
+
+    if (nextFlow === 'none') {
+      ui.showToast(`Cleared flow for ${dateKey}`, 'minus');
+    } else {
+      const label = nextFlow.charAt(0).toUpperCase() + nextFlow.slice(1);
+      ui.showToast(`${label} flow logged for ${dateKey}`, 'droplet');
+    }
+  }
+
+  toggleCalendarPeriodDay(dateKey) {
+    const existingLog = storage.getLog(dateKey) || {};
+    const currentlyHasPeriod = Boolean(existingLog.flow && existingLog.flow !== 'none' && existingLog.flow !== 'spotting');
+    const nextFlow = currentlyHasPeriod ? 'none' : 'medium';
+    this.quickUpdateFlow(dateKey, nextFlow);
+  }
+
+  markPeriodStartedOnDate(dateKey) {
+    const profile = storage.getProfile();
+    profile.lastPeriodStart = dateKey;
     storage.saveProfile(profile);
 
-    // Record daily log with medium flow (do not invent unlogged symptoms like 'Cramps')
-    const existingLog = storage.getLog(todayKey) || {};
-    storage.saveLog(todayKey, {
+    const existingLog = storage.getLog(dateKey) || {};
+    storage.saveLog(dateKey, {
       ...existingLog,
-      flow: existingLog.flow && existingLog.flow !== 'none' ? existingLog.flow : 'medium',
-      notes: existingLog.notes || 'Cycle day 1 started today.'
+      flow: existingLog.flow && existingLog.flow !== 'none' && existingLog.flow !== 'spotting'
+        ? existingLog.flow
+        : 'medium'
     });
 
-    analytics.trackEvent('cycle', 'period_start_updated', todayKey);
-    analytics.logAuditAction('PERIOD_START_RECORDED', `Cycle Day 1 recorded on ${todayKey}`);
+    const parsed = parseDateKey(dateKey);
+    if (parsed) {
+      this.calendarSelectedDate = dateKey;
+      this.currentYear = parsed.getFullYear();
+      this.currentMonth = parsed.getMonth();
+    }
+
+    analytics.trackEvent('cycle', 'period_start_updated', dateKey);
+    analytics.logAuditAction('PERIOD_START_RECORDED', `Cycle Day 1 recorded on ${dateKey}`);
 
     this.renderAll();
-    ui.showToast('New cycle recorded starting today', 'droplet');
+    const isToday = dateKey === formatDateKey(this.today);
+    ui.showToast(isToday ? 'New cycle recorded starting today' : `Cycle Day 1 set to ${dateKey}`, 'droplet');
+  }
+
+  markPeriodStartedToday() {
+    this.markPeriodStartedOnDate(formatDateKey(this.today));
   }
 
   attachEventListeners() {
@@ -788,38 +889,100 @@ class AifyCycleApp {
       btnThemeToggle.addEventListener('click', () => this.toggleTheme());
     }
 
-    // Calendar Navigation
+    // Calendar Navigation & Interactive Controls
     const btnPrevMonth = document.getElementById('btn-cal-prev');
     const btnNextMonth = document.getElementById('btn-cal-next');
     const btnTodayMonth = document.getElementById('btn-cal-today');
+    const btnEditPeriod = document.getElementById('btn-cal-edit-period');
+    const btnEditDone = document.getElementById('btn-cal-edit-done');
+    const calGrid = document.getElementById('calendar-days-grid');
+
+    const shiftMonth = (delta) => {
+      this.currentMonth += delta;
+      if (this.currentMonth < 0) {
+        this.currentMonth = 11;
+        this.currentYear--;
+      } else if (this.currentMonth > 11) {
+        this.currentMonth = 0;
+        this.currentYear++;
+      }
+      this.renderAll();
+    };
 
     if (btnPrevMonth) {
-      btnPrevMonth.addEventListener('click', () => {
-        this.currentMonth--;
-        if (this.currentMonth < 0) {
-          this.currentMonth = 11;
-          this.currentYear--;
-        }
-        this.renderAll();
-      });
+      btnPrevMonth.addEventListener('click', () => shiftMonth(-1));
     }
 
     if (btnNextMonth) {
-      btnNextMonth.addEventListener('click', () => {
-        this.currentMonth++;
-        if (this.currentMonth > 11) {
-          this.currentMonth = 0;
-          this.currentYear++;
-        }
-        this.renderAll();
-      });
+      btnNextMonth.addEventListener('click', () => shiftMonth(1));
     }
 
     if (btnTodayMonth) {
       btnTodayMonth.addEventListener('click', () => {
+        this.today = new Date();
         this.currentYear = this.today.getFullYear();
         this.currentMonth = this.today.getMonth();
+        this.calendarSelectedDate = formatDateKey(this.today);
         this.renderAll();
+      });
+    }
+
+    if (btnEditPeriod) {
+      btnEditPeriod.addEventListener('click', () => {
+        this.calendarEditPeriodMode = !this.calendarEditPeriodMode;
+        this.renderAll();
+      });
+    }
+
+    if (btnEditDone) {
+      btnEditDone.addEventListener('click', () => {
+        this.calendarEditPeriodMode = false;
+        this.renderAll();
+      });
+    }
+
+    // Calendar interactive filter legend chips
+    document.querySelectorAll('.cal-legend-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const filterVal = chip.getAttribute('data-cal-filter');
+        this.calendarFilter = this.calendarFilter === filterVal ? null : filterVal;
+        this.renderAll();
+      });
+    });
+
+    // Calendar touch swipe (mobile month navigation) & keyboard arrows
+    if (calGrid) {
+      let touchStartX = 0;
+      let touchStartY = 0;
+
+      calGrid.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) return;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+      }, { passive: true });
+
+      calGrid.addEventListener('touchend', (e) => {
+        if (e.changedTouches.length !== 1) return;
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        const dy = e.changedTouches[0].clientY - touchStartY;
+        if (Math.abs(dx) > 54 && Math.abs(dx) > Math.abs(dy) * 1.45) {
+          shiftMonth(dx < 0 ? 1 : -1);
+        }
+      }, { passive: true });
+
+      calGrid.addEventListener('keydown', (e) => {
+        const stepMap = {
+          ArrowLeft: -1,
+          ArrowRight: 1,
+          ArrowUp: -7,
+          ArrowDown: 7
+        };
+        if (stepMap[e.key] !== undefined) {
+          e.preventDefault();
+          this.stepCalendarDay(stepMap[e.key]);
+          const nextEl = calGrid.querySelector(`.cal-day[data-date="${this.calendarSelectedDate}"]`);
+          if (nextEl) nextEl.focus();
+        }
       });
     }
 

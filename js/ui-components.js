@@ -11,12 +11,161 @@ import {
   formatDateKey,
   parseDateKey,
   addDays,
+  daysBetween,
   PHASES,
   getCycleStatus,
   MIN_PERIOD_LENGTH
 } from './cycle-engine.js';
 import { escapeHtml } from './dom-utils.js';
 import { svgIcon, phaseIconSvg } from './icons.js';
+
+/**
+ * Pure helper: build a complete 7-column calendar grid model (including overflow dates,
+ * row-aware connected range ribbons, and month summary metrics) for rendering and testing.
+ */
+export function buildCalendarMonthGrid(year, month, profile, logs = {}, options = {}) {
+  const days = getMonthCycleMap(year, month, profile, logs, options);
+  const firstDayIndex = new Date(year, month, 1).getDay(); // 0 = Sun
+  const prevMonthLastDate = new Date(year, month, 0);
+  const prevMonthDays = prevMonthLastDate.getDate();
+  const prevYear = prevMonthLastDate.getFullYear();
+  const prevMonth = prevMonthLastDate.getMonth();
+
+  const nextMonthStart = new Date(year, month + 1, 1);
+  const nextYear = nextMonthStart.getFullYear();
+  const nextMonth = nextMonthStart.getMonth();
+
+  const cells = [];
+
+  // Leading overflow days from previous month
+  for (let i = firstDayIndex - 1; i >= 0; i--) {
+    const dayNum = prevMonthDays - i;
+    const dateObj = new Date(prevYear, prevMonth, dayNum);
+    const dateKey = formatDateKey(dateObj);
+    const log = logs[dateKey] || null;
+    cells.push({
+      isOutside: true,
+      date: dateObj,
+      dateKey,
+      dayNumber: dayNum,
+      log,
+      hasLoggedFlow: Boolean(log?.flow && log.flow !== 'none'),
+      ribbonType: null,
+      bandPos: null
+    });
+  }
+
+  // Current month days with classification
+  let loggedPeriodDays = 0;
+  let totalPeriodWindowDays = 0;
+  let loggedEntryDays = 0;
+  const ovulationDays = [];
+  const periodDayNumbers = [];
+
+  days.forEach(dayItem => {
+    const isLoggedPeriod = Boolean(dayItem.hasLoggedFlow && dayItem.flow !== 'spotting');
+    const isLoggedSpotting = Boolean(dayItem.hasLoggedFlow && dayItem.flow === 'spotting');
+    const isEstimatedPeriod = !isLoggedPeriod && Boolean(dayItem.status.isPeriodDay);
+    const isOvulation = !isLoggedPeriod && !isEstimatedPeriod && Boolean(dayItem.status.isOvulationDay);
+    const isFertile = !isLoggedPeriod && !isEstimatedPeriod && Boolean(dayItem.status.isFertileWindow || dayItem.status.isOvulationDay);
+    const isLate = !isLoggedPeriod && !isEstimatedPeriod && Boolean(dayItem.status.isLate);
+
+    if (isLoggedPeriod) loggedPeriodDays++;
+    if (isLoggedPeriod || isEstimatedPeriod) {
+      totalPeriodWindowDays++;
+      periodDayNumbers.push(dayItem.dayNumber);
+    }
+    if (dayItem.hasLoggedFlow || dayItem.hasSymptoms) loggedEntryDays++;
+    if (dayItem.status.isOvulationDay && !dayItem.status.isBeforeHistory) {
+      ovulationDays.push(dayItem);
+    }
+
+    let ribbonType = null;
+    if (isLoggedPeriod || isEstimatedPeriod) {
+      ribbonType = 'period';
+    } else if (isFertile) {
+      ribbonType = 'fertile';
+    } else if (isLate) {
+      ribbonType = 'late';
+    }
+
+    cells.push({
+      ...dayItem,
+      isOutside: false,
+      isLoggedPeriod,
+      isLoggedSpotting,
+      isEstimatedPeriod,
+      isOvulation,
+      isFertile,
+      isLate,
+      ribbonType,
+      bandPos: null
+    });
+  });
+
+  // Trailing overflow days to complete final 7-day week
+  const trailingCount = (7 - (cells.length % 7)) % 7;
+  for (let d = 1; d <= trailingCount; d++) {
+    const dateObj = new Date(nextYear, nextMonth, d);
+    const dateKey = formatDateKey(dateObj);
+    const log = logs[dateKey] || null;
+    cells.push({
+      isOutside: true,
+      date: dateObj,
+      dateKey,
+      dayNumber: d,
+      log,
+      hasLoggedFlow: Boolean(log?.flow && log.flow !== 'none'),
+      ribbonType: null,
+      bandPos: null
+    });
+  }
+
+  // Assign row-aware horizontal ribbon caps (start / mid / end / single)
+  for (let rowStart = 0; rowStart < cells.length; rowStart += 7) {
+    for (let col = 0; col < 7; col++) {
+      const idx = rowStart + col;
+      const cell = cells[idx];
+      if (!cell.ribbonType) continue;
+
+      const samePrev = col > 0 && cells[idx - 1].ribbonType === cell.ribbonType;
+      const sameNext = col < 6 && cells[idx + 1].ribbonType === cell.ribbonType;
+
+      if (samePrev && sameNext) {
+        cell.bandPos = 'mid';
+      } else if (!samePrev && sameNext) {
+        cell.bandPos = 'start';
+      } else if (samePrev && !sameNext) {
+        cell.bandPos = 'end';
+      } else {
+        cell.bandPos = 'single';
+      }
+    }
+  }
+
+  // Group contiguous period day numbers into readable ranges (e.g., [[24, 28]])
+  const periodRanges = [];
+  for (const num of periodDayNumbers) {
+    const last = periodRanges[periodRanges.length - 1];
+    if (last && num === last.end + 1) {
+      last.end = num;
+    } else {
+      periodRanges.push({ start: num, end: num });
+    }
+  }
+
+  return {
+    days,
+    cells,
+    summary: {
+      loggedPeriodDays,
+      totalPeriodWindowDays,
+      loggedEntryDays,
+      periodRanges,
+      ovulationDays
+    }
+  };
+}
 
 export class UIComponents {
   constructor() {
@@ -663,89 +812,518 @@ export class UIComponents {
   }
 
   /**
-   * Render the Calendar View
+   * Render the Reworked Interactive Cycle Calendar, Day Inspector, and Milestones
    */
-  renderCalendar(currentYear, currentMonth, profile, logs, onDayClick) {
+  renderCalendar(currentYear, currentMonth, profile, logs, optionsOrCallback = {}) {
+    const opts = typeof optionsOrCallback === 'function'
+      ? { onOpenLogger: optionsOrCallback, onSelectDate: optionsOrCallback }
+      : (optionsOrCallback || {});
+
     const calendarTitle = document.getElementById('calendar-month-year');
+    const calendarSummary = document.getElementById('calendar-month-summary');
     const calendarGrid = document.getElementById('calendar-days-grid');
+    const editBtn = document.getElementById('btn-cal-edit-period');
+    const editBtnLabel = document.getElementById('cal-edit-btn-label');
+    const editBanner = document.getElementById('cal-edit-banner');
     if (!calendarGrid) return;
 
-    // Month Title
+    const now = new Date();
+    const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayStr = formatDateKey(todayDate);
+
+    // Month heading
     const monthDate = new Date(currentYear, currentMonth, 1);
+    const shortMonthName = monthDate.toLocaleDateString(undefined, { month: 'short' });
     if (calendarTitle) {
       calendarTitle.textContent = monthDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
     }
 
-    calendarGrid.innerHTML = '';
+    // Build complete 7-column grid model
+    const { days, cells, summary } = buildCalendarMonthGrid(currentYear, currentMonth, profile, logs, {
+      referenceDate: todayDate
+    });
 
-    const days = getMonthCycleMap(currentYear, currentMonth, profile, logs);
-    const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay(); // 0 = Sun
-
-    // Empty cells for leading offset
-    for (let i = 0; i < firstDayIndex; i++) {
-      const emptyCell = document.createElement('div');
-      emptyCell.className = 'calendar-day-cell empty';
-      calendarGrid.appendChild(emptyCell);
+    // Month summary line (concise, scannable)
+    if (calendarSummary) {
+      const summaryParts = [];
+      if (summary.periodRanges.length > 0) {
+        const rangeLabels = summary.periodRanges.slice(0, 2).map(r =>
+          r.start === r.end ? `${shortMonthName} ${r.start}` : `${shortMonthName} ${r.start}–${r.end}`
+        );
+        summaryParts.push(`Period: ${rangeLabels.join(', ')}`);
+      }
+      if (summary.ovulationDays.length > 0) {
+        const ovDay = summary.ovulationDays[0];
+        summaryParts.push(`Est. ovulation: ${shortMonthName} ${ovDay.dayNumber}`);
+      }
+      if (summary.loggedEntryDays > 0) {
+        summaryParts.push(`${summary.loggedEntryDays} ${summary.loggedEntryDays === 1 ? 'day' : 'days'} logged`);
+      }
+      calendarSummary.textContent = summaryParts.length > 0
+        ? summaryParts.join(' • ')
+        : 'Select any date to inspect cycle phase or log symptoms';
     }
 
-    const todayStr = formatDateKey(new Date());
+    // Rapid Period Edit Mode state
+    const editPeriodMode = Boolean(opts.editPeriodMode);
+    if (editBtn) {
+      editBtn.classList.toggle('is-active', editPeriodMode);
+      editBtn.setAttribute('aria-pressed', editPeriodMode ? 'true' : 'false');
+    }
+    if (editBtnLabel) {
+      editBtnLabel.textContent = editPeriodMode ? 'Done Logging' : 'Log Period';
+    }
+    if (editBanner) {
+      editBanner.style.display = editPeriodMode ? 'flex' : 'none';
+    }
 
-    // Populate day cells
-    days.forEach(dayItem => {
-      const cell = document.createElement('div');
-      cell.className = 'calendar-day-cell';
-      cell.setAttribute('data-date', dayItem.dateKey);
+    // Active legend filter
+    const activeFilter = opts.activeFilter || null;
+    document.querySelectorAll('.cal-legend-chip').forEach(chip => {
+      const f = chip.getAttribute('data-cal-filter');
+      const isActive = Boolean(activeFilter && f === activeFilter);
+      chip.classList.toggle('is-active', isActive);
+      chip.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
 
-      if (dayItem.dateKey === todayStr) {
-        cell.classList.add('today');
+    // Resolve which date is selected in the Day Inspector (use enriched cells so isLoggedPeriod/isEstimatedPeriod are populated)
+    const inMonthCells = cells.filter(c => !c.isOutside);
+    const dayMap = new Map(inMonthCells.map(c => [c.dateKey, c]));
+    let selectedDateKey = opts.selectedDateKey;
+    if (!selectedDateKey || !dayMap.has(selectedDateKey)) {
+      if (dayMap.has(todayStr)) {
+        selectedDateKey = todayStr;
+      } else {
+        const firstInteresting = inMonthCells.find(d => d.hasLoggedFlow || d.status.isPeriodDay) || inMonthCells[0];
+        selectedDateKey = firstInteresting ? firstInteresting.dateKey : todayStr;
+      }
+    }
+
+    // Render grid
+    calendarGrid.innerHTML = '';
+    calendarGrid.classList.toggle('is-edit-mode', editPeriodMode);
+    calendarGrid.classList.toggle('has-filter', Boolean(activeFilter));
+
+    const FLOW_PIPS = { light: 1, medium: 2, heavy: 3 };
+
+    cells.forEach((cellData) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'cal-day';
+      btn.setAttribute('data-date', cellData.dateKey);
+      btn.setAttribute('role', 'gridcell');
+
+      if (cellData.isOutside) {
+        btn.classList.add('is-outside');
+        if (cellData.hasLoggedFlow) btn.classList.add('outside-has-period');
+        const outDateLabel = cellData.date.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+        btn.setAttribute('aria-label', `${outDateLabel} (switch month)`);
+        btn.innerHTML = `
+          <span class="cal-day-circle">${cellData.dayNumber}</span>
+          <span class="cal-day-signals">${cellData.hasLoggedFlow ? '<span class="cal-sig sig-outside-dot"></span>' : ''}</span>
+        `;
+        btn.addEventListener('click', () => {
+          if (opts.onSelectDate) opts.onSelectDate(cellData.dateKey, { jumpMonth: true });
+        });
+        calendarGrid.appendChild(btn);
+        return;
       }
 
-      if (dayItem.hasLoggedFlow || dayItem.status.isPeriodDay) {
-        cell.classList.add('period-day');
-        if (dayItem.isPredictedPeriod) cell.classList.add('predicted-day');
-      } else if (dayItem.status.isLate) {
-        cell.classList.add('late-day');
-      } else if (dayItem.status.isOvulationDay) {
-        cell.classList.add('ovulation-day');
-      } else if (dayItem.status.isFertileWindow) {
-        cell.classList.add('fertile-day');
+      const isToday = cellData.dateKey === todayStr;
+      const isSelected = cellData.dateKey === selectedDateKey;
+      const hasNotes = Boolean(cellData.log?.notes && cellData.log.notes.trim().length > 0);
+      const hasSymptomsOrMoods = Boolean(
+        (cellData.log?.symptoms && cellData.log.symptoms.length > 0) ||
+        (cellData.log?.moods && cellData.log.moods.length > 0)
+      );
+
+      if (isToday) btn.classList.add('is-today');
+      if (isSelected) {
+        btn.classList.add('is-selected');
+        btn.setAttribute('aria-selected', 'true');
+      } else {
+        btn.setAttribute('aria-selected', 'false');
       }
 
-      // Build inner cell markup with crisp vector icons
-      let badgeHtml = '';
-      if (dayItem.hasLoggedFlow) {
-        badgeHtml = `<span class="indicator-badge badge-period" title="Logged Period Flow"><span class="badge-icon">${svgIcon('droplet', 11)}</span><span class="badge-text">Logged</span></span>`;
-      } else if (dayItem.isPredictedPeriod || dayItem.status.isPeriodDay) {
-        badgeHtml = `<span class="indicator-badge badge-period" style="opacity:0.75;" title="Estimated Period Day"><span class="badge-icon">${svgIcon('droplet', 11)}</span><span class="badge-text">Est. Period</span></span>`;
-      } else if (dayItem.status.isLate) {
-        badgeHtml = `<span class="indicator-badge" title="Period Late (Day +${dayItem.status.daysLate})"><span class="badge-icon">${svgIcon('hourglass', 11)}</span><span class="badge-text">Late</span></span>`;
-      } else if (dayItem.status.isOvulationDay) {
-        badgeHtml = `<span class="indicator-badge badge-ovulation" title="Estimated Ovulation (not contraception)"><span class="badge-icon">${svgIcon('sparkles', 11)}</span><span class="badge-text">Est. Ov.</span></span>`;
-      } else if (dayItem.status.isFertileWindow) {
-        badgeHtml = `<span class="indicator-badge badge-fertile" title="Estimated Fertile Window (not contraception)"><span class="badge-icon">${svgIcon('sprout', 11)}</span><span class="badge-text">Est. Fertile</span></span>`;
+      // Day type classes
+      if (cellData.isLoggedPeriod) {
+        btn.classList.add('is-period-logged');
+      } else if (cellData.isEstimatedPeriod) {
+        btn.classList.add('is-period-predicted');
+      } else if (cellData.isLoggedSpotting) {
+        btn.classList.add('is-spotting');
+      } else if (cellData.isLate) {
+        btn.classList.add('is-late');
+      } else if (cellData.isOvulation) {
+        btn.classList.add('is-ovulation');
+      } else if (cellData.isFertile) {
+        btn.classList.add('is-fertile');
       }
 
-      const symptomDotHtml = dayItem.hasSymptoms ? `<span class="badge-symptom-dot" title="Logged symptoms/notes"></span>` : '';
-      const phaseDotHtml = dayItem.status.isBeforeHistory
-        ? ''
-        : `<span class="day-phase-dot" style="background-color: ${dayItem.status.phase.color}"></span>`;
+      // Connected horizontal ribbon classes
+      if (cellData.ribbonType && cellData.bandPos) {
+        btn.classList.add(`band-${cellData.ribbonType}`, `band-${cellData.bandPos}`);
+        if (cellData.isEstimatedPeriod) {
+          btn.classList.add('is-predicted-band');
+        }
+      }
 
-      cell.innerHTML = `
-        <div class="day-cell-top">
-          <span class="day-number">${dayItem.dayNumber}</span>
-          ${phaseDotHtml}
-        </div>
-        <div class="day-indicator-row">
-          ${badgeHtml}
-          ${symptomDotHtml}
-        </div>
+      // Interactive legend filter match state
+      if (activeFilter) {
+        let matches = false;
+        if (activeFilter === 'period') matches = cellData.isLoggedPeriod || cellData.isLoggedSpotting;
+        else if (activeFilter === 'predicted') matches = cellData.isEstimatedPeriod;
+        else if (activeFilter === 'fertile') matches = cellData.isFertile;
+        else if (activeFilter === 'ovulation') matches = cellData.isOvulation;
+        else if (activeFilter === 'logged') matches = hasSymptomsOrMoods || hasNotes;
+        btn.classList.add(matches ? 'is-filter-match' : 'is-filter-dim');
+      }
+
+      // Subtle desktop cycle-day label (e.g. D1, D14)
+      const showCycleDay = !cellData.status.isBeforeHistory && !cellData.status.isLate && cellData.status.cycleDay > 0;
+      const cycleDayLabel = showCycleDay
+        ? `<span class="cal-day-cycle-num" aria-hidden="true">D${cellData.status.cycleDay}</span>`
+        : '';
+
+      // Crisp bottom micro-signals (no overlapping text badges)
+      const signals = [];
+      if (cellData.isLoggedPeriod) {
+        const pipCount = FLOW_PIPS[cellData.flow] || 2;
+        for (let p = 0; p < pipCount; p++) {
+          signals.push('<span class="cal-sig sig-flow"></span>');
+        }
+      } else if (cellData.isLoggedSpotting) {
+        signals.push('<span class="cal-sig sig-spotting"></span>');
+      } else if (cellData.isOvulation) {
+        signals.push('<span class="cal-sig sig-ovulation"></span>');
+      } else if (cellData.isLate) {
+        signals.push('<span class="cal-sig sig-late"></span>');
+      }
+
+      if (hasSymptomsOrMoods) {
+        signals.push('<span class="cal-sig sig-symptom"></span>');
+      }
+      if (hasNotes) {
+        signals.push('<span class="cal-sig sig-note"></span>');
+      }
+
+      // Accessible label
+      const fullDateStr = cellData.date.toLocaleDateString(undefined, {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+      });
+      const statusParts = [fullDateStr];
+      if (isToday) statusParts.push('Today');
+      if (cellData.isLoggedPeriod) statusParts.push(`Logged ${cellData.flow} period flow`);
+      else if (cellData.isLoggedSpotting) statusParts.push('Logged spotting');
+      else if (cellData.isEstimatedPeriod) statusParts.push('Estimated period day');
+      else if (cellData.isOvulation) statusParts.push('Estimated ovulation peak');
+      else if (cellData.isFertile) statusParts.push('Estimated fertile window');
+      else if (cellData.isLate) statusParts.push(`Period late by ${cellData.status.daysLate} days`);
+      else if (!cellData.status.isBeforeHistory) statusParts.push(`${cellData.status.phase.name}, Day ${cellData.status.cycleDay}`);
+      if (hasSymptomsOrMoods || hasNotes) statusParts.push('Has logged entries');
+      btn.setAttribute('aria-label', statusParts.join(', '));
+
+      btn.innerHTML = `
+        ${cycleDayLabel}
+        <span class="cal-day-circle">${cellData.dayNumber}</span>
+        <span class="cal-day-signals" aria-hidden="true">${signals.join('')}</span>
       `;
 
-      cell.addEventListener('click', () => {
-        if (onDayClick) onDayClick(dayItem.dateKey);
+      btn.addEventListener('click', () => {
+        if (editPeriodMode && opts.onTogglePeriodDay) {
+          opts.onTogglePeriodDay(cellData.dateKey);
+        } else if (opts.onSelectDate) {
+          opts.onSelectDate(cellData.dateKey, { jumpMonth: false });
+        } else if (opts.onOpenLogger) {
+          opts.onOpenLogger(cellData.dateKey);
+        }
       });
 
-      calendarGrid.appendChild(cell);
+      btn.addEventListener('dblclick', () => {
+        if (!editPeriodMode && opts.onOpenLogger) {
+          opts.onOpenLogger(cellData.dateKey);
+        }
+      });
+
+      calendarGrid.appendChild(btn);
+    });
+
+    // Render Right-Column Day Inspector & Cycle Milestones
+    const selectedDayItem = dayMap.get(selectedDateKey);
+    if (selectedDayItem) {
+      this._renderCalendarInspector(selectedDayItem, todayDate, profile, logs, opts);
+    }
+    this._renderCalendarMilestones(todayDate, profile, logs, summary, shortMonthName, opts);
+  }
+
+  /**
+   * Render Selected Day Inspector panel beside (or below) the calendar grid
+   */
+  _renderCalendarInspector(dayItem, todayDate, profile, logs, opts = {}) {
+    const container = document.getElementById('cal-day-inspector');
+    if (!container) return;
+
+    const { date, dateKey, status, log, isLoggedPeriod, isLoggedSpotting, isEstimatedPeriod } = dayItem;
+    const todayStr = formatDateKey(todayDate);
+    const diffFromToday = daysBetween(todayDate, date);
+
+    const dateHeading = date.toLocaleDateString(undefined, {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric'
+    });
+
+    let relativeLabel = '';
+    if (diffFromToday === 0) relativeLabel = 'Today';
+    else if (diffFromToday === -1) relativeLabel = 'Yesterday';
+    else if (diffFromToday === 1) relativeLabel = 'Tomorrow';
+    else if (diffFromToday < 0) relativeLabel = `${Math.abs(diffFromToday)} days ago`;
+    else relativeLabel = `In ${diffFromToday} days`;
+
+    let cycleMetaText = relativeLabel;
+    if (status.isBeforeHistory) {
+      cycleMetaText = `${relativeLabel} • Before tracked history`;
+    } else if (status.isLate) {
+      cycleMetaText = `${relativeLabel} • ${status.daysLate} ${status.daysLate === 1 ? 'day' : 'days'} past expected`;
+    } else if (status.cycleDay > 0) {
+      cycleMetaText = `Day ${status.cycleDay} of ${status.cycleLength} • ${relativeLabel}`;
+    }
+
+    // Concise context note tailored to the selected day
+    let contextCopy = status.phase.description;
+    if (isLoggedPeriod) {
+      const flowCap = log.flow.charAt(0).toUpperCase() + log.flow.slice(1);
+      contextCopy = `${flowCap} flow logged. Prioritize gentle warmth, hydration, and rest as needed.`;
+    } else if (isLoggedSpotting) {
+      contextCopy = 'Spotting logged for this date. Track alongside symptoms to spot recurring cycle patterns.';
+    } else if (isEstimatedPeriod) {
+      contextCopy = status.isPredicted
+        ? `Estimated period day based on your ${status.periodLength}-day typical duration.`
+        : `Ongoing period window (Day ${status.cycleDay} of ${status.periodLength}). Tap a flow level below if bleeding continues.`;
+    } else if (status.isBeforeHistory) {
+      contextCopy = 'Log period flow or symptoms on past dates to strengthen your cycle history and predictions.';
+    }
+
+    const currentFlow = log?.flow && log.flow !== 'none' ? log.flow : 'none';
+    const flowStatusLabel = isLoggedPeriod || isLoggedSpotting
+      ? 'Logged'
+      : (isEstimatedPeriod ? 'Expected' : 'None logged');
+
+    const flowOptions = [
+      { value: 'none', label: 'None' },
+      { value: 'spotting', label: 'Spotting' },
+      { value: 'light', label: 'Light' },
+      { value: 'medium', label: 'Medium' },
+      { value: 'heavy', label: 'Heavy' }
+    ];
+
+    const flowButtonsHtml = flowOptions.map(opt => {
+      const active = currentFlow === opt.value;
+      return `<button type="button" class="cal-flow-pill${active ? ' is-active' : ''}" data-quick-flow="${opt.value}" aria-pressed="${active ? 'true' : 'false'}">${opt.label}</button>`;
+    }).join('');
+
+    // Logged symptoms, moods, vitals, and journal note
+    const symptoms = Array.isArray(log?.symptoms) ? log.symptoms : [];
+    const moods = Array.isArray(log?.moods) ? log.moods : [];
+    const notesText = log?.notes ? log.notes.trim() : '';
+    const hasWater = Boolean(log && typeof log.waterGlasses === 'number' && log.waterGlasses > 0);
+    const hasSleep = Boolean(log && typeof log.sleepHours === 'number' && log.sleepHours > 0);
+    const hasDetailedLog = symptoms.length > 0 || moods.length > 0 || Boolean(notesText) || hasWater || hasSleep;
+
+    let detailsHtml = '';
+    if (hasDetailedLog) {
+      const tagChips = [
+        ...symptoms.map(s => `<span class="cal-detail-chip chip-symptom">${escapeHtml(s)}</span>`),
+        ...moods.map(m => `<span class="cal-detail-chip chip-mood">${escapeHtml(m)}</span>`)
+      ].join('');
+
+      const vitalsItems = [];
+      if (hasWater) {
+        vitalsItems.push(`<span class="cal-vital-pill">${svgIcon('droplet', 13)}<span>${log.waterGlasses} glasses</span></span>`);
+      }
+      if (hasSleep) {
+        vitalsItems.push(`<span class="cal-vital-pill">${svgIcon('moon', 13)}<span>${Number(log.sleepHours).toFixed(1)} hrs sleep</span></span>`);
+      }
+
+      detailsHtml = `
+        <div class="cal-inspector-details">
+          ${tagChips ? `<div class="cal-detail-chips">${tagChips}</div>` : ''}
+          ${vitalsItems.length ? `<div class="cal-vitals-row">${vitalsItems.join('')}</div>` : ''}
+          ${notesText ? `<div class="cal-note-strip"><span class="cal-note-icon">${svgIcon('fileText', 13)}</span><p>${escapeHtml(notesText)}</p></div>` : ''}
+        </div>
+      `;
+    } else {
+      detailsHtml = `
+        <div class="cal-inspector-empty">
+          <span>No symptoms, moods, or notes logged for this date.</span>
+        </div>
+      `;
+    }
+
+    const canMarkDayOne = diffFromToday <= 0 && !(status.cycleDay === 1 && isLoggedPeriod);
+    const phaseAccent = status.isBeforeHistory ? 'var(--text-muted)' : status.phase.color;
+    const phaseTitle = status.isBeforeHistory ? 'Untracked Date' : status.phase.name;
+    const fertilityBadgeHtml = status.isBeforeHistory
+      ? ''
+      : `<span class="cal-fertility-pill ${escapeHtml(status.fertilityBadgeClass || 'fertility-low')}" title="Calendar estimate only — not a method of contraception">${escapeHtml(status.fertilityChance)}</span>`;
+
+    container.innerHTML = `
+      <div class="cal-insp-header">
+        <div class="cal-insp-date-group">
+          <div class="cal-insp-date-row">
+            <h3 class="cal-insp-date">${escapeHtml(dateHeading)}</h3>
+            ${dateKey === todayStr ? '<span class="cal-today-tag">Today</span>' : ''}
+          </div>
+          <span class="cal-insp-meta">${escapeHtml(cycleMetaText)}</span>
+        </div>
+        <div class="cal-insp-steppers" role="group" aria-label="Step selected day">
+          <button type="button" id="btn-cal-day-prev" class="cal-stepper-btn" title="Previous Day" aria-label="Previous Day">${svgIcon('chevronLeft', 15)}</button>
+          <button type="button" id="btn-cal-day-next" class="cal-stepper-btn" title="Next Day" aria-label="Next Day">${svgIcon('chevronRight', 15)}</button>
+        </div>
+      </div>
+
+      <div class="cal-insp-phase-bar">
+        <div class="cal-insp-phase-left">
+          <span class="cal-insp-phase-icon" style="color: ${phaseAccent};">${status.isBeforeHistory ? svgIcon('calendar', 15) : phaseIconSvg(status.phase.key, 15)}</span>
+          <span class="cal-insp-phase-name">${escapeHtml(phaseTitle)}</span>
+        </div>
+        ${fertilityBadgeHtml}
+      </div>
+
+      <p class="cal-insp-context">${escapeHtml(contextCopy)}</p>
+
+      <div class="cal-quick-flow-section">
+        <div class="cal-section-label-row">
+          <span class="cal-section-label">Period Flow</span>
+          <span class="cal-section-status">${escapeHtml(flowStatusLabel)}</span>
+        </div>
+        <div class="cal-flow-pills" role="group" aria-label="Quick period flow selection">
+          ${flowButtonsHtml}
+        </div>
+      </div>
+
+      <div class="cal-logged-section">
+        <span class="cal-section-label">Day Log</span>
+        ${detailsHtml}
+      </div>
+
+      <div class="cal-insp-actions">
+        <button type="button" id="btn-cal-open-logger" class="btn-primary cal-insp-primary-btn">
+          ${svgIcon('edit', 14)}
+          <span>${hasDetailedLog || isLoggedPeriod || isLoggedSpotting ? 'Edit Full Entry' : 'Log Symptoms & Notes'}</span>
+        </button>
+        ${canMarkDayOne ? `
+          <button type="button" id="btn-cal-mark-start" class="btn-secondary cal-insp-secondary-btn" title="Record this date as Day 1 of a menstrual cycle">
+            ${svgIcon('droplet', 14)}
+            <span>Set as Day 1</span>
+          </button>
+        ` : ''}
+      </div>
+    `;
+
+    // Wire inspector interactions
+    container.querySelector('#btn-cal-day-prev')?.addEventListener('click', () => {
+      if (opts.onStepDay) opts.onStepDay(-1);
+    });
+    container.querySelector('#btn-cal-day-next')?.addEventListener('click', () => {
+      if (opts.onStepDay) opts.onStepDay(1);
+    });
+    container.querySelector('#btn-cal-open-logger')?.addEventListener('click', () => {
+      if (opts.onOpenLogger) opts.onOpenLogger(dateKey);
+    });
+    container.querySelector('#btn-cal-mark-start')?.addEventListener('click', () => {
+      if (opts.onMarkCycleStart) opts.onMarkCycleStart(dateKey);
+    });
+    container.querySelectorAll('.cal-flow-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        const val = pill.getAttribute('data-quick-flow');
+        if (opts.onQuickFlow) {
+          // Clicking an already-active flow pill clears it back to none
+          const nextVal = (val === currentFlow && val !== 'none') ? 'none' : val;
+          opts.onQuickFlow(dateKey, nextVal);
+        }
+      });
+    });
+  }
+
+  /**
+   * Render Upcoming Cycle Milestones card in the Calendar sidebar
+   */
+  _renderCalendarMilestones(todayDate, profile, logs, monthSummary, shortMonthName, opts = {}) {
+    const container = document.getElementById('cal-milestones');
+    if (!container) return;
+
+    const todayStatus = getCycleStatus(todayDate, profile, logs, { referenceDate: todayDate });
+    const nextPeriodDate = parseDateKey(todayStatus.nextPeriodStart);
+    const daysToPeriod = daysBetween(todayDate, nextPeriodDate);
+
+    // Ensure next ovulation points to today or the next upcoming ovulation peak
+    let upcomingOvDate = parseDateKey(todayStatus.nextOvulationDate);
+    if (daysBetween(todayDate, upcomingOvDate) < 0) {
+      upcomingOvDate = addDays(nextPeriodDate, Math.max(0, todayStatus.ovulationDay - 1));
+    }
+    const upcomingOvKey = formatDateKey(upcomingOvDate);
+    const daysToOv = daysBetween(todayDate, upcomingOvDate);
+
+    const fmtDate = (d) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const fmtCountdown = (diff) => {
+      if (diff === 0) return 'Today';
+      if (diff === 1) return 'Tomorrow';
+      if (diff > 1) return `In ${diff} days`;
+      return `${Math.abs(diff)}d ago`;
+    };
+
+    const periodSub = todayStatus.isLate
+      ? `${todayStatus.daysLate}d late`
+      : fmtCountdown(daysToPeriod);
+
+    container.innerHTML = `
+      <div class="cal-milestones-header">
+        <h4 class="cal-milestones-title">Upcoming Milestones</h4>
+        <span class="cal-milestones-rhythm">${todayStatus.cycleLength}d cycle • ${todayStatus.periodLength}d period</span>
+      </div>
+
+      <div class="cal-milestone-list">
+        <button type="button" class="cal-milestone-row" data-jump-date="${escapeHtml(todayStatus.nextPeriodStart)}">
+          <span class="cal-ms-icon ms-period">${svgIcon('droplet', 15)}</span>
+          <span class="cal-ms-body">
+            <span class="cal-ms-label">Next Est. Period</span>
+            <span class="cal-ms-sub">${escapeHtml(periodSub)}</span>
+          </span>
+          <span class="cal-ms-date">${escapeHtml(fmtDate(nextPeriodDate))}</span>
+          <span class="cal-ms-chevron">${svgIcon('chevronRight', 14)}</span>
+        </button>
+
+        <button type="button" class="cal-milestone-row" data-jump-date="${escapeHtml(upcomingOvKey)}">
+          <span class="cal-ms-icon ms-ovulation">${svgIcon('sparkles', 15)}</span>
+          <span class="cal-ms-body">
+            <span class="cal-ms-label">Est. Ovulation Peak</span>
+            <span class="cal-ms-sub">${escapeHtml(fmtCountdown(daysToOv))}</span>
+          </span>
+          <span class="cal-ms-date">${escapeHtml(fmtDate(upcomingOvDate))}</span>
+          <span class="cal-ms-chevron">${svgIcon('chevronRight', 14)}</span>
+        </button>
+
+        <div class="cal-milestone-row is-static">
+          <span class="cal-ms-icon ms-month">${svgIcon('calendar', 15)}</span>
+          <span class="cal-ms-body">
+            <span class="cal-ms-label">${escapeHtml(shortMonthName)} Activity</span>
+            <span class="cal-ms-sub">${monthSummary.loggedPeriodDays} logged flow • ${monthSummary.loggedEntryDays} total ${monthSummary.loggedEntryDays === 1 ? 'entry' : 'entries'}</span>
+          </span>
+        </div>
+      </div>
+
+      <p class="cal-milestones-footnote">Cycle &amp; fertility dates are calendar estimates only and not a contraceptive method.</p>
+    `;
+
+    container.querySelectorAll('.cal-milestone-row[data-jump-date]').forEach(row => {
+      row.addEventListener('click', () => {
+        const targetKey = row.getAttribute('data-jump-date');
+        if (targetKey && opts.onJumpToDate) opts.onJumpToDate(targetKey);
+      });
     });
   }
 

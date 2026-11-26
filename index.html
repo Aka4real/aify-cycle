@@ -710,66 +710,98 @@
     </main>
 
     <!-- ===================================================================
-         VIEW 2: INTERACTIVE CALENDAR
+         VIEW 2: INTERACTIVE CYCLE CALENDAR
          =================================================================== -->
-    <section id="view-calendar" class="view-panel">
-      <div class="calendar-card">
-        <div class="calendar-header">
-          <div class="calendar-title-group">
-            <h2 id="calendar-month-year">September 2026</h2>
-            <span class="calendar-subtitle">Click on any date to log symptoms or inspect past flow</span>
+    <section id="view-calendar" class="view-panel" aria-label="Cycle Calendar">
+      <div class="cal-layout">
+        <!-- Left: Interactive Month Board -->
+        <div class="cal-board">
+          <div class="cal-header">
+            <div class="cal-title-block">
+              <h2 id="calendar-month-year" class="cal-month-title">November 2026</h2>
+              <p id="calendar-month-summary" class="cal-month-summary">Select a date to inspect phase details or log flow</p>
+            </div>
+
+            <div class="cal-controls">
+              <button type="button" id="btn-cal-edit-period" class="cal-edit-btn" aria-pressed="false" title="Tap dates directly to mark or remove period days">
+                <svg class="ui-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+                <span id="cal-edit-btn-label">Log Period</span>
+              </button>
+
+              <div class="cal-nav-cluster" role="group" aria-label="Month navigation">
+                <button type="button" id="btn-cal-prev" class="cal-nav-btn" title="Previous Month" aria-label="Previous Month">
+                  <svg class="ui-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <button type="button" id="btn-cal-today" class="cal-nav-today">Today</button>
+                <button type="button" id="btn-cal-next" class="cal-nav-btn" title="Next Month" aria-label="Next Month">
+                  <svg class="ui-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+              </div>
+            </div>
           </div>
 
-          <div class="calendar-nav-buttons">
-            <button id="btn-cal-prev" class="btn-icon" title="Previous Month" aria-label="Previous Month">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          <!-- Inline Rapid Period Editing Banner -->
+          <div id="cal-edit-banner" class="cal-edit-banner" style="display: none;" role="status" aria-live="polite">
+            <div class="cal-edit-banner-copy">
+              <span class="cal-edit-banner-icon" aria-hidden="true">
+                <svg class="ui-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+              </span>
+              <span>Tap any date to add or remove period flow</span>
+            </div>
+            <button type="button" id="btn-cal-edit-done" class="cal-edit-done-btn">Done</button>
+          </div>
+
+          <!-- Weekday Labels -->
+          <div class="cal-weekdays" aria-hidden="true">
+            <div class="cal-weekday is-weekend">Sun</div>
+            <div class="cal-weekday">Mon</div>
+            <div class="cal-weekday">Tue</div>
+            <div class="cal-weekday">Wed</div>
+            <div class="cal-weekday">Thu</div>
+            <div class="cal-weekday">Fri</div>
+            <div class="cal-weekday is-weekend">Sat</div>
+          </div>
+
+          <!-- Connected-Ribbon Month Grid -->
+          <div id="calendar-days-grid" class="cal-grid" role="grid" aria-label="Monthly cycle calendar">
+            <!-- Populated by JavaScript -->
+          </div>
+
+          <!-- Interactive Filter Legend -->
+          <div id="cal-legend" class="cal-legend" role="group" aria-label="Highlight calendar dates by type">
+            <button type="button" class="cal-legend-chip" data-cal-filter="period" aria-pressed="false">
+              <span class="cal-swatch swatch-period"></span>
+              <span>Period</span>
             </button>
-            <button id="btn-cal-today" class="btn-secondary" style="padding: 0.45rem 0.95rem; font-size: 0.8rem; font-weight: 600;">Today</button>
-            <button id="btn-cal-next" class="btn-icon" title="Next Month" aria-label="Next Month">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            <button type="button" class="cal-legend-chip" data-cal-filter="predicted" aria-pressed="false">
+              <span class="cal-swatch swatch-predicted"></span>
+              <span>Predicted</span>
+            </button>
+            <button type="button" class="cal-legend-chip" data-cal-filter="fertile" aria-pressed="false">
+              <span class="cal-swatch swatch-fertile"></span>
+              <span>Est. Fertile</span>
+            </button>
+            <button type="button" class="cal-legend-chip" data-cal-filter="ovulation" aria-pressed="false">
+              <span class="cal-swatch swatch-ovulation"></span>
+              <span>Est. Ovulation</span>
+            </button>
+            <button type="button" class="cal-legend-chip" data-cal-filter="logged" aria-pressed="false">
+              <span class="cal-swatch swatch-logged"></span>
+              <span>Notes &amp; Symptoms</span>
             </button>
           </div>
         </div>
 
-        <!-- Weekday Labels -->
-        <div class="calendar-grid" style="margin-bottom: 0.5rem;">
-          <div class="calendar-weekday">Sun</div>
-          <div class="calendar-weekday">Mon</div>
-          <div class="calendar-weekday">Tue</div>
-          <div class="calendar-weekday">Wed</div>
-          <div class="calendar-weekday">Thu</div>
-          <div class="calendar-weekday">Fri</div>
-          <div class="calendar-weekday">Sat</div>
-        </div>
+        <!-- Right: Selected Day Inspector & Cycle Milestones -->
+        <aside class="cal-sidebar" aria-label="Selected day details">
+          <div id="cal-day-inspector" class="cal-inspector">
+            <!-- Populated by JavaScript -->
+          </div>
 
-        <!-- Days Grid -->
-        <div id="calendar-days-grid" class="calendar-grid">
-          <!-- Populated by JavaScript -->
-        </div>
-
-        <!-- Legend -->
-        <div class="calendar-legend">
-          <div class="legend-item">
-            <span class="legend-color-box" style="background: var(--color-rose);"></span>
-            <span>Period Days</span>
+          <div id="cal-milestones" class="cal-milestones">
+            <!-- Populated by JavaScript -->
           </div>
-          <div class="legend-item">
-            <span class="legend-color-box" style="background: repeating-linear-gradient(45deg, rgba(255,107,139,0.3) 0px, rgba(255,107,139,0.3) 3px, transparent 3px, transparent 6px);"></span>
-            <span>Predicted Period</span>
-          </div>
-          <div class="legend-item">
-            <span class="legend-color-box" style="background: var(--color-gold);"></span>
-            <span>Ovulation Peak</span>
-          </div>
-          <div class="legend-item">
-            <span class="legend-color-box" style="background: rgba(255,142,83,0.3); border: 1px solid var(--color-coral);"></span>
-            <span>Fertile Window</span>
-          </div>
-          <div class="legend-item">
-            <span class="badge-symptom-dot" style="display:inline-block;"></span>
-            <span>Symptoms / Notes Logged</span>
-          </div>
-        </div>
+        </aside>
       </div>
     </section>
 

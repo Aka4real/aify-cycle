@@ -20,6 +20,7 @@ import {
   buildDiscreetGreetingText
 } from '../js/ai-action-parser.js';
 import { escapeHtml } from '../js/dom-utils.js';
+import { buildCalendarMonthGrid } from '../js/ui-components.js';
 
 const require = createRequire(import.meta.url);
 const {
@@ -536,3 +537,58 @@ test('Biological Cycle Compass SVG uses true phase arcs without rainbow overlay 
   assert.match(html, /id="ovulation-marker-core"[^>]*cx="0"\s+cy="0"/);
   assert.doesNotMatch(html, /wheel-legend-pill[^>]*active-phase/);
 });
+
+test('Reworked Calendar builds complete 7-column weeks, row-aware connected ribbons, and master-detail markup', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const root = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
+  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+
+  // Verify reworked master-detail Calendar HTML structure
+  assert.match(html, /class="cal-layout"/);
+  assert.match(html, /id="btn-cal-edit-period"/);
+  assert.match(html, /id="cal-edit-banner"/);
+  assert.match(html, /id="calendar-days-grid"[^>]*class="cal-grid"/);
+  assert.match(html, /id="cal-legend"/);
+  assert.match(html, /id="cal-day-inspector"/);
+  assert.match(html, /id="cal-milestones"/);
+
+  // Verify Nov 2026 grid: Nov 24 (Tue) logged medium flow -> Nov 24–28 (Tue–Sat) seamless period ribbon
+  const profile = { cycleLength: 28, periodLength: 5, lastPeriodStart: '2026-11-24' };
+  const logs = { '2026-11-24': { flow: 'medium', symptoms: ['Cramps'] } };
+  const nov = buildCalendarMonthGrid(2026, 10, profile, logs, { referenceDate: '2026-11-26' });
+
+  assert.equal(nov.cells.length % 7, 0);
+  assert.equal(nov.days.length, 30);
+  assert.equal(nov.summary.loggedPeriodDays, 1);
+  assert.equal(nov.summary.totalPeriodWindowDays, 5);
+  assert.deepEqual(nov.summary.periodRanges, [{ start: 24, end: 28 }]);
+
+  const byKey = (arr) => new Map(arr.filter(c => !c.isOutside).map(c => [c.dateKey, c]));
+  const novMap = byKey(nov.cells);
+
+  assert.equal(novMap.get('2026-11-24').ribbonType, 'period');
+  assert.equal(novMap.get('2026-11-24').bandPos, 'start');
+  assert.equal(novMap.get('2026-11-24').isLoggedPeriod, true);
+
+  assert.equal(novMap.get('2026-11-26').ribbonType, 'period');
+  assert.equal(novMap.get('2026-11-26').bandPos, 'mid');
+  assert.equal(novMap.get('2026-11-26').isEstimatedPeriod, true);
+
+  assert.equal(novMap.get('2026-11-28').ribbonType, 'period');
+  assert.equal(novMap.get('2026-11-28').bandPos, 'end');
+
+  // Verify Dec 2026 fertile window splits cleanly across Saturday (Dec 5) -> Sunday (Dec 6) row break
+  const dec = buildCalendarMonthGrid(2026, 11, profile, logs, { referenceDate: '2026-11-26' });
+  assert.equal(dec.cells.length % 7, 0);
+  const decMap = byKey(dec.cells);
+
+  assert.equal(decMap.get('2026-12-02').ribbonType, 'fertile');
+  assert.equal(decMap.get('2026-12-02').bandPos, 'start');
+  assert.equal(decMap.get('2026-12-05').bandPos, 'end');   // Saturday closes week row
+  assert.equal(decMap.get('2026-12-06').bandPos, 'start'); // Sunday starts new week row
+  assert.equal(decMap.get('2026-12-07').isOvulation, true);
+  assert.equal(decMap.get('2026-12-07').bandPos, 'mid');
+  assert.equal(decMap.get('2026-12-08').bandPos, 'end');
+});
+

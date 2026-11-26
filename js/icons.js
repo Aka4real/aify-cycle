@@ -127,6 +127,13 @@ const ICON_PATHS = {
   plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
   minus: '<line x1="5" y1="12" x2="19" y2="12"/>',
   arrowUpRight: '<line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/>',
+  chevronLeft: '<polyline points="15 18 9 12 15 6"/>',
+  chevronRight: '<polyline points="9 18 15 12 9 6"/>',
+  fileText:
+    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>' +
+    '<polyline points="14 2 14 8 20 8"/>' +
+    '<line x1="16" y1="13" x2="8" y2="13"/>' +
+    '<line x1="16" y1="17" x2="8" y2="17"/>',
   logout:
     '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>' +
     '<polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>'

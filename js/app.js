@@ -5,13 +5,24 @@
  */
 
 import { storage } from './storage.js';
-import { getCycleStatus, formatDateKey, parseDateKey, addDays } from './cycle-engine.js';
+import {
+  getCycleStatus,
+  formatDateKey,
+  parseDateKey,
+  addDays,
+  resolveLastPeriodStart,
+  MIN_PERIOD_LENGTH,
+  MAX_PERIOD_LENGTH,
+  MIN_CYCLE_LENGTH,
+  MAX_CYCLE_LENGTH
+} from './cycle-engine.js';
 import { ui } from './ui-components.js';
 import { AuthManager } from './auth.js';
 import { OnboardingWizard } from './onboarding.js';
 import { AICoach } from './ai-coach.js';
 import { analytics } from './analytics-tracker.js';
 import { supabaseService } from './supabase-client.js';
+import { svgIcon } from './icons.js';
 
 class AifyCycleApp {
   constructor() {
@@ -65,8 +76,6 @@ class AifyCycleApp {
         }
       });
     }
-
-    console.log('🌸 AifyCycle Initialized successfully.');
   }
 
   /**
@@ -86,7 +95,7 @@ class AifyCycleApp {
       btnAccept.addEventListener('click', () => {
         analytics.saveConsent({ analyticsAllowed: true });
         banner.style.display = 'none';
-        ui.showToast('Privacy preferences saved', '🛡️');
+        ui.showToast('Privacy preferences saved', 'shield');
       });
     }
 
@@ -94,7 +103,7 @@ class AifyCycleApp {
       btnDecline.addEventListener('click', () => {
         analytics.saveConsent({ analyticsAllowed: false });
         banner.style.display = 'none';
-        ui.showToast('Analytics tracking declined', '🛡️');
+        ui.showToast('Analytics tracking declined', 'shield');
       });
     }
 
@@ -145,7 +154,7 @@ class AifyCycleApp {
     const btnApple = document.getElementById('btn-oauth-apple');
     if (!btnApple) return;
 
-    // Keep Sign in with Apple hidden until Apple provider is enabled in Supabase Cloud
+    // Keep Sign in with Apple hidden until Apple provider is enabled
     try {
       await supabaseService.init();
       const providers = await supabaseService.getAuthProviderStatus();
@@ -260,7 +269,7 @@ class AifyCycleApp {
       });
     }
 
-    // --- Real Supabase OAuth Flows (Google & Apple) ---
+    // --- Real OAuth Flows (Google & Apple) ---
     const wireOAuthButton = (btnId, provider, providerLabel) => {
       const btn = document.getElementById(btnId);
       if (!btn) return;
@@ -301,7 +310,7 @@ class AifyCycleApp {
         guestBtn.disabled = true;
         try {
           await this.auth.guestLogin();
-          ui.showToast('Continuing in private guest mode', '✨');
+          ui.showToast('Continuing in private guest mode', 'user');
           this._routeUser();
         } finally {
           guestBtn.disabled = false;
@@ -320,7 +329,7 @@ class AifyCycleApp {
       display.textContent = '';
       (errors || []).forEach(errText => {
         const p = document.createElement('p');
-        p.textContent = `⚠️ ${errText}`;
+        p.textContent = String(errText);
         display.appendChild(p);
       });
       display.classList.remove('shake');
@@ -338,7 +347,7 @@ class AifyCycleApp {
       display.style.color = 'var(--color-teal, #008E9B)';
       display.textContent = '';
       const p = document.createElement('p');
-      p.textContent = `✉️ ${message}`;
+      p.textContent = String(message);
       display.appendChild(p);
     }
   }
@@ -424,7 +433,7 @@ class AifyCycleApp {
     document.documentElement.setAttribute('data-theme', savedTheme);
     const themeIcon = document.getElementById('theme-toggle-icon');
     if (themeIcon) {
-      themeIcon.textContent = savedTheme === 'light' ? '🌙' : '☀️';
+      themeIcon.innerHTML = savedTheme === 'light' ? svgIcon('moon', 18) : svgIcon('sun', 18);
     }
   }
 
@@ -436,78 +445,9 @@ class AifyCycleApp {
 
     const themeIcon = document.getElementById('theme-toggle-icon');
     if (themeIcon) {
-      themeIcon.textContent = nextTheme === 'light' ? '🌙' : '☀️';
+      themeIcon.innerHTML = nextTheme === 'light' ? svgIcon('moon', 18) : svgIcon('sun', 18);
     }
-    ui.showToast(`Switched to ${nextTheme === 'light' ? 'Light' : 'Dark'} mode`, '🎨');
-  }
-
-  async _refreshAiSettingsStatus() {
-    const statusPill = document.getElementById('ai-settings-status');
-    if (!statusPill) return;
-
-    statusPill.textContent = 'Checking...';
-    statusPill.className = 'ai-status-pill';
-
-    let serverConfigured = false;
-    let modelName = '';
-    try {
-      const res = await fetch('/api/gemini/status');
-      if (res.ok) {
-        const data = await res.json();
-        serverConfigured = Boolean(data.configured);
-        if (data.model) modelName = data.model;
-      }
-    } catch (e) {}
-
-    if (serverConfigured) {
-      const displayModel = modelName
-        ? modelName.split('-').map(p => (p ? p[0].toUpperCase() + p.slice(1) : '')).join(' ')
-        : 'Gemini AI';
-      statusPill.textContent = `✨ ${displayModel} Active`;
-      statusPill.className = 'ai-status-pill pill-server';
-    } else {
-      statusPill.textContent = '🧠 Local Intelligence Active';
-      statusPill.className = 'ai-status-pill pill-local';
-    }
-  }
-
-  async _refreshSupabaseSettingsStatus() {
-    const statusPill = document.getElementById('supabase-settings-status');
-    const urlInput = document.getElementById('setting-supabase-url');
-    const anonKeyInput = document.getElementById('setting-supabase-anonkey');
-
-    // Pre-populate custom credentials if saved locally
-    try {
-      const savedConfig = localStorage.getItem('aifycycle_supabase_config_v1');
-      if (savedConfig) {
-        const parsed = JSON.parse(savedConfig);
-        if (urlInput && !urlInput.value) urlInput.value = parsed.url || '';
-        if (anonKeyInput && !anonKeyInput.value) anonKeyInput.value = parsed.anonKey || '';
-      }
-    } catch (e) {}
-
-    if (!statusPill) return;
-
-    statusPill.textContent = 'Checking...';
-    statusPill.className = 'ai-status-pill';
-
-    try {
-      await supabaseService.init();
-      const info = supabaseService.getConnectionInfo();
-      if (info.configured) {
-        const label = info.source === 'custom'
-          ? `☁️ Custom Override (${info.host})`
-          : `☁️ Cloud Active (${info.host})`;
-        statusPill.textContent = label;
-        statusPill.className = 'ai-status-pill pill-server';
-      } else {
-        statusPill.textContent = '📱 Local-First Sandbox';
-        statusPill.className = 'ai-status-pill pill-local';
-      }
-    } catch (e) {
-      statusPill.textContent = '📱 Local-First Sandbox';
-      statusPill.className = 'ai-status-pill pill-local';
-    }
+    ui.showToast(`Switched to ${nextTheme === 'light' ? 'Light' : 'Dark'} mode`, nextTheme === 'light' ? 'sun' : 'moon');
   }
 
   async loadCycleSyncingInsights(forceRefresh = false) {
@@ -528,7 +468,7 @@ class AifyCycleApp {
       const insights = await this.aiCoach.generateCycleSyncingInsights(todayStatus, profile, logs, forceRefresh);
       if (insights) {
         ui.renderCycleSyncingGuide(todayStatus, insights, false);
-        // Seamlessly update Hero Wellness Note with Gemini's personalized insight
+        // Seamlessly update Hero Wellness Note with personalized insight
         const partnerNoteEl = document.getElementById('hero-partner-care-note');
         if (partnerNoteEl && insights.partnerTip) {
           partnerNoteEl.textContent = `"${insights.partnerTip}"`;
@@ -537,7 +477,7 @@ class AifyCycleApp {
         ui.renderCycleSyncingGuide(todayStatus, null, false);
       }
     } catch (e) {
-      console.warn('Could not load Gemini cycle insights:', e);
+      console.warn('Could not load cycle insights:', e);
       ui.renderCycleSyncingGuide(todayStatus, null, false);
     }
   }
@@ -554,7 +494,7 @@ class AifyCycleApp {
     const headerGreetingEl = document.getElementById('header-user-greeting');
     const hour = new Date().getHours();
     const timeGreeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-    const greetingText = profile.userName ? `${timeGreeting}, ${profile.userName} 🌸` : `${timeGreeting} 🌸`;
+    const greetingText = profile.userName ? `${timeGreeting}, ${profile.userName}` : timeGreeting;
     if (greetingEl) {
       greetingEl.textContent = greetingText;
     }
@@ -571,9 +511,13 @@ class AifyCycleApp {
       bannerAvatar.alt = profile.userName || user?.name || 'User Profile';
     }
     if (bannerProvider) {
-      bannerProvider.textContent = user?.provider === 'google' ? 'G' :
-                                   user?.provider === 'apple' ? '' : '🌸';
-      bannerProvider.title = user?.provider ? `Signed in with ${user.provider}` : 'Private Account';
+      if (user?.provider === 'google') {
+        bannerProvider.textContent = 'G';
+        bannerProvider.title = 'Signed in with Google';
+      } else {
+        bannerProvider.innerHTML = svgIcon('blossom', 12);
+        bannerProvider.title = 'Private Account';
+      }
     }
 
     // Update active date display label & consecutive logging streak
@@ -611,7 +555,7 @@ class AifyCycleApp {
       (dateKey) => this.openLoggerModalForDate(dateKey)
     );
 
-    // Render Syncing Guide with Gemini intelligence
+    // Render Syncing Guide
     this.loadCycleSyncingInsights(false);
 
     // Render Analytics
@@ -632,11 +576,11 @@ class AifyCycleApp {
     if (type === 'water') {
       log.waterGlasses = Math.max(0, val);
       storage.saveLog(todayKey, log);
-      ui.showToast(`Hydration: ${val} glasses (${val * 250} ml)`, '💧');
+      ui.showToast(`Hydration: ${val} glasses (${val * 250} ml)`, 'droplet');
     } else if (type === 'sleep') {
       log.sleepHours = Math.max(1, Math.min(18, Math.round(val * 10) / 10));
       storage.saveLog(todayKey, log);
-      ui.showToast(`Sleep set to ${log.sleepHours.toFixed(1)} hrs`, '🌙');
+      ui.showToast(`Sleep set to ${log.sleepHours.toFixed(1)} hrs`, 'moon');
     } else if (type === 'mood') {
       log.moods = log.moods || [];
       const idx = log.moods.indexOf(val);
@@ -646,16 +590,16 @@ class AifyCycleApp {
         log.moods.push(val);
       }
       storage.saveLog(todayKey, log);
-      ui.showToast(`Mood: ${val}`, '✨');
+      ui.showToast(`Mood: ${val}`, 'sparkles');
     } else if (type === 'symptom') {
       log.symptoms = log.symptoms || [];
       const idx = log.symptoms.indexOf(val);
       if (idx > -1) {
         log.symptoms.splice(idx, 1);
-        ui.showToast(`Removed ${val}`, '➖');
+        ui.showToast(`Removed ${val}`, 'minus');
       } else {
         log.symptoms.push(val);
-        ui.showToast(`Logged ${val}`, '➕');
+        ui.showToast(`Logged ${val}`, 'plus');
       }
       storage.saveLog(todayKey, log);
     }
@@ -756,24 +700,22 @@ class AifyCycleApp {
       notes
     };
 
-    // If user selected period flow (light/medium/heavy) on this date, check if this should adjust last period start
-    if (selectedFlow && selectedFlow !== 'none') {
+    storage.saveLog(targetDateKey, newLog);
+
+    // Sync profile.lastPeriodStart from extracted period runs (never shifts Day 1 to Day 2-7 or isolated spotting)
+    if (selectedFlow && selectedFlow !== 'none' && selectedFlow !== 'spotting') {
       const profile = storage.getProfile();
-      // If user marks flow on today or newer date, update lastPeriodStart
-      const activeDate = parseDateKey(targetDateKey);
-      const currentStart = parseDateKey(profile.lastPeriodStart);
-      if (activeDate >= currentStart) {
-        profile.lastPeriodStart = targetDateKey;
+      const resolvedStart = resolveLastPeriodStart(storage.getAllLogs(), profile.lastPeriodStart);
+      if (resolvedStart && resolvedStart !== profile.lastPeriodStart) {
+        profile.lastPeriodStart = resolvedStart;
         storage.saveProfile(profile);
       }
     }
-
-    storage.saveLog(targetDateKey, newLog);
     analytics.trackEvent('symptom', 'logged', targetDateKey);
     analytics.logAuditAction('SYMPTOMS_LOGGED', `Updated wellness & flow for ${targetDateKey}`);
     this.closeModal('logger-modal');
     this.renderAll();
-    ui.showToast(`Logged for ${targetDateKey}!`, '💖');
+    ui.showToast(`Logged for ${targetDateKey}`, 'check');
   }
 
   markPeriodStartedToday() {
@@ -794,18 +736,17 @@ class AifyCycleApp {
     analytics.logAuditAction('PERIOD_START_RECORDED', `Cycle Day 1 recorded on ${todayKey}`);
 
     this.renderAll();
-    ui.showToast('New cycle recorded starting today!', '🩸');
+    ui.showToast('New cycle recorded starting today', 'droplet');
   }
 
   attachEventListeners() {
     // Real-Time Synchronization with AI Agent updates
     window.addEventListener('aify:data-updated', (e) => {
-      console.log('🔄 Real-time data synchronization received from AI Coach:', e.detail);
       this.renderAll();
 
       if (e.detail && e.detail.summaries && e.detail.summaries.length > 0) {
         const first = e.detail.summaries[0];
-        ui.showToast(`Aify updated: ${first.title} (${first.detail})`, first.icon || '✨');
+        ui.showToast(`Aify updated: ${first.title} (${first.detail})`, first.icon || 'check');
       }
     });
 
@@ -957,105 +898,17 @@ class AifyCycleApp {
         document.getElementById('setting-cyclelength').value = profile.cycleLength || 28;
         document.getElementById('setting-periodlength').value = profile.periodLength || 5;
         document.getElementById('setting-lastperiod').value = profile.lastPeriodStart || formatDateKey(this.today);
-        
-        // Refresh Gemini AI settings & Supabase cloud sync status
-        this._refreshAiSettingsStatus();
-        this._refreshSupabaseSettingsStatus();
+
+        const aiEnabledCheckbox = document.getElementById('setting-aicoach-enabled');
+        if (aiEnabledCheckbox) {
+          aiEnabledCheckbox.checked = profile.aiCoachEnabled !== false;
+        }
 
         settingsModal.classList.add('active');
       });
     }
 
-    // Supabase Custom Config Drawer Toggle
-    const btnToggleCustomSupabase = document.getElementById('btn-toggle-custom-supabase');
-    const supabaseDrawer = document.getElementById('supabase-custom-config-drawer');
-    if (btnToggleCustomSupabase && supabaseDrawer) {
-      btnToggleCustomSupabase.addEventListener('click', () => {
-        const isClosed = supabaseDrawer.style.display === 'none' || !supabaseDrawer.style.display;
-        supabaseDrawer.style.display = isClosed ? 'block' : 'none';
-        btnToggleCustomSupabase.textContent = isClosed ? 'Hide Custom Credentials ✕' : 'Configure Custom Credentials ⚙️';
-      });
-    }
-
-    // Save Custom Supabase Credentials
-    const btnSaveSupabaseConfig = document.getElementById('btn-save-supabase-config');
-    if (btnSaveSupabaseConfig) {
-      btnSaveSupabaseConfig.addEventListener('click', async () => {
-        const url = document.getElementById('setting-supabase-url')?.value.trim();
-        const anonKey = document.getElementById('setting-supabase-anonkey')?.value.trim();
-        if (!url || !anonKey) {
-          ui.showToast('Please provide both Supabase URL and Anon Key', '⚠️');
-          return;
-        }
-
-        btnSaveSupabaseConfig.disabled = true;
-        btnSaveSupabaseConfig.textContent = 'Connecting...';
-        try {
-          await supabaseService.setCustomConfig(url, anonKey);
-          await storage.uploadLocalToCloud();
-          await this._refreshSupabaseSettingsStatus();
-          ui.showToast('Supabase connected! Cloud sync active.', '🚀');
-        } catch (e) {
-          ui.showToast('Failed to connect to Supabase: ' + e.message, '⚠️');
-        } finally {
-          btnSaveSupabaseConfig.disabled = false;
-          btnSaveSupabaseConfig.textContent = 'Save & Connect';
-        }
-      });
-    }
-
-    // Clear Custom Supabase Credentials
-    const btnClearSupabaseConfig = document.getElementById('btn-clear-supabase-config');
-    if (btnClearSupabaseConfig) {
-      btnClearSupabaseConfig.addEventListener('click', async () => {
-        await supabaseService.setCustomConfig(null, null);
-        const urlInput = document.getElementById('setting-supabase-url');
-        const anonKeyInput = document.getElementById('setting-supabase-anonkey');
-        if (urlInput) urlInput.value = '';
-        if (anonKeyInput) anonKeyInput.value = '';
-        await this._refreshSupabaseSettingsStatus();
-        ui.showToast('Custom credentials removed. Returned to local mode.', 'ℹ️');
-      });
-    }
-
-    // Supabase Manual Sync Now
-    const btnSyncNow = document.getElementById('btn-supabase-sync-now');
-    if (btnSyncNow) {
-      btnSyncNow.addEventListener('click', async () => {
-        const icon = document.getElementById('sync-spinner-icon');
-        const text = document.getElementById('sync-button-text');
-        btnSyncNow.disabled = true;
-        if (text) text.textContent = 'Syncing...';
-        if (icon) icon.style.display = 'inline-block';
-
-        try {
-          await supabaseService.init();
-          if (!supabaseService.hasConfig()) {
-            ui.showToast('Local storage is up to date (no cloud configured)', '📱');
-            return;
-          }
-          const upRes = await storage.uploadLocalToCloud();
-          const downRes = await storage.syncFromCloud();
-          if (upRes.success || downRes.success) {
-            this.renderAll();
-            ui.showToast('Cycle records & memories synchronized with Supabase Cloud!', '☁️');
-          } else if (upRes.reason === 'not_authenticated' || downRes.reason === 'not_authenticated') {
-            ui.showToast('Sign in with Google or Email to sync with Supabase Cloud.', 'ℹ️');
-          } else if (upRes.reason === 'demo_mode') {
-            ui.showToast('Demo data is kept local and not uploaded to cloud.', 'ℹ️');
-          } else {
-            ui.showToast(`Cloud sync failed: ${upRes.error || downRes.error || 'Unknown error'}`, '⚠️');
-          }
-        } catch (e) {
-          ui.showToast('Cloud sync error: ' + e.message, '⚠️');
-        } finally {
-          btnSyncNow.disabled = false;
-          if (text) text.textContent = 'Sync Now';
-        }
-      });
-    }
-
-    // Cycle Syncing: Refresh with Gemini 3.6 Flash
+    // Cycle Syncing: Refresh Insights
     const btnRefreshSync = document.getElementById('btn-refresh-gemini-sync');
     if (btnRefreshSync) {
       btnRefreshSync.addEventListener('click', () => {
@@ -1069,8 +922,10 @@ class AifyCycleApp {
         const profile = storage.getProfile();
         profile.userName = document.getElementById('setting-username').value.trim() || 'User';
         profile.partnerName = document.getElementById('setting-partnername').value.trim() || '';
-        profile.cycleLength = parseInt(document.getElementById('setting-cyclelength').value, 10) || 28;
-        profile.periodLength = parseInt(document.getElementById('setting-periodlength').value, 10) || 5;
+        const rawCycle = parseInt(document.getElementById('setting-cyclelength').value, 10) || 28;
+        const rawPeriod = parseInt(document.getElementById('setting-periodlength').value, 10) || 5;
+        profile.cycleLength = Math.min(MAX_CYCLE_LENGTH, Math.max(MIN_CYCLE_LENGTH, rawCycle));
+        profile.periodLength = Math.min(MAX_PERIOD_LENGTH, Math.max(MIN_PERIOD_LENGTH, rawPeriod));
         profile.lastPeriodStart = document.getElementById('setting-lastperiod').value || formatDateKey(this.today);
 
         const aiEnabledCheckbox = document.getElementById('setting-aicoach-enabled');
@@ -1081,86 +936,7 @@ class AifyCycleApp {
         storage.saveProfile(profile);
         this.closeModal('settings-modal');
         this.renderAll();
-        this.aiCoach?.updateEngineBadge();
-        ui.showToast('Profile and cycle settings updated!', '⚙️');
-      });
-    }
-
-    // Export / Import / Reset Actions
-    const btnExportData = document.getElementById('btn-export-data');
-    if (btnExportData) {
-      btnExportData.addEventListener('click', () => {
-        const json = storage.exportBackup();
-        const blob = new Blob([json], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `aifycycle-backup-${formatDateKey(new Date())}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-        analytics.trackEvent('backup', 'export');
-        analytics.logAuditAction('DATA_EXPORTED', 'User exported JSON data backup');
-        ui.showToast('Data backup downloaded', '📁');
-      });
-    }
-
-    // Analytics Telemetry Export
-    const btnExportTelemetry = document.getElementById('btn-export-telemetry');
-    if (btnExportTelemetry) {
-      btnExportTelemetry.addEventListener('click', () => {
-        const report = analytics.exportComplianceReport();
-        const blob = new Blob([report], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `aifycycle-compliance-audit-${formatDateKey(new Date())}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-        ui.showToast('Compliance report downloaded', '📄');
-      });
-    }
-
-    // Analytics Tracking Toggle in Settings
-    const toggleAnalytics = document.getElementById('setting-analytics-toggle');
-    if (toggleAnalytics) {
-      toggleAnalytics.checked = analytics.isTrackingEnabled();
-      toggleAnalytics.addEventListener('change', (e) => {
-        analytics.saveConsent({ analyticsAllowed: e.target.checked });
-        ui.showToast(`Anonymous analytics ${e.target.checked ? 'enabled' : 'disabled'}`, '🛡️');
-      });
-    }
-
-    // GDPR Right to Erasure: Complete Account & Data Wipe
-    const btnGdprWipe = document.getElementById('btn-gdpr-wipe');
-    if (btnGdprWipe) {
-      btnGdprWipe.addEventListener('click', async () => {
-        const confirmed = confirm(
-          '⚠️ GDPR DATA ERASURE WARNING:\n\n' +
-          'This will permanently delete all your account credentials, menstrual cycle logs, symptom entries, AI chat history, learned health memories, API keys, and local analytics from this device and Supabase Cloud.\n\n' +
-          'This action is irreversible. Do you wish to proceed?'
-        );
-
-        if (confirmed) {
-          const result = await storage.purgeAllUserData();
-          if (result?.error) {
-            alert(`Local data erased, but cloud erasure reported an error: ${result.error}`);
-          } else {
-            alert('All your personal data, cycle records, and sessions have been permanently erased.');
-          }
-          window.location.reload();
-        }
-      });
-    }
-
-    const btnResetData = document.getElementById('btn-reset-data');
-    if (btnResetData) {
-      btnResetData.addEventListener('click', () => {
-        if (confirm('Reset all cycle logs and restore starter demo data?')) {
-          storage.resetAllData();
-          this.closeModal('settings-modal');
-          this.renderAll();
-          ui.showToast('Starter demo data restored', '🔄');
-        }
+        ui.showToast('Profile and cycle settings updated', 'sliders');
       });
     }
 
@@ -1237,14 +1013,12 @@ class AifyCycleApp {
       });
     }
 
-    // 7. Period Started Today Quick Button handled above
-
-    // 8. Logout
+    // 7. Logout
     const btnLogout = document.getElementById('btn-logout');
     if (btnLogout) {
       btnLogout.addEventListener('click', async () => {
         await this.auth.logout();
-        ui.showToast('Signed out successfully', '👋');
+        ui.showToast('Signed out successfully', 'logout');
         this._routeUser();
       });
     }

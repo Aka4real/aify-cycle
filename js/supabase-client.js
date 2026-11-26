@@ -6,7 +6,6 @@
 
 const SUPABASE_CDN_URL = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 const CONFIG_ENDPOINT = '/api/supabase/config';
-const CUSTOM_CONFIG_KEY = 'aifycycle_supabase_config_v1';
 
 class SupabaseService {
   constructor() {
@@ -35,7 +34,6 @@ class SupabaseService {
     try {
       const config = await this._resolveConfig();
       if (!config || !config.url || !config.anonKey) {
-        console.info('🌸 AifyCycle: Supabase not configured. Operating in Local-First Mode.');
         this.isConfigured = false;
         this.activeUrl = null;
         this.configSource = null;
@@ -62,7 +60,6 @@ class SupabaseService {
       this.isConfigured = true;
       this.activeUrl = config.url;
       this.configSource = config.source;
-      console.info(`🚀 AifyCycle: Supabase connected (${this.getConnectionInfo().host}, source: ${config.source}).`);
 
       if (this._authSubscription) {
         try { this._authSubscription.unsubscribe(); } catch (e) {}
@@ -74,7 +71,6 @@ class SupabaseService {
 
       return this.client;
     } catch (err) {
-      console.warn('🌸 AifyCycle: Supabase initialization deferred or offline. Running locally.', err.message);
       this.isConfigured = false;
       this._initPromise = null;
       return null;
@@ -82,25 +78,10 @@ class SupabaseService {
   }
 
   /**
-   * Resolve Supabase URL & Anon Key
+   * Resolve Supabase URL & Anon Key from server-managed config only
    */
   async _resolveConfig() {
-    // 1. Check local storage override (Settings -> Custom Credentials)
-    try {
-      const localCustom = localStorage.getItem(CUSTOM_CONFIG_KEY);
-      if (localCustom) {
-        const parsed = JSON.parse(localCustom);
-        if (parsed.url && parsed.anonKey) {
-          return {
-            url: parsed.url.trim().replace(/\/+$/, ''),
-            anonKey: parsed.anonKey.trim(),
-            source: 'custom'
-          };
-        }
-      }
-    } catch (e) {}
-
-    // 2. Check window injected config
+    // 1. Check server-injected window config
     if (window.AIFY_SUPABASE_CONFIG?.url && window.AIFY_SUPABASE_CONFIG?.anonKey) {
       return {
         url: window.AIFY_SUPABASE_CONFIG.url.trim().replace(/\/+$/, ''),
@@ -109,7 +90,7 @@ class SupabaseService {
       };
     }
 
-    // 3. Fetch from backend config endpoint (with 1 automatic retry for flaky networks)
+    // 2. Fetch from backend config endpoint (with 1 automatic retry for flaky networks)
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const res = await fetch(CONFIG_ENDPOINT, { signal: AbortSignal.timeout(10000) });
@@ -140,23 +121,6 @@ class SupabaseService {
 
   hasConfig() {
     return this.isConfigured && Boolean(this.client);
-  }
-
-  getConnectionInfo() {
-    let host = null;
-    if (this.activeUrl) {
-      try {
-        host = new URL(this.activeUrl).host;
-      } catch (e) {
-        host = this.activeUrl;
-      }
-    }
-    return {
-      configured: this.hasConfig(),
-      url: this.activeUrl,
-      host,
-      source: this.configSource
-    };
   }
 
   /**
@@ -192,7 +156,7 @@ class SupabaseService {
         return this._cachedSettings;
       }
     } catch (e) {
-      console.warn('[Supabase] Could not fetch auth settings:', e.message);
+      // Ignore network hiccup when querying optional auth providers
     }
     return null;
   }
@@ -220,37 +184,6 @@ class SupabaseService {
       apple: Boolean(settings.external?.apple),
       anonymous: Boolean(settings.external?.anonymous_users)
     };
-  }
-
-  /**
-   * Save or clear custom Supabase credentials from Settings modal
-   */
-  async setCustomConfig(url, anonKey) {
-    this._cachedSettings = null;
-    if (this._authSubscription) {
-      try { this._authSubscription.unsubscribe(); } catch (e) {}
-      this._authSubscription = null;
-    }
-
-    if (url && anonKey) {
-      const cleanUrl = url.trim().replace(/\/+$/, '');
-      localStorage.setItem(CUSTOM_CONFIG_KEY, JSON.stringify({ url: cleanUrl, anonKey: anonKey.trim() }));
-      this.client = null;
-      this.isConfigured = false;
-      this.activeUrl = null;
-      this.configSource = null;
-      this._initPromise = null;
-      return this.init();
-    } else {
-      localStorage.removeItem(CUSTOM_CONFIG_KEY);
-      this.client = null;
-      this.isConfigured = false;
-      this.activeUrl = null;
-      this.configSource = null;
-      this._initPromise = null;
-      // Re-initialize from server env if available
-      return this.init();
-    }
   }
 }
 

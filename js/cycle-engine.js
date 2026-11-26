@@ -11,7 +11,7 @@ export const PHASES = {
     shortName: 'Menstrual',
     color: '#FF6B8B',
     bgGradient: 'linear-gradient(135deg, #FF6B8B, #FF8E53)',
-    icon: '🩸',
+    icon: 'droplet',
     energy: 'Restorative & Gentle',
     tagline: 'Time to rest, nourish, and reset.',
     description: 'Estrogen and progesterone are near their baseline. Prioritize rest, warm meals, hydration, and gentle movement.'
@@ -22,7 +22,7 @@ export const PHASES = {
     shortName: 'Follicular',
     color: '#845EC2',
     bgGradient: 'linear-gradient(135deg, #845EC2, #D65DB1)',
-    icon: '🌱',
+    icon: 'sprout',
     energy: 'Rising & Creative',
     tagline: 'Energy, motivation, and focus are rising.',
     description: 'Estrogen rises steadily as a follicle matures. Many people feel comfortable ramping up cardio, learning, and creative work.'
@@ -33,7 +33,7 @@ export const PHASES = {
     shortName: 'Ovulation',
     color: '#FF9671',
     bgGradient: 'linear-gradient(135deg, #FF9671, #FFC75F)',
-    icon: '✨',
+    icon: 'sparkles',
     energy: 'Vibrant & Social',
     tagline: 'Estimated peak fertility window and strong vitality.',
     description: 'Estrogen peaks and luteinizing hormone (LH) triggers egg release. Calendar estimates are approximate and not a substitute for contraception.'
@@ -44,7 +44,7 @@ export const PHASES = {
     shortName: 'Luteal',
     color: '#008E9B',
     bgGradient: 'linear-gradient(135deg, #2C73D2, #008E9B)',
-    icon: '🌙',
+    icon: 'moon',
     energy: 'Grounded & Steady',
     tagline: 'Turning inward with steady, mindful pacing.',
     description: 'Progesterone rises and later tapers if pregnancy does not occur. Focus on steady movement, balanced meals, hydration, and sleep.'
@@ -55,7 +55,7 @@ export const PHASES = {
     shortName: 'Late',
     color: '#E07A5F',
     bgGradient: 'linear-gradient(135deg, #E07A5F, #F2CC8F)',
-    icon: '⏳',
+    icon: 'hourglass',
     energy: 'Gentle & Mindful',
     tagline: 'Your period has not been logged yet past your typical cycle length.',
     description: 'Normal cycle variation can come from stress, travel, sleep shifts, or illness. Log your period when it begins, or consider a pregnancy test or speaking with a clinician if unexpectedly delayed.'
@@ -64,6 +64,32 @@ export const PHASES = {
 
 const PERIOD_FLOWS = new Set(['light', 'medium', 'heavy']);
 const BLEEDING_FLOWS = new Set(['spotting', 'light', 'medium', 'heavy']);
+
+export const MIN_PERIOD_LENGTH = 2;
+export const MAX_PERIOD_LENGTH = 10;
+export const DEFAULT_PERIOD_LENGTH = 5;
+
+export const MIN_CYCLE_LENGTH = 20;
+export const MAX_CYCLE_LENGTH = 45;
+export const DEFAULT_CYCLE_LENGTH = 28;
+
+const MIN_HISTORICAL_CYCLE_INTERVAL = 18;
+const MAX_HISTORICAL_CYCLE_INTERVAL = 60;
+const MAX_TRUE_FLOW_GAP_DAYS = 2; // Up to 2 unlogged/bleed-free days inside one period (daysBetween <= 3)
+const MAX_SPOTTING_GAP_DAYS = 1;  // Adjacent/1-day-gap spotting attached to true period flow
+const MIN_COMPLETED_PERIODS_FOR_AVG = 2;
+
+function normalizePeriodLength(val) {
+  const num = Number(val);
+  if (!Number.isFinite(num) || num <= 0) return DEFAULT_PERIOD_LENGTH;
+  return Math.min(MAX_PERIOD_LENGTH, Math.max(MIN_PERIOD_LENGTH, Math.round(num)));
+}
+
+function normalizeCycleLength(val) {
+  const num = Number(val);
+  if (!Number.isFinite(num) || num <= 0) return DEFAULT_CYCLE_LENGTH;
+  return Math.min(MAX_CYCLE_LENGTH, Math.max(MIN_CYCLE_LENGTH, Math.round(num)));
+}
 
 /**
  * Format a Date object as YYYY-MM-DD in local time
@@ -105,7 +131,8 @@ export function daysBetween(date1, date2) {
 
 /**
  * Extract contiguous menstrual period runs from daily logs.
- * Groups flow days separated by <= 2 gap days and excludes isolated spotting-only days.
+ * Groups true flow days separated by <= 2 bleed-free gap days (daysBetween <= 3),
+ * attaches adjacent spotting (<= 1 gap day), and excludes isolated spotting-only runs.
  * Returns array sorted oldest -> newest: [{ startDateKey, endDateKey, length }]
  */
 export function extractPeriodRuns(logs = {}) {
@@ -129,11 +156,16 @@ export function extractPeriodRuns(logs = {}) {
 
   for (let i = 1; i < bleedingKeys.length; i++) {
     const item = bleedingKeys[i];
-    const gap = daysBetween(current.end, item.date);
-    if (gap <= 2) {
+    const gapDays = daysBetween(current.end, item.date) - 1;
+    const isItemTrueFlow = PERIOD_FLOWS.has(item.flow);
+    const maxAllowedGapDays = (current.hasTrueFlow && isItemTrueFlow)
+      ? MAX_TRUE_FLOW_GAP_DAYS
+      : MAX_SPOTTING_GAP_DAYS;
+
+    if (gapDays <= maxAllowedGapDays) {
       current.end = item.date;
       current.endKey = item.key;
-      if (PERIOD_FLOWS.has(item.flow)) current.hasTrueFlow = true;
+      if (isItemTrueFlow) current.hasTrueFlow = true;
     } else {
       if (current.hasTrueFlow) {
         runs.push({
@@ -147,7 +179,7 @@ export function extractPeriodRuns(logs = {}) {
         startKey: item.key,
         end: item.date,
         endKey: item.key,
-        hasTrueFlow: PERIOD_FLOWS.has(item.flow)
+        hasTrueFlow: isItemTrueFlow
       };
     }
   }
@@ -164,15 +196,91 @@ export function extractPeriodRuns(logs = {}) {
 }
 
 /**
- * Compute real historical cycle statistics from logs (falling back to profile settings)
+ * Determine whether an extracted period run has completed relative to referenceDate.
+ * An ongoing period (still within the expected period window or within the gap-merge window)
+ * must not be averaged as if it had already ended.
  */
-export function computeCycleStats(logs = {}, profile = {}) {
+function isPeriodRunCompleted(run, index, runs, referenceDate, expectedPeriodLength) {
+  if (index < runs.length - 1) return true;
+
+  const runStart = parseDateKey(run.startDateKey);
+  const runEnd = parseDateKey(run.endDateKey);
+  const daysSinceStart = daysBetween(runStart, referenceDate);
+  const daysSinceEnd = daysBetween(runEnd, referenceDate);
+
+  if (daysSinceStart < 0) return false;
+  if (daysSinceEnd <= MAX_TRUE_FLOW_GAP_DAYS + 1) return false;
+  if (daysSinceStart < expectedPeriodLength) return false;
+
+  return true;
+}
+
+/**
+ * Resolve the canonical Day 1 start date of the most recent menstrual period.
+ * Prevents mid-period flow logs (Day 2-7) or isolated spotting from shifting
+ * lastPeriodStart away from the true start of the period.
+ */
+export function resolveLastPeriodStart(logs = {}, currentLastPeriodStart = null, runs = null) {
+  const periodRuns = Array.isArray(runs) ? runs : extractPeriodRuns(logs);
+  const validCurrent = typeof currentLastPeriodStart === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(currentLastPeriodStart)
+    ? currentLastPeriodStart
+    : null;
+
+  if (periodRuns.length === 0) {
+    return validCurrent;
+  }
+
+  const latestRun = periodRuns[periodRuns.length - 1];
+  if (!validCurrent) {
+    return latestRun.startDateKey;
+  }
+
+  const currentDate = parseDateKey(validCurrent);
+  const latestStartDate = parseDateKey(latestRun.startDateKey);
+
+  // 1. A newer logged period started after currentLastPeriodStart
+  if (latestStartDate > currentDate) {
+    return latestRun.startDateKey;
+  }
+
+  // 2. currentLastPeriodStart falls inside a logged period run -> snap to that run's true Day 1
+  const containingRun = periodRuns.find(r => {
+    const start = parseDateKey(r.startDateKey);
+    const end = parseDateKey(r.endDateKey);
+    return currentDate >= start && currentDate <= end;
+  });
+  if (containingRun) {
+    return containingRun.startDateKey;
+  }
+
+  // 3. currentLastPeriodStart was erroneously set on an isolated mid-cycle spotting day
+  const currentLog = logs?.[validCurrent];
+  if (currentLog?.flow === 'spotting' && daysBetween(latestStartDate, currentDate) < MIN_HISTORICAL_CYCLE_INTERVAL) {
+    return latestRun.startDateKey;
+  }
+
+  return validCurrent;
+}
+
+/**
+ * Compute real historical cycle statistics from logs (falling back to profile settings).
+ * Single-day period logs (e.g. "Period Started" markers) and still-ongoing periods are
+ * excluded from averagePeriodLength so a period duration is never collapsed to 1 day.
+ */
+export function computeCycleStats(logs = {}, profile = {}, options = {}) {
+  const referenceDate = options.referenceDate
+    ? (typeof options.referenceDate === 'string' ? parseDateKey(options.referenceDate) : new Date(options.referenceDate))
+    : new Date();
+
+  const defaultCycleLength = normalizeCycleLength(profile?.cycleLength);
+  const defaultPeriodLength = normalizePeriodLength(profile?.periodLength);
+
   const runs = extractPeriodRuns(logs);
   const intervals = [];
 
   for (let i = 1; i < runs.length; i++) {
     const diff = daysBetween(parseDateKey(runs[i - 1].startDateKey), parseDateKey(runs[i].startDateKey));
-    if (diff >= 18 && diff <= 60) {
+    if (diff >= MIN_HISTORICAL_CYCLE_INTERVAL && diff <= MAX_HISTORICAL_CYCLE_INTERVAL) {
       intervals.push(diff);
     }
   }
@@ -181,13 +289,19 @@ export function computeCycleStats(logs = {}, profile = {}) {
   const hasHistoricalCycleAvg = recentIntervals.length >= 1;
   const averageCycleLength = hasHistoricalCycleAvg
     ? Math.round(recentIntervals.reduce((a, b) => a + b, 0) / recentIntervals.length)
-    : (profile.cycleLength || 28);
+    : defaultCycleLength;
 
-  const recentPeriodLengths = runs.slice(-6).map(r => r.length).filter(len => len >= 1 && len <= 12);
-  const hasHistoricalPeriodAvg = recentPeriodLengths.length >= 1;
+  // Only completed multi-day runs (2..10 days) count toward historical average period duration
+  const completedMultiDayLengths = runs
+    .filter((r, idx) => isPeriodRunCompleted(r, idx, runs, referenceDate, defaultPeriodLength))
+    .map(r => r.length)
+    .filter(len => len >= MIN_PERIOD_LENGTH && len <= MAX_PERIOD_LENGTH);
+
+  const recentPeriodLengths = completedMultiDayLengths.slice(-6);
+  const hasHistoricalPeriodAvg = recentPeriodLengths.length >= MIN_COMPLETED_PERIODS_FOR_AVG;
   const averagePeriodLength = hasHistoricalPeriodAvg
-    ? Math.round(recentPeriodLengths.reduce((a, b) => a + b, 0) / recentPeriodLengths.length)
-    : (profile.periodLength || 5);
+    ? normalizePeriodLength(recentPeriodLengths.reduce((a, b) => a + b, 0) / recentPeriodLengths.length)
+    : defaultPeriodLength;
 
   let variabilityDays = 0;
   if (recentIntervals.length >= 2) {
@@ -200,6 +314,7 @@ export function computeCycleStats(logs = {}, profile = {}) {
   return {
     runs,
     recordedCyclesCount: recentIntervals.length,
+    recordedPeriodsCount: recentPeriodLengths.length,
     averageCycleLength,
     averagePeriodLength,
     variabilityDays,
@@ -214,27 +329,42 @@ export function computeCycleStats(logs = {}, profile = {}) {
  * Get comprehensive cycle status for a specific target date.
  * Detects late periods instead of modulo-wrapping into a fake Menstrual Phase.
  */
-export function getCycleStatus(targetDate, profile, logs = null, options = {}) {
+export function getCycleStatus(targetDate, profile = {}, logs = null, options = {}) {
   const target = typeof targetDate === 'string' ? parseDateKey(targetDate) : new Date(targetDate);
   const referenceDate = options.referenceDate
     ? (typeof options.referenceDate === 'string' ? parseDateKey(options.referenceDate) : new Date(options.referenceDate))
     : new Date();
 
-  const stats = logs ? computeCycleStats(logs, profile) : null;
-  const cycleLength = stats?.hasHistoricalCycleAvg ? stats.averageCycleLength : (profile.cycleLength || 28);
-  const periodLength = stats?.hasHistoricalPeriodAvg ? stats.averagePeriodLength : (profile.periodLength || 5);
+  const stats = logs ? computeCycleStats(logs, profile, { referenceDate }) : null;
+  const cycleLength = stats?.hasHistoricalCycleAvg
+    ? stats.averageCycleLength
+    : normalizeCycleLength(profile?.cycleLength);
+  const basePeriodLength = stats?.hasHistoricalPeriodAvg
+    ? stats.averagePeriodLength
+    : normalizePeriodLength(profile?.periodLength);
+  const maxSafePeriodLength = Math.max(MIN_PERIOD_LENGTH, cycleLength - 4);
+  const baselinePeriodLength = Math.min(basePeriodLength, maxSafePeriodLength);
 
-  let anchorStr = profile.lastPeriodStart || formatDateKey(referenceDate);
-  if (stats?.latestPeriodStart && parseDateKey(stats.latestPeriodStart) > parseDateKey(anchorStr)) {
-    anchorStr = stats.latestPeriodStart;
-  }
+  const resolvedAnchor = stats
+    ? resolveLastPeriodStart(logs, profile?.lastPeriodStart, stats.runs)
+    : (typeof profile?.lastPeriodStart === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(profile.lastPeriodStart)
+        ? profile.lastPeriodStart
+        : null);
+  const anchorStr = resolvedAnchor || formatDateKey(referenceDate);
   const lastPeriod = typeof anchorStr === 'string' ? parseDateKey(anchorStr) : new Date(anchorStr);
 
   const diffDays = daysBetween(lastPeriod, target);
   const refDiffDays = daysBetween(lastPeriod, referenceDate);
-  const ovulationDay = Math.max(cycleLength - 14, periodLength + 2);
-  const fertileStart = Math.max(ovulationDay - 5, periodLength + 1);
-  const fertileEnd = Math.min(ovulationDay + 1, cycleLength - 1);
+
+  const computeWindows = (pLen) => {
+    const safePeriod = Math.min(Math.max(MIN_PERIOD_LENGTH, pLen), maxSafePeriodLength);
+    const ovulationDay = Math.max(cycleLength - 14, safePeriod + 2);
+    const fertileStart = Math.max(ovulationDay - 5, safePeriod + 1);
+    const fertileEnd = Math.min(ovulationDay + 1, cycleLength - 1);
+    return { periodLength: safePeriod, ovulationDay, fertileStart, fertileEnd };
+  };
+
+  const baseWindows = computeWindows(baselinePeriodLength);
 
   // 1. Date before earliest known cycle history
   const earliestAnchor = stats?.earliestPeriodStart && parseDateKey(stats.earliestPeriodStart) < lastPeriod
@@ -246,9 +376,11 @@ export function getCycleStatus(targetDate, profile, logs = null, options = {}) {
       targetDate: formatDateKey(target),
       cycleDay: null,
       cycleLength,
-      periodLength,
+      periodLength: baseWindows.periodLength,
       phase: PHASES.FOLLICULAR,
-      ovulationDay,
+      ovulationDay: baseWindows.ovulationDay,
+      fertileStart: baseWindows.fertileStart,
+      fertileEnd: baseWindows.fertileEnd,
       isPeriodDay: false,
       isOvulationDay: false,
       isFertileWindow: false,
@@ -260,7 +392,7 @@ export function getCycleStatus(targetDate, profile, logs = null, options = {}) {
       fertilityBadgeClass: 'fertility-low',
       daysUntilNextPeriod: null,
       nextPeriodStart: formatDateKey(addDays(lastPeriod, cycleLength)),
-      nextOvulationDate: formatDateKey(addDays(lastPeriod, ovulationDay - 1)),
+      nextOvulationDate: formatDateKey(addDays(lastPeriod, baseWindows.ovulationDay - 1)),
       progressPercent: 0
     };
   }
@@ -273,9 +405,11 @@ export function getCycleStatus(targetDate, profile, logs = null, options = {}) {
       targetDate: formatDateKey(target),
       cycleDay: diffDays + 1,
       cycleLength,
-      periodLength,
+      periodLength: baseWindows.periodLength,
       phase: PHASES.LATE,
-      ovulationDay,
+      ovulationDay: baseWindows.ovulationDay,
+      fertileStart: baseWindows.fertileStart,
+      fertileEnd: baseWindows.fertileEnd,
       isPeriodDay: false,
       isOvulationDay: false,
       isFertileWindow: false,
@@ -287,7 +421,7 @@ export function getCycleStatus(targetDate, profile, logs = null, options = {}) {
       fertilityBadgeClass: 'fertility-medium',
       daysUntilNextPeriod: 0,
       nextPeriodStart: formatDateKey(addDays(lastPeriod, cycleLength)),
-      nextOvulationDate: formatDateKey(addDays(lastPeriod, ovulationDay - 1)),
+      nextOvulationDate: formatDateKey(addDays(lastPeriod, baseWindows.ovulationDay - 1)),
       progressPercent: 100
     };
   }
@@ -298,46 +432,68 @@ export function getCycleStatus(targetDate, profile, logs = null, options = {}) {
     const matchingRun = [...stats.runs].reverse().find(r => parseDateKey(r.startDateKey) <= target);
     const runStart = matchingRun ? parseDateKey(matchingRun.startDateKey) : earliestAnchor;
     const histDay = daysBetween(runStart, target) + 1;
-    const targetLog = logs?.[targetKey];
-    const loggedBleeding = Boolean(targetLog && BLEEDING_FLOWS.has(targetLog.flow));
+    const inMatchingRun = Boolean(matchingRun && targetKey >= matchingRun.startDateKey && targetKey <= matchingRun.endDateKey);
+    const histPeriodLen = matchingRun && matchingRun.length >= MIN_PERIOD_LENGTH
+      ? matchingRun.length
+      : baselinePeriodLength;
+    const histWindows = computeWindows(histPeriodLen);
+    const isHistPeriodDay = inMatchingRun || histDay <= histWindows.periodLength;
 
     let histPhase = PHASES.LUTEAL;
-    if (loggedBleeding || histDay <= periodLength) histPhase = PHASES.MENSTRUAL;
-    else if (histDay < fertileStart) histPhase = PHASES.FOLLICULAR;
-    else if (histDay <= fertileEnd) histPhase = PHASES.OVULATORY;
+    if (isHistPeriodDay) histPhase = PHASES.MENSTRUAL;
+    else if (histDay < histWindows.fertileStart) histPhase = PHASES.FOLLICULAR;
+    else if (histDay <= histWindows.fertileEnd) histPhase = PHASES.OVULATORY;
 
     return {
       targetDate: targetKey,
       cycleDay: histDay,
       cycleLength,
-      periodLength,
+      periodLength: histWindows.periodLength,
       phase: histPhase,
-      ovulationDay,
-      isPeriodDay: loggedBleeding,
-      isOvulationDay: histDay === ovulationDay,
-      isFertileWindow: histDay >= fertileStart && histDay <= fertileEnd,
+      ovulationDay: histWindows.ovulationDay,
+      fertileStart: histWindows.fertileStart,
+      fertileEnd: histWindows.fertileEnd,
+      isPeriodDay: isHistPeriodDay,
+      isOvulationDay: histDay === histWindows.ovulationDay,
+      isFertileWindow: histDay >= histWindows.fertileStart && histDay <= histWindows.fertileEnd,
       isLate: false,
       daysLate: 0,
       isPredicted: false,
       isBeforeHistory: false,
-      fertilityChance: histDay === ovulationDay ? 'Est. Peak (Ovulation)' : (histDay >= fertileStart && histDay <= fertileEnd ? 'Est. High' : 'Est. Low'),
-      fertilityBadgeClass: histDay === ovulationDay ? 'fertility-peak' : (histDay >= fertileStart && histDay <= fertileEnd ? 'fertility-high' : 'fertility-low'),
+      fertilityChance: histDay === histWindows.ovulationDay
+        ? 'Est. Peak (Ovulation)'
+        : (histDay >= histWindows.fertileStart && histDay <= histWindows.fertileEnd ? 'Est. High' : 'Est. Low'),
+      fertilityBadgeClass: histDay === histWindows.ovulationDay
+        ? 'fertility-peak'
+        : (histDay >= histWindows.fertileStart && histDay <= histWindows.fertileEnd ? 'fertility-high' : 'fertility-low'),
       daysUntilNextPeriod: Math.max(0, cycleLength - histDay + 1),
       nextPeriodStart: formatDateKey(addDays(runStart, cycleLength)),
-      nextOvulationDate: formatDateKey(addDays(runStart, ovulationDay - 1)),
+      nextOvulationDate: formatDateKey(addDays(runStart, histWindows.ovulationDay - 1)),
       progressPercent: Math.min(100, Math.round((histDay / cycleLength) * 100))
     };
   }
 
   // 4. Current cycle or future predicted cycle
+  const isShiftedFromLate = refDiffDays >= cycleLength && daysBetween(referenceDate, target) > 0;
   const isPredicted = diffDays >= cycleLength || daysBetween(referenceDate, target) > 0;
-  const effectiveDiff = refDiffDays >= cycleLength && daysBetween(referenceDate, target) > 0
+  const effectiveDiff = isShiftedFromLate
     ? daysBetween(addDays(referenceDate, 1), target)
     : diffDays;
 
   let cycleDay = (effectiveDiff % cycleLength);
   if (cycleDay < 0) cycleDay = cycleLength + cycleDay;
   cycleDay = cycleDay + 1;
+
+  // In the current cycle, if logged bleeding already extends beyond baselinePeriodLength,
+  // expand the current cycle's menstrual window without mutating historical/future averages.
+  const isCurrentCycle = !isShiftedFromLate && diffDays >= 0 && diffDays < cycleLength;
+  const activeRun = isCurrentCycle && stats?.runs?.length
+    ? stats.runs.find(r => r.startDateKey === anchorStr)
+    : null;
+  const effectivePeriodLength = activeRun
+    ? Math.max(baselinePeriodLength, activeRun.length)
+    : baselinePeriodLength;
+  const { periodLength, ovulationDay, fertileStart, fertileEnd } = computeWindows(effectivePeriodLength);
 
   let phase;
   if (cycleDay <= periodLength) {
@@ -364,8 +520,9 @@ export function getCycleStatus(targetDate, profile, logs = null, options = {}) {
   }
 
   const daysUntilNextPeriod = cycleLength - cycleDay + 1;
-  const cyclesPassed = Math.floor(Math.max(0, diffDays) / cycleLength);
-  const currentCycleStart = addDays(lastPeriod, cyclesPassed * cycleLength);
+  const cycleAnchor = isShiftedFromLate ? addDays(referenceDate, 1) : lastPeriod;
+  const cyclesPassed = Math.floor(Math.max(0, effectiveDiff) / cycleLength);
+  const currentCycleStart = addDays(cycleAnchor, cyclesPassed * cycleLength);
   const nextPeriodStart = addDays(currentCycleStart, cycleLength);
   const nextOvulationDate = addDays(currentCycleStart, ovulationDay - 1);
   const progressPercent = Math.min(100, Math.round((cycleDay / cycleLength) * 100));
@@ -377,6 +534,8 @@ export function getCycleStatus(targetDate, profile, logs = null, options = {}) {
     periodLength,
     phase,
     ovulationDay,
+    fertileStart,
+    fertileEnd,
     isPeriodDay: cycleDay <= periodLength,
     isOvulationDay: cycleDay === ovulationDay,
     isFertileWindow: cycleDay >= fertileStart && cycleDay <= fertileEnd,
@@ -396,7 +555,7 @@ export function getCycleStatus(targetDate, profile, logs = null, options = {}) {
 /**
  * Generate calendar day metadata for a given month
  */
-export function getMonthCycleMap(year, month, profile, logs = {}) {
+export function getMonthCycleMap(year, month, profile, logs = {}, options = {}) {
   const lastDayOfMonth = new Date(year, month + 1, 0);
   const daysInMonth = lastDayOfMonth.getDate();
   const days = [];
@@ -404,7 +563,7 @@ export function getMonthCycleMap(year, month, profile, logs = {}) {
   for (let day = 1; day <= daysInMonth; day++) {
     const dateObj = new Date(year, month, day);
     const dateKey = formatDateKey(dateObj);
-    const status = getCycleStatus(dateObj, profile, logs);
+    const status = getCycleStatus(dateObj, profile, logs, options);
     const userLog = logs[dateKey] || null;
     const hasLoggedFlow = Boolean(userLog?.flow && userLog.flow !== 'none');
 

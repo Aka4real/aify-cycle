@@ -10,6 +10,7 @@ import { getCycleStatus, formatDateKey } from './cycle-engine.js';
 import { analytics } from './analytics-tracker.js';
 import { supabaseService } from './supabase-client.js';
 import { escapeHtml } from './dom-utils.js';
+import { svgIcon } from './icons.js';
 import {
   parseProposedActionsFromText,
   sanitizeModelActions,
@@ -25,24 +26,15 @@ const GREETING_STORAGE_KEY = 'aifycycle_aify_greeting_v1';
 export { evaluateFloatingGreetingSchedule, buildDiscreetGreetingText };
 
 const SUGGESTED_QUESTIONS = [
-  { icon: '🩸', text: 'My period started today' },
-  { icon: '⚡', text: 'I have cramps and bloating today, flow is heavy' },
-  { icon: '🍵', text: 'I prefer chamomile tea and a heating pad for cramps' },
-  { icon: '🔄', text: 'My cycle length is 30 days' },
-  { icon: '🌙', text: 'What phase am I in right now?' },
-  { icon: '🥗', text: 'What should I eat during this phase?' },
-  { icon: '🌿', text: 'Best exercises for my current cycle phase?' },
-  { icon: '😴', text: 'I slept 6 hours and feel exhausted today' }
+  { icon: 'droplet', text: 'My period started today' },
+  { icon: 'activity', text: 'I have cramps and bloating today, flow is heavy' },
+  { icon: 'cup', text: 'I prefer chamomile tea and a heating pad for cramps' },
+  { icon: 'refresh', text: 'My cycle length is 30 days' },
+  { icon: 'moon', text: 'What phase am I in right now?' },
+  { icon: 'utensils', text: 'What should I eat during this phase?' },
+  { icon: 'leaf', text: 'Best exercises for my current cycle phase?' },
+  { icon: 'moon', text: 'I slept 6 hours and feel exhausted today' }
 ];
-
-function formatModelDisplayName(modelId) {
-  if (!modelId || typeof modelId !== 'string') return 'Gemini AI';
-  return modelId
-    .replace(/^models\//i, '')
-    .split('-')
-    .map(part => (part ? part[0].toUpperCase() + part.slice(1) : ''))
-    .join(' ');
-}
 
 export class AICoach {
   constructor() {
@@ -67,7 +59,6 @@ export class AICoach {
     this.renderChatUI();
     this.attachListeners();
     this._updateMemoryCountBadge();
-    this.updateEngineBadge();
     this._scheduleFloatingGreeting();
   }
 
@@ -77,40 +68,18 @@ export class AICoach {
       if (res.ok) {
         const data = await res.json();
         if (data.configured) {
-          return {
-            mode: 'server',
-            model: data.model || 'gemini',
-            label: formatModelDisplayName(data.model),
-            active: true
-          };
+          return { mode: 'server', active: true };
         }
       }
     } catch (e) {
       // Backend unreachable or static offline mode
     }
 
-    return { mode: 'local', model: 'local', label: 'Local Intelligence', active: false };
+    return { mode: 'local', active: false };
   }
 
   async updateEngineBadge() {
-    const badgeEl = document.getElementById('ai-engine-badge');
-    const drawerDotEl = document.getElementById('aify-drawer-engine-dot');
-
-    const status = await this.checkGeminiStatus();
-    if (badgeEl) {
-      if (status.active) {
-        badgeEl.className = 'ai-engine-badge badge-active';
-        badgeEl.innerHTML = `<span class="engine-dot live"></span><span>✨ ${escapeHtml(status.label)}</span>`;
-        badgeEl.title = `Live ${status.label} connected via secure server gateway.`;
-      } else {
-        badgeEl.className = 'ai-engine-badge badge-local';
-        badgeEl.innerHTML = `<span class="engine-dot local"></span><span>🧠 Local Intelligence</span>`;
-        badgeEl.title = 'Running in offline local wellness mode.';
-      }
-    }
-    if (drawerDotEl) {
-      drawerDotEl.className = status.active ? 'engine-dot live' : 'engine-dot local';
-    }
+    // Internal model badges are intentionally not displayed to end users.
   }
 
   /**
@@ -197,7 +166,7 @@ export class AICoach {
           phaseTagline: status.phase.tagline,
           cycleDay,
           cycleLength: status.cycleLength,
-          periodLength: profile.periodLength || 5,
+          periodLength: status.periodLength || profile.periodLength || 5,
           recentSymptoms: [...new Set(recentSymptoms)].join(', '),
           nextPeriodStart: status.nextPeriodStart,
           isLate: Boolean(status.isLate)
@@ -279,7 +248,7 @@ export class AICoach {
     for (const action of actions) {
       if (action.type === 'UPDATE_PERIOD_START') {
         items.push({
-          icon: '🩸',
+          icon: 'droplet',
           title: 'Set Period Start',
           detail: `Cycle Day 1 on ${action.date} (flow: ${action.flow || 'medium'})`
         });
@@ -293,7 +262,7 @@ export class AICoach {
         if (action.notes) parts.push(`Note: "${action.notes.slice(0, 50)}"`);
         if (parts.length > 0) {
           items.push({
-            icon: '📝',
+            icon: 'clipboard',
             title: `Daily Log (${action.date})`,
             detail: parts.join(' • ')
           });
@@ -305,14 +274,14 @@ export class AICoach {
         if (action.userName) parts.push(`Name: ${action.userName}`);
         if (parts.length > 0) {
           items.push({
-            icon: '⚙️',
+            icon: 'sliders',
             title: 'Update Profile Settings',
             detail: parts.join(' • ')
           });
         }
       } else if (action.type === 'LEARN_INSIGHT') {
         items.push({
-          icon: '🧠',
+          icon: 'bookmark',
           title: 'Save Personal Note',
           detail: `"${action.fact}"`
         });
@@ -355,7 +324,7 @@ export class AICoach {
 
         cycleUpdated = true;
         actionSummaries.push({
-          icon: '🩸',
+          icon: 'droplet',
           title: 'Period Recorded',
           detail: `Cycle Day 1 started (${targetDate})`
         });
@@ -383,7 +352,7 @@ export class AICoach {
         storage.saveLog(targetDate, updatedData);
         cycleUpdated = true;
         actionSummaries.push({
-          icon: '📝',
+          icon: 'clipboard',
           title: 'Logged',
           detail: `${targetDate}`
         });
@@ -412,7 +381,7 @@ export class AICoach {
           storage.saveProfile(profile);
           cycleUpdated = true;
           actionSummaries.push({
-            icon: '⚙️',
+            icon: 'sliders',
             title: 'Settings Updated',
             detail: details.join(' • ')
           });
@@ -427,7 +396,7 @@ export class AICoach {
           if (memory) {
             memoriesLearned.push(memory);
             actionSummaries.push({
-              icon: '🧠',
+              icon: 'bookmark',
               title: 'Saved Note',
               detail: `"${memory.fact}"`
             });
@@ -482,7 +451,7 @@ export class AICoach {
     this._saveChatHistory();
     this._updateMemoryCountBadge();
     window.dispatchEvent(new CustomEvent('aify:data-updated', {
-      detail: { actions: [], summaries: [{ icon: '↩️', title: 'Reverted', detail: 'AI log update undone' }], source: 'ai-coach' }
+      detail: { actions: [], summaries: [{ icon: 'rotateCcw', title: 'Reverted', detail: 'AI log update undone' }], source: 'ai-coach' }
     }));
     this._renderMessages();
   }
@@ -617,21 +586,20 @@ export class AICoach {
     const name = profile.userName || 'there';
 
     if (actionCard && actionCard.items && actionCard.items.length > 0) {
-      return `Got it, ${name}! ✨ I drafted the cycle update below based on your message — tap **Save to Log** if everything looks right, or **Dismiss** to skip it.`;
+      return `Got it, ${name}! I drafted the cycle update below based on your message — tap **Save to Log** if everything looks right, or **Dismiss** to skip it.`;
     }
 
     if (status.isLate) {
       return `Hi ${name}! Your period is currently **${status.daysLate} ${status.daysLate === 1 ? 'day' : 'days'} past** your estimated cycle length. Small shifts can happen due to stress, sleep, or travel — let me know when it starts so I can draft a log entry, or consider checking with a clinician if you have concerns.`;
     }
 
-    return `Hello ${name}! ✨ You are currently on **Day ${status.cycleDay} (${status.phase.name})**. ${status.phase.description}\n\nTell me if your period started, share symptoms like cramps or fatigue, or ask any wellness question — I'll always ask before saving changes to your logs.`;
+    return `Hello ${name}! You are currently on **Day ${status.cycleDay} (${status.phase.name})**. ${status.phase.description}\n\nTell me if your period started, share symptoms like cramps or fatigue, or ask any wellness question — I'll always ask before saving changes to your logs.`;
   }
 
   renderChatUI() {
     this._renderMessages();
     this._renderSuggestedQuestions();
     this._updateMemoryCountBadge();
-    this.updateEngineBadge();
   }
 
   _renderMessages() {
@@ -644,13 +612,13 @@ export class AICoach {
     if (this.chatHistory.length === 0) {
       const emptyHtml = `
         <div class="ai-chat-empty">
-          <div class="ai-chat-empty-icon">🌸</div>
+          <div class="ai-chat-empty-icon">${svgIcon('blossom', 36)}</div>
           <h3>Hi! I'm AiFy, your wellness guide</h3>
           <p>Ask cycle questions or tell me about symptoms — I'll draft log updates for you to confirm before saving.</p>
           <div class="ai-chat-quick-hints">
-            <span>✨ "My period started today"</span>
-            <span>⚡ "I have cramps and bloating today"</span>
-            <span>🍵 "I prefer chamomile tea for cramps"</span>
+            <span>"My period started today"</span>
+            <span>"I have cramps and bloating today"</span>
+            <span>"I prefer chamomile tea for cramps"</span>
           </div>
         </div>
       `;
@@ -675,7 +643,7 @@ export class AICoach {
           statusBadge = '<span class="action-live-indicator">Confirm to Save</span>';
           controlsHtml = `
             <div style="display:flex; gap:0.5rem; margin-top:0.6rem;">
-              <button type="button" class="btn-primary btn-apply-actions" data-msg-idx="${idx}" style="padding:0.35rem 0.75rem; font-size:0.78rem;">✓ Save to Log</button>
+              <button type="button" class="btn-primary btn-apply-actions" data-msg-idx="${idx}" style="padding:0.35rem 0.75rem; font-size:0.78rem; display:inline-flex; align-items:center; gap:0.3rem;">${svgIcon('check', 13)} Save to Log</button>
               <button type="button" class="btn-secondary btn-dismiss-actions" data-msg-idx="${idx}" style="padding:0.35rem 0.75rem; font-size:0.78rem;">Dismiss</button>
             </div>
           `;
@@ -684,7 +652,7 @@ export class AICoach {
         } else if (hasUndo) {
           controlsHtml = `
             <div style="margin-top:0.45rem;">
-              <button type="button" class="btn-ghost btn-undo-actions" data-msg-idx="${idx}" style="font-size:0.74rem; padding:0.2rem 0.4rem; text-decoration:underline;">↩ Undo this update</button>
+              <button type="button" class="btn-ghost btn-undo-actions" data-msg-idx="${idx}" style="font-size:0.74rem; padding:0.2rem 0.4rem; text-decoration:underline; display:inline-flex; align-items:center; gap:0.25rem;">${svgIcon('rotateCcw', 12)} Undo this update</button>
             </div>
           `;
         }
@@ -692,14 +660,14 @@ export class AICoach {
         actionCardHtml = `
           <div class="agent-action-card" style="${cardStatus === 'dismissed' ? 'opacity:0.6;' : ''}">
             <div class="action-card-header">
-              <span class="action-card-sparkle">✨</span>
+              <span class="action-card-sparkle">${svgIcon('sparkles', 14)}</span>
               <span class="action-card-title">${cardStatus === 'pending' ? 'Proposed Cycle Update' : 'Cycle Update'}</span>
               ${statusBadge}
             </div>
             <div class="action-card-chips">
               ${msg.actionCard.items.map(item => `
                 <div class="action-chip-item">
-                  <span class="action-chip-icon">${escapeHtml(item.icon || '✨')}</span>
+                  <span class="action-chip-icon">${svgIcon(item.icon || 'sparkles', 14)}</span>
                   <div class="action-chip-text">
                     <strong>${escapeHtml(item.title)}</strong>
                     <span>${escapeHtml(item.detail)}</span>
@@ -715,7 +683,7 @@ export class AICoach {
       return `
         <div class="chat-message ${isUser ? 'chat-message-user' : 'chat-message-ai'}" data-idx="${idx}">
           <div class="chat-bubble ${isUser ? 'bubble-user' : 'bubble-ai'}">
-            ${!isUser ? '<div class="chat-ai-avatar">🌸</div>' : ''}
+            ${!isUser ? `<div class="chat-ai-avatar">${svgIcon('blossom', 16)}</div>` : ''}
             <div class="chat-bubble-content">
               <div class="chat-text">${formattedContent}</div>
               ${actionCardHtml}
@@ -739,7 +707,7 @@ export class AICoach {
     const shuffled = [...SUGGESTED_QUESTIONS].sort(() => Math.random() - 0.5).slice(0, 4);
     const html = shuffled.map(q => `
       <button type="button" class="suggested-question-btn" data-question="${escapeHtml(q.text)}">
-        <span>${q.icon}</span>
+        <span class="suggested-q-icon">${svgIcon(q.icon, 14)}</span>
         <span>${escapeHtml(q.text)}</span>
       </button>
     `).join('');
@@ -819,7 +787,7 @@ export class AICoach {
 
     if (clearBtn) {
       clearBtn.addEventListener('click', () => {
-        if (confirm('Clear all chat history with your AI coach? (Saved personal notes will remain safe)')) {
+        if (confirm('Clear all chat history with your wellness guide? (Saved personal notes will remain safe)')) {
           this.chatHistory = [];
           this._undoSnapshots.clear();
           this._saveChatHistory();
@@ -832,14 +800,6 @@ export class AICoach {
     if (memoryBtn) {
       memoryBtn.addEventListener('click', () => {
         this.openMemoryModal();
-      });
-    }
-
-    const engineBadge = document.getElementById('ai-engine-badge');
-    if (engineBadge) {
-      engineBadge.addEventListener('click', () => {
-        const modal = document.getElementById('modal-ai-architecture');
-        if (modal) modal.classList.add('active');
       });
     }
 
@@ -905,7 +865,7 @@ export class AICoach {
     if (memories.length === 0) {
       container.innerHTML = `
         <div class="memory-empty-state">
-          <span style="font-size: 2rem;">🧠</span>
+          <span class="memory-empty-icon">${svgIcon('bookmark', 28)}</span>
           <p>No saved insights in this category yet. Chat with Aify or add one below!</p>
         </div>
       `;
@@ -913,12 +873,12 @@ export class AICoach {
     }
 
     const categoryIcons = {
-      remedy_preference: '🍵',
-      cycle_pattern: '🌸',
-      lifestyle_habit: '🏃‍♀️',
-      personal_goal: '🎯',
-      sensitivity_trigger: '⚠️',
-      general: '💡'
+      remedy_preference: 'cup',
+      cycle_pattern: 'blossom',
+      lifestyle_habit: 'activity',
+      personal_goal: 'target',
+      sensitivity_trigger: 'alert',
+      general: 'lightbulb'
     };
 
     const categoryLabels = {
@@ -933,7 +893,7 @@ export class AICoach {
     container.innerHTML = memories.map(m => `
       <div class="memory-item" data-id="${escapeHtml(m.id)}">
         <div class="memory-item-left">
-          <span class="memory-item-cat-icon">${categoryIcons[m.category] || '💡'}</span>
+          <span class="memory-item-cat-icon">${svgIcon(categoryIcons[m.category] || 'lightbulb', 16)}</span>
           <div class="memory-item-content">
             <div class="memory-item-badge">${escapeHtml(categoryLabels[m.category] || m.category)}</div>
             <p class="memory-item-fact">${escapeHtml(m.fact)}</p>
@@ -970,7 +930,7 @@ export class AICoach {
       indicator.className = 'chat-message chat-message-ai';
       indicator.innerHTML = `
         <div class="chat-bubble bubble-ai">
-          <div class="chat-ai-avatar">🌸</div>
+          <div class="chat-ai-avatar">${svgIcon('blossom', 16)}</div>
           <div class="chat-bubble-content">
             <div class="typing-dots">
               <span></span><span></span><span></span>

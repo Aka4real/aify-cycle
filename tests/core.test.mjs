@@ -4,9 +4,11 @@ import { createRequire } from 'node:module';
 
 import {
   PHASES,
+  MIN_PERIOD_LENGTH,
   getCycleStatus,
   extractPeriodRuns,
   computeCycleStats,
+  resolveLastPeriodStart,
   getMonthCycleMap
 } from '../js/cycle-engine.js';
 import {
@@ -91,23 +93,191 @@ test('extractPeriodRuns and computeCycleStats learn average cycle length from lo
   assert.equal(runs[1].startDateKey, '2026-09-01');
   assert.equal(runs[2].startDateKey, '2026-10-04');
 
-  const stats = computeCycleStats(logs, { cycleLength: 28, periodLength: 5 });
+  const stats = computeCycleStats(logs, { cycleLength: 28, periodLength: 5 }, { referenceDate: '2026-11-26' });
   assert.equal(stats.hasHistoricalCycleAvg, true);
+  assert.equal(stats.hasHistoricalPeriodAvg, true);
   assert.equal(stats.averageCycleLength, 32); // avg(31, 33)
   assert.equal(stats.averagePeriodLength, 3); // round(avg(3, 4, 3))
+  assert.equal(stats.recordedPeriodsCount, 3);
   assert.equal(stats.variabilityDays, 2);
 });
 
-test('getMonthCycleMap never fabricates flow intensity on unlogged days', () => {
+test('Single-day flow log never collapses period duration to 1 day (ongoing period stays Menstrual through Day 5)', () => {
+  const profile = { cycleLength: 28, periodLength: 5, lastPeriodStart: '2026-11-24' };
+  const logs = {
+    '2026-11-22': { flow: null, moods: ['Radiant', 'Calm', 'Happy'] },
+    '2026-11-24': { flow: 'medium', symptoms: ['Cramps', 'Bloating', 'Headache'] },
+    '2026-11-26': { flow: null, moods: ['Radiant'], symptoms: ['Cramps', 'Headache', 'Bloating'] }
+  };
+
+  const stats = computeCycleStats(logs, profile, { referenceDate: '2026-11-26' });
+  assert.equal(stats.hasHistoricalPeriodAvg, false);
+  assert.equal(stats.averagePeriodLength, 5);
+  assert.equal(stats.averageCycleLength, 28);
+
+  // Day 3 (Nov 26) must still be Menstrual Phase with a 5-day period window, NOT Follicular
+  const day3 = getCycleStatus('2026-11-26', profile, logs, { referenceDate: '2026-11-26' });
+  assert.equal(day3.cycleDay, 3);
+  assert.equal(day3.periodLength, 5);
+  assert.equal(day3.phase.key, PHASES.MENSTRUAL.key);
+  assert.equal(day3.isPeriodDay, true);
+  assert.equal(day3.fertileStart, 9);
+  assert.equal(day3.fertileEnd, 15);
+  assert.equal(day3.ovulationDay, 14);
+  assert.equal(day3.daysUntilNextPeriod, 26);
+
+  // Day 5 is still Menstrual; Day 6 transitions to Follicular
+  const day5 = getCycleStatus('2026-11-28', profile, logs, { referenceDate: '2026-11-26' });
+  assert.equal(day5.cycleDay, 5);
+  assert.equal(day5.phase.key, PHASES.MENSTRUAL.key);
+  assert.equal(day5.isPeriodDay, true);
+
+  const day6 = getCycleStatus('2026-11-29', profile, logs, { referenceDate: '2026-11-26' });
+  assert.equal(day6.cycleDay, 6);
+  assert.equal(day6.phase.key, PHASES.FOLLICULAR.key);
+  assert.equal(day6.isPeriodDay, false);
+});
+
+test('Repeated single-day period-start logs learn cycle length without collapsing period duration to 1 day', () => {
+  const profile = { cycleLength: 28, periodLength: 5, lastPeriodStart: '2026-10-04' };
+  const logs = {
+    '2026-08-01': { flow: 'medium' },
+    '2026-09-01': { flow: 'heavy' },
+    '2026-10-04': { flow: 'medium' }
+  };
+
+  const stats = computeCycleStats(logs, profile, { referenceDate: '2026-11-26' });
+  assert.equal(stats.hasHistoricalCycleAvg, true);
+  assert.equal(stats.averageCycleLength, 32);
+  assert.equal(stats.hasHistoricalPeriodAvg, false);
+  assert.equal(stats.averagePeriodLength, 5);
+  assert.ok(stats.averagePeriodLength >= MIN_PERIOD_LENGTH);
+});
+
+test('In-progress multi-day period does not shrink averagePeriodLength or drag down historical averages', () => {
+  // Case A: First cycle with Day 1 & Day 2 logged, currently on Day 3
+  const profileA = { cycleLength: 28, periodLength: 5, lastPeriodStart: '2026-11-24' };
+  const logsA = {
+    '2026-11-24': { flow: 'medium' },
+    '2026-11-25': { flow: 'heavy' }
+  };
+  const statsA = computeCycleStats(logsA, profileA, { referenceDate: '2026-11-26' });
+  assert.equal(statsA.averagePeriodLength, 5);
+  const day3A = getCycleStatus('2026-11-26', profileA, logsA, { referenceDate: '2026-11-26' });
+  assert.equal(day3A.phase.key, PHASES.MENSTRUAL.key);
+  assert.equal(day3A.periodLength, 5);
+
+  // Case B: Two completed 4-day periods plus an ongoing Day 1 in November -> stays 4d (not dragged to 3d)
+  const logsB = {
+    '2026-09-01': { flow: 'medium' },
+    '2026-09-02': { flow: 'heavy' },
+    '2026-09-03': { flow: 'medium' },
+    '2026-09-04': { flow: 'light' },
+    '2026-10-01': { flow: 'medium' },
+    '2026-10-02': { flow: 'heavy' },
+    '2026-10-03': { flow: 'medium' },
+    '2026-10-04': { flow: 'light' },
+    '2026-11-24': { flow: 'medium' }
+  };
+  const statsB = computeCycleStats(logsB, profileA, { referenceDate: '2026-11-26' });
+  assert.equal(statsB.hasHistoricalPeriodAvg, true);
+  assert.equal(statsB.averagePeriodLength, 4);
+  const day3B = getCycleStatus('2026-11-26', profileA, logsB, { referenceDate: '2026-11-26' });
+  assert.equal(day3B.phase.key, PHASES.MENSTRUAL.key);
+  assert.equal(day3B.periodLength, 4);
+});
+
+test('Active bleeding longer than typical periodLength extends current menstrual window without mutating future predictions', () => {
+  const profile = { cycleLength: 28, periodLength: 5, lastPeriodStart: '2026-11-24' };
+  const logs = {
+    '2026-11-24': { flow: 'light' },
+    '2026-11-25': { flow: 'heavy' },
+    '2026-11-26': { flow: 'heavy' },
+    '2026-11-27': { flow: 'medium' },
+    '2026-11-28': { flow: 'light' },
+    '2026-11-29': { flow: 'light' } // Day 6 bleeding
+  };
+
+  const day6 = getCycleStatus('2026-11-29', profile, logs, { referenceDate: '2026-11-29' });
+  assert.equal(day6.cycleDay, 6);
+  assert.equal(day6.periodLength, 6);
+  assert.equal(day6.phase.key, PHASES.MENSTRUAL.key);
+  assert.equal(day6.isPeriodDay, true);
+
+  // Next predicted cycle (Dec 22) still uses baseline 5-day duration
+  const nextCycleDay1 = getCycleStatus('2026-12-22', profile, logs, { referenceDate: '2026-11-29' });
+  assert.equal(nextCycleDay1.cycleDay, 1);
+  assert.equal(nextCycleDay1.periodLength, 5);
+  assert.equal(nextCycleDay1.isPredicted, true);
+});
+
+test('extractPeriodRuns groups true flow days separated by up to 2 unlogged gap days and excludes isolated spotting', () => {
+  const logs = {
+    '2026-11-24': { flow: 'medium' },
+    // Nov 25 and Nov 26 unlogged (2 gap days)
+    '2026-11-27': { flow: 'light' },
+    // Mid-cycle spotting 10 days later
+    '2026-12-07': { flow: 'spotting' }
+  };
+
+  const runs = extractPeriodRuns(logs);
+  assert.equal(runs.length, 1);
+  assert.equal(runs[0].startDateKey, '2026-11-24');
+  assert.equal(runs[0].endDateKey, '2026-11-27');
+  assert.equal(runs[0].length, 4);
+});
+
+test('resolveLastPeriodStart prevents Day 2-5 flow logs or mid-cycle spotting from shifting Day 1 and heals corrupted profiles', () => {
+  const logs = {
+    '2026-11-24': { flow: 'medium' },
+    '2026-11-25': { flow: 'heavy' },
+    '2026-11-26': { flow: 'medium' },
+    '2026-12-07': { flow: 'spotting' }
+  };
+
+  // Normal Day 1 stays Day 1
+  assert.equal(resolveLastPeriodStart(logs, '2026-11-24'), '2026-11-24');
+  // Corrupted mid-period Day 3 snaps back to Day 1
+  assert.equal(resolveLastPeriodStart(logs, '2026-11-26'), '2026-11-24');
+  // Corrupted mid-cycle spotting date recovers Day 1
+  assert.equal(resolveLastPeriodStart(logs, '2026-12-07'), '2026-11-24');
+
+  // getCycleStatus also self-heals a profile whose lastPeriodStart was wrongly saved as Day 3
+  const corruptedProfile = { cycleLength: 28, periodLength: 5, lastPeriodStart: '2026-11-26' };
+  const status = getCycleStatus('2026-11-26', corruptedProfile, logs, { referenceDate: '2026-11-26' });
+  assert.equal(status.cycleDay, 3);
+  assert.equal(status.phase.key, PHASES.MENSTRUAL.key);
+});
+
+test('Profile periodLength is sanitized (never allows 1 day or string concatenation bugs)', () => {
+  const statusOne = getCycleStatus('2026-11-02', { cycleLength: 28, periodLength: 1, lastPeriodStart: '2026-11-01' }, null, { referenceDate: '2026-11-02' });
+  assert.equal(statusOne.periodLength, 2);
+  assert.equal(statusOne.phase.key, PHASES.MENSTRUAL.key);
+
+  const statusString = getCycleStatus('2026-11-03', { cycleLength: '28', periodLength: '5', lastPeriodStart: '2026-11-01' }, null, { referenceDate: '2026-11-03' });
+  assert.equal(statusString.periodLength, 5);
+  assert.equal(statusString.ovulationDay, 14);
+  assert.equal(statusString.phase.key, PHASES.MENSTRUAL.key);
+});
+
+test('getMonthCycleMap never fabricates flow intensity on unlogged days while preserving multi-day period status', () => {
   const profile = { cycleLength: 28, periodLength: 5, lastPeriodStart: '2026-11-01' };
-  const days = getMonthCycleMap(2026, 10, profile, { '2026-11-01': { flow: 'heavy' } });
+  const days = getMonthCycleMap(2026, 10, profile, { '2026-11-01': { flow: 'heavy' } }, { referenceDate: '2026-11-03' });
   const nov1 = days.find(d => d.dateKey === '2026-11-01');
   const nov2 = days.find(d => d.dateKey === '2026-11-02');
+  const nov5 = days.find(d => d.dateKey === '2026-11-05');
+  const nov6 = days.find(d => d.dateKey === '2026-11-06');
 
   assert.equal(nov1.flow, 'heavy');
   assert.equal(nov1.hasLoggedFlow, true);
   assert.equal(nov2.flow, null);
   assert.equal(nov2.hasLoggedFlow, false);
+  assert.equal(nov2.status.periodLength, 5);
+  assert.equal(nov2.status.phase.key, PHASES.MENSTRUAL.key);
+  assert.equal(nov2.status.isPeriodDay, true);
+  assert.equal(nov5.status.phase.key, PHASES.MENSTRUAL.key);
+  assert.equal(nov5.isPredictedPeriod, true);
+  assert.equal(nov6.status.phase.key, PHASES.FOLLICULAR.key);
 });
 
 // --- 2. AI Action Parser Safety Tests ---
@@ -279,21 +449,54 @@ test('HTML structure integrity: modal-terms-service closes properly, viewport-fi
   assert.match(html, /class="timeline-legend-item"/);
 
   const termsStart = html.indexOf('id="modal-terms-service"');
-  const aiArchStart = html.indexOf('id="modal-ai-architecture"');
   const consentStart = html.indexOf('id="privacy-consent-banner"');
-  assert.ok(termsStart !== -1 && aiArchStart !== -1 && consentStart !== -1);
-  assert.ok(termsStart < aiArchStart && aiArchStart < consentStart);
+  assert.ok(termsStart !== -1 && consentStart !== -1);
+  assert.ok(termsStart < consentStart);
 
   const termsDivStart = html.lastIndexOf('<div', termsStart);
-  const aiArchDivStart = html.lastIndexOf('<div', aiArchStart);
   const consentDivStart = html.lastIndexOf('<div', consentStart);
-  assert.ok(termsDivStart < aiArchDivStart && aiArchDivStart < consentDivStart);
+  assert.ok(termsDivStart < consentDivStart);
 
-  // Verify #modal-terms-service has balanced <div>...</div> tags before #modal-ai-architecture
-  const termsSlice = html.slice(termsDivStart, aiArchDivStart);
+  // Verify #modal-terms-service has balanced <div>...</div> tags before #privacy-consent-banner
+  const termsSlice = html.slice(termsDivStart, consentDivStart);
   const opens = (termsSlice.match(/<div\b/g) || []).length;
   const closes = (termsSlice.match(/<\/div>/g) || []).length;
   assert.equal(opens, closes, `#modal-terms-service div balance mismatch: ${opens} opens vs ${closes} closes`);
+});
+
+test('Restricted developer/admin UI, Gemini/Synced green badges, and UI emojis are removed', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const root = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
+  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+
+  // Restricted settings / developer controls removed
+  assert.doesNotMatch(html, /setting-supabase-section|setting-supabase-url|setting-supabase-anonkey|btn-toggle-custom-supabase/i);
+  assert.doesNotMatch(html, /Configure Custom Credentials|Supabase Cloud Sync/i);
+  assert.doesNotMatch(html, /btn-export-data|Export Backup \(JSON\)/i);
+  assert.doesNotMatch(html, /btn-gdpr-wipe|Delete All My Data/i);
+  assert.doesNotMatch(html, /btn-reset-data|Reset Demo Data/i);
+  assert.doesNotMatch(html, /btn-export-telemetry|Data Privacy &amp; Usage Telemetry/i);
+
+  // Green Gemini active badges & Cycle Compass green Synced badge removed
+  assert.doesNotMatch(html, /ai-settings-status|ai-engine-badge|live-synced-pill|pulse-emerald/i);
+  assert.doesNotMatch(html, /Gemini\s*3\.\d+/i);
+
+  // No platform emojis across user-facing UI files
+  const emojiRe = /\p{Extended_Pictographic}/u;
+  const uiFiles = [
+    'index.html',
+    'js/cycle-engine.js',
+    'js/ui-components.js',
+    'js/app.js',
+    'js/ai-coach.js',
+    'js/onboarding.js',
+    'js/ai-action-parser.js'
+  ];
+  for (const rel of uiFiles) {
+    const content = fs.readFileSync(path.join(root, rel), 'utf8');
+    assert.equal(emojiRe.test(content), false, `Unexpected emoji found in ${rel}`);
+  }
 });
 
 test('CSS GPU compositor safety: no backdrop-filter, blur filter, r: keyframe, view-panel forwards, or undefined vars', () => {

@@ -6347,3 +6347,226 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* =========================================================================
+   CRISP INLINE SVG ICON ALIGNMENT & SEMANTIC TINTS
+   ========================================================================= */
+.ui-icon {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.brand-icon {
+  color: #ffffff;
+}
+
+.auth-brand-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-rose);
+}
+
+.auth-input-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.banner-provider-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-rose);
+}
+
+.streak-flame {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-coral);
+}
+
+.timeline-icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-rose);
+}
+
+.dial-badge-gem {
+  color: var(--color-rose);
+}
+
+.dial-phase-title {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.32rem;
+}
+
+.btn-dial-reset {
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+}
+
+.wheel-legend-pill .legend-pip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.wheel-legend-pill.pill-menstrual .legend-pip {
+  color: #E53864;
+}
+
+.wheel-legend-pill.pill-follicular .legend-pip {
+  color: #845EC2;
+}
+
+.wheel-legend-pill.pill-ovulatory .legend-pip {
+  color: #E08A00;
+}
+
+.wheel-legend-pill.pill-luteal .legend-pip {
+  color: #2C73D2;
+}
+
+.dial-footer-stats .stat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  margin-bottom: 0.35rem;
+}
+
+.dial-footer-stats .stat-icon-countdown {
+  background: rgba(224, 108, 130, 0.12);
+  color: var(--color-rose);
+}
+
+.dial-footer-stats .stat-icon-calendar {
+  background: rgba(153, 127, 180, 0.14);
+  color: var(--color-purple);
+}
+
+.dial-footer-stats .stat-icon-ovulation {
+  background: rgba(214, 175, 85, 0.16);
+  color: #C98A12;
+}
+
+.vitals-emoji-badge {
+  color: var(--color-rose);
+}
+
+.vitals-icon-water {
+  background: rgba(106, 158, 189, 0.14);
+  color: var(--color-blue);
+}
+
+.vitals-icon-sleep {
+  background: rgba(153, 127, 180, 0.14);
+  color: var(--color-purple);
+}
+
+.vitals-icon-energy {
+  background: rgba(214, 175, 85, 0.16);
+  color: #C98A12;
+}
+
+.vitals-icon-hormone {
+  background: rgba(221, 142, 112, 0.16);
+  color: var(--color-coral);
+}
+
+.vitals-icon-coach {
+  background: rgba(224, 108, 130, 0.14);
+  color: var(--color-rose);
+}
+
+.apple-ai-icon-badge {
+  color: #ffffff;
+}
+
+.indicator-badge .badge-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#sync-phase-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.sync-item-bullet {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-teal);
+  margin-top: 0.15rem;
+}
+
+.scientific-pill-icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-rose);
+  vertical-align: middle;
+}
+
+.toast {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.toast-icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-rose);
+}
+
+.ai-coach-avatar,
+.chat-ai-avatar,
+.ai-chat-empty-icon,
+.aify-orb-icon,
+.aify-greeting-avatar,
+.aify-drawer-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-chat-empty-icon,
+.memory-empty-icon,
+.onboarding-hero-icon,
+.onboarding-section-icon,
+.confetti-emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-rose);
+}
+
+.suggested-q-icon,
+.action-card-sparkle,
+.action-chip-icon,
+.memory-item-cat-icon,
+.consent-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-rose);
+}
+
+.feature-icon,
+.ai-feature-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-rose);
+}
+

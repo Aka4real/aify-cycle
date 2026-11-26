@@ -627,7 +627,7 @@ export class StorageService {
       }
 
       const hasAnyCloudData = hasCloudProfile || (logRows?.length || 0) > 0;
-      console.info('✨ AifyCycle: Supabase cloud data synchronized.');
+      console.info('AifyCycle: Cloud data synchronized.');
       return {
         success: true,
         hasCloudProfile: hasAnyCloudData,

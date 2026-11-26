@@ -6,6 +6,7 @@
 import { storage } from './storage.js';
 import { formatDateKey } from './cycle-engine.js';
 import { escapeHtml } from './dom-utils.js';
+import { svgIcon } from './icons.js';
 
 const ONBOARDING_STEPS = [
   {
@@ -34,13 +35,13 @@ const ONBOARDING_STEPS = [
   },
   {
     id: 'ai-coach',
-    title: 'Meet Your AI Coach',
-    subtitle: 'Powered by Google Gemini',
+    title: 'Meet Your Wellness Guide',
+    subtitle: 'Personalized cycle & holistic support',
     skippable: true
   },
   {
     id: 'complete',
-    title: 'You\'re All Set! 🎉',
+    title: 'You\'re All Set',
     subtitle: 'Your personalized tracker is ready',
     skippable: false
   }
@@ -115,7 +116,7 @@ export class OnboardingWizard {
 
     if (nextBtn) {
       if (this.currentStep === this.totalSteps - 1) {
-        nextBtn.innerHTML = '<span>Start Tracking</span><span>🚀</span>';
+        nextBtn.innerHTML = '<span>Start Tracking</span><span>→</span>';
       } else {
         nextBtn.innerHTML = '<span>Continue</span><span>→</span>';
       }
@@ -205,26 +206,26 @@ export class OnboardingWizard {
       case 'welcome':
         return `
           <div class="onboarding-welcome">
-            <div class="onboarding-hero-icon">🌸</div>
+            <div class="onboarding-hero-icon">${svgIcon('blossom', 44)}</div>
             <h2 class="onboarding-hero-title">Welcome to Aify Cycle</h2>
             <p class="onboarding-hero-subtitle">
-              Your intelligent, beautiful companion for period tracking, cycle syncing, and holistic wellness — powered by AI.
+              Your intelligent, private companion for period tracking, cycle syncing, and holistic wellness.
             </p>
             <div class="onboarding-features-grid">
               <div class="onboarding-feature-card">
-                <span class="feature-icon">🔄</span>
+                <span class="feature-icon">${svgIcon('refresh', 20)}</span>
                 <span class="feature-text">Smart Cycle Predictions</span>
               </div>
               <div class="onboarding-feature-card">
-                <span class="feature-icon">🤖</span>
-                <span class="feature-text">AI Health Coach</span>
+                <span class="feature-icon">${svgIcon('message', 20)}</span>
+                <span class="feature-text">Wellness Guide</span>
               </div>
               <div class="onboarding-feature-card">
-                <span class="feature-icon">🥗</span>
+                <span class="feature-icon">${svgIcon('leaf', 20)}</span>
                 <span class="feature-text">Cycle Syncing Guide</span>
               </div>
               <div class="onboarding-feature-card">
-                <span class="feature-icon">📊</span>
+                <span class="feature-icon">${svgIcon('barChart', 20)}</span>
                 <span class="feature-text">Health Insights</span>
               </div>
             </div>
@@ -238,7 +239,7 @@ export class OnboardingWizard {
       case 'cycle-basics':
         return `
           <div class="onboarding-cycle-basics">
-            <div class="onboarding-section-icon">📅</div>
+            <div class="onboarding-section-icon">${svgIcon('calendar', 32)}</div>
             <h3>Tell us about your cycle</h3>
             <p class="onboarding-help-text">Don't worry — you can always adjust these later in settings.</p>
 
@@ -265,7 +266,7 @@ export class OnboardingWizard {
       case 'last-period':
         return `
           <div class="onboarding-last-period">
-            <div class="onboarding-section-icon">🩸</div>
+            <div class="onboarding-section-icon">${svgIcon('droplet', 32)}</div>
             <h3>When did your last period start?</h3>
             <p class="onboarding-help-text">This helps us predict your upcoming cycles accurately.</p>
 
@@ -274,7 +275,7 @@ export class OnboardingWizard {
             </div>
 
             <div class="onboarding-info-box">
-              <span>💡</span>
+              <span>${svgIcon('info', 18)}</span>
               <p>If you're not sure, pick your best estimate. The app learns and improves over time.</p>
             </div>
           </div>
@@ -282,30 +283,30 @@ export class OnboardingWizard {
 
       case 'symptoms':
         const symptoms = [
-          { value: 'Cramps', icon: '⚡', label: 'Cramps' },
-          { value: 'Headache', icon: '💆', label: 'Headaches' },
-          { value: 'Bloating', icon: '🎈', label: 'Bloating' },
-          { value: 'Tender Breasts', icon: '🌸', label: 'Breast Tenderness' },
-          { value: 'Acne', icon: '✨', label: 'Acne' },
-          { value: 'Fatigue', icon: '😴', label: 'Fatigue' },
-          { value: 'Mood Swings', icon: '🎭', label: 'Mood Swings' },
-          { value: 'Back Pain', icon: '🦴', label: 'Back Pain' },
-          { value: 'Cravings', icon: '🍫', label: 'Food Cravings' },
-          { value: 'Insomnia', icon: '🌙', label: 'Sleep Issues' },
-          { value: 'Anxiety', icon: '🌪️', label: 'Anxiety' },
-          { value: 'Nausea', icon: '🍃', label: 'Nausea' }
+          { value: 'Cramps', label: 'Cramps' },
+          { value: 'Headache', label: 'Headaches' },
+          { value: 'Bloating', label: 'Bloating' },
+          { value: 'Tender Breasts', label: 'Breast Tenderness' },
+          { value: 'Acne', label: 'Acne' },
+          { value: 'Fatigue', label: 'Fatigue' },
+          { value: 'Mood Swings', label: 'Mood Swings' },
+          { value: 'Back Pain', label: 'Back Pain' },
+          { value: 'Cravings', label: 'Food Cravings' },
+          { value: 'Insomnia', label: 'Sleep Issues' },
+          { value: 'Anxiety', label: 'Anxiety' },
+          { value: 'Nausea', label: 'Nausea' }
         ];
 
         const chipsHtml = symptoms.map(s => {
           const isActive = this.data.trackedSymptoms.includes(s.value);
           return `<button type="button" class="ob-symptom-chip ${isActive ? 'active' : ''}" data-value="${s.value}">
-            <span>${s.icon}</span> <span>${s.label}</span>
+            <span>${s.label}</span>
           </button>`;
         }).join('');
 
         return `
           <div class="onboarding-symptoms">
-            <div class="onboarding-section-icon">📝</div>
+            <div class="onboarding-section-icon">${svgIcon('clipboard', 32)}</div>
             <h3>What do you want to track?</h3>
             <p class="onboarding-help-text">Select the symptoms you commonly experience. Tap to select/deselect.</p>
 
@@ -319,37 +320,37 @@ export class OnboardingWizard {
         return `
           <div class="onboarding-ai-coach">
             <div class="onboarding-ai-avatar">
-              <span class="ai-avatar-glow">🤖</span>
+              <span class="ai-avatar-glow">${svgIcon('sparkles', 32)}</span>
             </div>
-            <h3>Meet Your AI Health Coach</h3>
+            <h3>Meet Your Wellness Guide</h3>
             <p class="onboarding-help-text">
-              Powered by <strong>Google Gemini</strong>, your personal AI advisor is ready to help with:
+              Your personal AI companion is ready to help with:
             </p>
 
             <div class="onboarding-ai-features">
               <div class="ai-feature-row">
-                <span class="ai-feature-icon">💬</span>
+                <span class="ai-feature-icon">${svgIcon('message', 18)}</span>
                 <div>
-                  <strong>Period & Cycle Q&A</strong>
+                  <strong>Period &amp; Cycle Q&amp;A</strong>
                   <p>Ask anything about your cycle, phases, and symptoms</p>
                 </div>
               </div>
               <div class="ai-feature-row">
-                <span class="ai-feature-icon">🥗</span>
+                <span class="ai-feature-icon">${svgIcon('utensils', 18)}</span>
                 <div>
-                  <strong>Nutrition & Fitness Tips</strong>
+                  <strong>Nutrition &amp; Fitness Tips</strong>
                   <p>Phase-specific diet and workout recommendations</p>
                 </div>
               </div>
               <div class="ai-feature-row">
-                <span class="ai-feature-icon">💊</span>
+                <span class="ai-feature-icon">${svgIcon('pill', 18)}</span>
                 <div>
                   <strong>Symptom Guidance</strong>
                   <p>Understand your symptoms and when to seek help</p>
                 </div>
               </div>
               <div class="ai-feature-row">
-                <span class="ai-feature-icon">🧘</span>
+                <span class="ai-feature-icon">${svgIcon('heart', 18)}</span>
                 <div>
                   <strong>Wellness Support</strong>
                   <p>Emotional wellbeing and self-care advice</p>
@@ -358,8 +359,8 @@ export class OnboardingWizard {
             </div>
 
             <div class="onboarding-info-box" style="margin-top: 1.5rem;">
-              <span>🔒</span>
-              <p>Your conversations are private and stored only on your device.</p>
+              <span>${svgIcon('lock', 18)}</span>
+              <p>Your conversations stay private and secure.</p>
             </div>
           </div>
         `;
@@ -368,9 +369,9 @@ export class OnboardingWizard {
         return `
           <div class="onboarding-complete">
             <div class="onboarding-confetti-wrap">
-              <div class="confetti-emoji">🎉</div>
+              <div class="confetti-emoji">${svgIcon('checkCircle', 44)}</div>
             </div>
-            <h2 class="onboarding-hero-title">You're All Set!</h2>
+            <h2 class="onboarding-hero-title">You're All Set</h2>
             <p class="onboarding-hero-subtitle">
               Your personalized Aify Cycle tracker is configured and ready to go.
             </p>
@@ -378,23 +379,23 @@ export class OnboardingWizard {
             <div class="onboarding-summary-card">
               <h4>Your Settings</h4>
               <div class="summary-row">
-                <span>👤 Name</span>
+                <span>Name</span>
                 <strong>${escapeHtml(this.data.userName || 'Guest')}</strong>
               </div>
               <div class="summary-row">
-                <span>🔄 Cycle Length</span>
+                <span>Cycle Length</span>
                 <strong>${this.data.cycleLength} days</strong>
               </div>
               <div class="summary-row">
-                <span>🩸 Period Duration</span>
+                <span>Period Duration</span>
                 <strong>${this.data.periodLength} days</strong>
               </div>
               <div class="summary-row">
-                <span>📅 Last Period</span>
+                <span>Last Period</span>
                 <strong>${this.data.lastPeriodStart}</strong>
               </div>
               <div class="summary-row">
-                <span>📝 Tracking</span>
+                <span>Tracking</span>
                 <strong>${this.data.trackedSymptoms.length > 0 ? this.data.trackedSymptoms.join(', ') : 'All symptoms'}</strong>
               </div>
             </div>

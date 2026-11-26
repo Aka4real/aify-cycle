@@ -120,7 +120,7 @@ export class AuthManager {
       window.history.replaceState({}, document.title, window.location.pathname);
       const rawMessage = (oauthErrorDesc || `Sign-in failed (${oauthError}).`).trim();
       const friendlyMessage = /unable to exchange external code/i.test(rawMessage)
-        ? 'Google sign-in could not complete the token exchange in Supabase. Verify that your Google OAuth Client Secret in Supabase (Authentication → Providers → Google) matches your Web OAuth client in Google Cloud Console, then try again.'
+        ? 'Google sign-in could not be completed right now. Please try again in a moment or continue as Guest.'
         : rawMessage;
       return { user: null, error: friendlyMessage };
     }
@@ -134,7 +134,7 @@ export class AuthManager {
     if (!client) {
       if (hasCallbackParams) {
         window.history.replaceState({}, document.title, window.location.pathname);
-        return { user: null, error: 'Supabase is not configured on this server, so sign-in could not complete.' };
+        return { user: null, error: 'Sign-in is currently unavailable. Please try again later or continue as Guest.' };
       }
       return { user: this.currentUser, error: null };
     }
@@ -204,7 +204,7 @@ export class AuthManager {
     if (!client) {
       return {
         success: false,
-        errors: ['Cloud accounts require Supabase to be configured. Use "Continue as Guest" for private local-only tracking.']
+        errors: ['Account sign-up is currently unavailable. Use "Continue as Guest" for private on-device tracking.']
       };
     }
 
@@ -272,7 +272,7 @@ export class AuthManager {
     if (!client) {
       return {
         success: false,
-        errors: ['Cloud login requires Supabase to be configured. Use "Continue as Guest" for private local-only tracking.']
+        errors: ['Account sign-in is currently unavailable. Use "Continue as Guest" for private on-device tracking.']
       };
     }
 
@@ -312,7 +312,7 @@ export class AuthManager {
     if (!client) {
       return {
         success: false,
-        error: `Cloud authentication is not configured yet. Set SUPABASE_URL and SUPABASE_ANON_KEY to enable ${providerLabel} sign-in, or continue as Guest.`
+        error: `${providerLabel} sign-in is currently unavailable. Please try again later or continue as Guest.`
       };
     }
 

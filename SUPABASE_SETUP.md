@@ -82,3 +82,19 @@ SUPABASE_ANON_KEY=<your-supabase-anon-key>
 3. Trigger a redeploy.
 
 > **Important:** If you previously saved custom self-hosted Supabase credentials inside the app's **Settings → Supabase Cloud Sync → Configure Custom Credentials**, click **Disconnect / Reset** once so your browser switches to the new server-configured Supabase Cloud URL.
+
+---
+
+## 5. Enable Admin & Telemetry Observatory (`/admin`)
+
+The `/admin` observatory tracks live online presence, accurate last-seen timestamps, user growth, Gemini 5-model cascade health, and PostgreSQL database integrity using server-side Service Role APIs (never exposed to client browsers).
+
+1. Run [`supabase/migrations/20261127_admin_telemetry.sql`](./supabase/migrations/20261127_admin_telemetry.sql) in **Supabase Cloud → SQL Editor** (idempotent).
+2. Configure these **server-side** environment variables in `.env` (local) and **Vercel Dashboard → Settings → Environment Variables**:
+   ```env
+   SUPABASE_SERVICE_ROLE_KEY=<your-supabase-service-role-secret-key>
+   ADMIN_EMAILS=you@example.com
+   ADMIN_SECRET=<strong-random-fallback-secret>
+   ```
+3. Visit `/admin` and sign in with an allowlisted Supabase Admin account (`ADMIN_EMAILS` or `profiles.is_admin = true`) or unlock with `ADMIN_SECRET`.
+

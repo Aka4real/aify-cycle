@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="AifyCycle Ops — Telemetry, Database Integrity, Gemini Model Health, and Live User Presence Admin Console.">
+  <title>AifyCycle Ops • Telemetry &amp; Admin Observatory</title>
+
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+
+  <!-- ===================================================================
+       HYBRID ADMIN AUTH GATE
+       =================================================================== -->
+  <div id="admin-auth-screen" class="adm-auth-screen">
+    <div class="adm-auth-card">
+      <div class="adm-auth-brand">
+        <div class="adm-brand-mark" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/>
+            <path d="M12 3.5c1.8 0 3 1.7 2.2 3.7-.4 1-.9 1.7-2.2 2.3-1.3-.6-1.8-1.3-2.2-2.3C9 5.2 10.2 3.5 12 3.5z"/>
+            <path d="M20.1 9.4c.5 1.7-.7 3.4-2.8 3.2-1.1-.1-1.9-.4-2.9-1.4.2-1.4.7-2.1 1.5-2.8 1.6-1.3 3.6-.7 4.2 1z"/>
+            <path d="M17 18.9c-1.5 1-3.4.4-3.9-1.6-.2-1-.2-1.9.4-3.2 1.4-.2 2.2 0 3.1.6 1.7 1.1 1.9 3.2.4 4.2z"/>
+            <path d="M7 18.9c-1.5-1-1.3-3.1.4-4.2.9-.6 1.7-.8 3.1-.6.6 1.3.6 2.2.4 3.2-.5 2-2.4 2.6-3.9 1.6z"/>
+            <path d="M3.9 9.4c.6-1.7 2.6-2.3 4.2-1 .8.7 1.3 1.4 1.5 2.8-1 1-1.8 1.3-2.9 1.4-2.1.2-3.3-1.5-2.8-3.2z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="adm-auth-title">AifyCycle Ops</div>
+          <div class="adm-auth-subtitle">Telemetry, Integrity &amp; Admin Console</div>
+        </div>
+      </div>
+
+      <div id="admin-auth-msg" class="adm-auth-msg" style="display:none;"></div>
+
+      <div class="adm-auth-tabs" role="tablist">
+        <button type="button" class="adm-auth-tab active" id="tab-auth-supabase" data-auth-mode="supabase" role="tab" aria-selected="true">Admin Account</button>
+        <button type="button" class="adm-auth-tab" id="tab-auth-secret" data-auth-mode="secret" role="tab" aria-selected="false">Secret Key</button>
+      </div>
+
+      <!-- Mode A: Supabase Allowlist Sign-In -->
+      <div id="panel-auth-supabase">
+        <form id="form-admin-supabase">
+          <div class="adm-field">
+            <label for="admin-email" class="adm-label">Admin Email</label>
+            <input type="email" id="admin-email" class="adm-input" placeholder="admin@aifycycle.app" autocomplete="email" required>
+          </div>
+          <div class="adm-field">
+            <label for="admin-password" class="adm-label">Password</label>
+            <input type="password" id="admin-password" class="adm-input" placeholder="Enter your password" autocomplete="current-password" required>
+          </div>
+          <button type="submit" id="btn-admin-sb-login" class="adm-btn adm-btn-primary adm-btn-block">Sign In with Admin Account</button>
+        </form>
+
+        <div class="adm-auth-divider">or</div>
+
+        <button type="button" id="btn-admin-google" class="adm-btn adm-btn-secondary adm-btn-block">
+          <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.2-2.27H12v4.51h6.47a5.53 5.53 0 0 1-2.4 3.63v3h3.88c2.27-2.09 3.54-5.17 3.54-8.87z"/>
+            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3c-1.07.72-2.44 1.15-4.05 1.15-3.12 0-5.76-2.11-6.7-4.94H1.29v3.1A12 12 0 0 0 12 24z"/>
+            <path fill="#FBBC05" d="M5.3 14.3a7.2 7.2 0 0 1 0-4.6V6.6H1.29a12 12 0 0 0 0 10.8l4.01-3.1z"/>
+            <path fill="#EA4335" d="M12 4.75c1.76 0 3.34.61 4.58 1.8l3.44-3.44C17.94 1.19 15.23 0 12 0A12 12 0 0 0 1.29 6.6l4.01 3.1c.94-2.83 3.58-4.95 6.7-4.95z"/>
+          </svg>
+          <span>Continue with Google Admin</span>
+        </button>
+      </div>
+
+      <!-- Mode B: Admin Secret Key -->
+      <div id="panel-auth-secret" style="display:none;">
+        <form id="form-admin-secret">
+          <div class="adm-field">
+            <label for="admin-secret-input" class="adm-label">Server Admin Secret Key</label>
+            <input type="password" id="admin-secret-input" class="adm-input mono" placeholder="Enter ADMIN_SECRET" autocomplete="current-password" required>
+          </div>
+          <button type="submit" id="btn-admin-secret-login" class="adm-btn adm-btn-primary adm-btn-block">Unlock Admin Console</button>
+        </form>
+        <p style="font-size:12px;color:var(--adm-text-muted);margin-top:12px;">
+          Verifies against <code class="mono">ADMIN_SECRET</code> and issues a 12-hour signed HttpOnly session cookie.
+        </p>
+      </div>
+
+      <div class="adm-auth-footer">
+        <a href="/">Back to AifyCycle App</a>
+        <span id="auth-config-hint">Protected Route</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       ADMIN OBSERVATORY SHELL
+       =================================================================== -->
+  <div id="admin-shell" class="adm-shell" style="display:none;">
+    <div id="adm-sidebar-backdrop" class="adm-sidebar-backdrop"></div>
+
+    <!-- Left Navigation Sidebar -->
+    <aside id="adm-sidebar" class="adm-sidebar" aria-label="Admin navigation">
+      <div class="adm-sidebar-header">
+        <div class="adm-brand-mark" style="width:34px;height:34px;border-radius:10px;" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/>
+            <path d="M12 3.5c1.8 0 3 1.7 2.2 3.7-.4 1-.9 1.7-2.2 2.3-1.3-.6-1.8-1.3-2.2-2.3C9 5.2 10.2 3.5 12 3.5z"/>
+            <path d="M20.1 9.4c.5 1.7-.7 3.4-2.8 3.2-1.1-.1-1.9-.4-2.9-1.4.2-1.4.7-2.1 1.5-2.8 1.6-1.3 3.6-.7 4.2 1z"/>
+            <path d="M17 18.9c-1.5 1-3.4.4-3.9-1.6-.2-1-.2-1.9.4-3.2 1.4-.2 2.2 0 3.1.6 1.7 1.1 1.9 3.2.4 4.2z"/>
+            <path d="M7 18.9c-1.5-1-1.3-3.1.4-4.2.9-.6 1.7-.8 3.1-.6.6 1.3.6 2.2.4 3.2-.5 2-2.4 2.6-3.9 1.6z"/>
+            <path d="M3.9 9.4c.6-1.7 2.6-2.3 4.2-1 .8.7 1.3 1.4 1.5 2.8-1 1-1.8 1.3-2.9 1.4-2.1.2-3.3-1.5-2.8-3.2z"/>
+          </svg>
+        </div>
+        <div class="adm-sidebar-brand-text">
+          <span class="adm-sidebar-brand-title">AifyCycle Ops</span>
+          <span class="adm-sidebar-brand-sub">Telemetry Observatory</span>
+        </div>
+      </div>
+
+      <nav class="adm-nav">
+        <div class="adm-nav-section-label">Observability</div>
+        <button type="button" class="adm-nav-item active" data-nav="overview" id="nav-overview">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+          <span>Overview</span>
+          <span class="adm-nav-badge live" id="badge-nav-health">--</span>
+        </button>
+        <button type="button" class="adm-nav-item" data-nav="users" id="nav-users">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span>Users &amp; Presence</span>
+          <span class="adm-nav-badge live" id="badge-nav-online">0</span>
+        </button>
+        <button type="button" class="adm-nav-item" data-nav="telemetry" id="nav-telemetry">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          <span>Telemetry &amp; Insights</span>
+          <span class="adm-nav-badge" id="badge-nav-errors">0</span>
+        </button>
+
+        <div class="adm-nav-section-label">Infrastructure</div>
+        <button type="button" class="adm-nav-item" data-nav="gemini" id="nav-gemini">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/></svg>
+          <span>Gemini AI Models</span>
+          <span class="adm-nav-badge" id="badge-nav-gemini">--</span>
+        </button>
+        <button type="button" class="adm-nav-item" data-nav="integrity" id="nav-integrity">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+          <span>Database Integrity</span>
+          <span class="adm-nav-badge" id="badge-nav-db">--</span>
+        </button>
+        <button type="button" class="adm-nav-item" data-nav="system" id="nav-system">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span>System &amp; Audit</span>
+        </button>
+      </nav>
+
+      <div class="adm-sidebar-footer">
+        <div class="adm-operator-card">
+          <div class="adm-operator-avatar" id="adm-op-avatar">AD</div>
+          <div class="adm-operator-info">
+            <div class="adm-operator-name" id="adm-op-name">Admin</div>
+            <div class="adm-operator-method" id="adm-op-method">Authenticated</div>
+          </div>
+        </div>
+        <div class="adm-sidebar-footer-actions">
+          <a href="/" class="adm-btn adm-btn-secondary adm-btn-sm">Open App</a>
+          <button type="button" id="btn-admin-logout" class="adm-btn adm-btn-secondary adm-btn-sm">Sign Out</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Column -->
+    <div class="adm-main-wrap">
+      <header class="adm-topbar">
+        <div class="adm-topbar-left">
+          <button type="button" id="btn-mobile-menu" class="adm-mobile-menu-btn" aria-label="Toggle sidebar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <div>
+            <h1 id="admin-page-title" class="adm-page-title">Overview</h1>
+            <div class="adm-topbar-meta">
+              <span id="adm-last-updated">Syncing telemetry...</span>
+              <span>&middot;</span>
+              <span>Privacy Mode: Metadata Only</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="adm-topbar-right">
+          <button type="button" id="btn-open-cmd" class="adm-cmd-trigger" title="Command Palette">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <span class="adm-cmd-label">Jump or run...</span>
+            <kbd class="adm-kbd">Ctrl K</kbd>
+          </button>
+
+          <div class="adm-range-group" role="group" aria-label="Time range">
+            <button type="button" class="adm-range-btn" data-range="1h">1H</button>
+            <button type="button" class="adm-range-btn active" data-range="24h">24H</button>
+            <button type="button" class="adm-range-btn" data-range="7d">7D</button>
+            <button type="button" class="adm-range-btn" data-range="30d">30D</button>
+          </div>
+
+          <select id="adm-autorefresh-select" class="adm-select" aria-label="Auto refresh interval">
+            <option value="0">Auto: Off</option>
+            <option value="15000" selected>Live: 15s</option>
+            <option value="30000">Live: 30s</option>
+            <option value="60000">Live: 60s</option>
+          </select>
+
+          <button type="button" id="btn-adm-refresh" class="adm-btn adm-btn-secondary adm-btn-sm" title="Refresh data now">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+            <span>Refresh</span>
+          </button>
+
+          <button type="button" id="btn-adm-theme" class="adm-btn adm-btn-secondary adm-btn-sm" aria-label="Toggle color theme" title="Toggle light/dark theme">
+            <span id="adm-theme-icon"></span>
+          </button>
+        </div>
+      </header>
+
+      <main class="adm-content">
+        <!-- Conditional Setup Guidance Banner -->
+        <div id="adm-setup-banner" class="adm-setup-banner" style="display:none;">
+          <div>
+            <div class="adm-setup-banner-title" id="adm-setup-title">Configuration Notice</div>
+            <div class="adm-setup-banner-body" id="adm-setup-body"></div>
+          </div>
+          <button type="button" id="btn-dismiss-setup" class="adm-btn adm-btn-ghost adm-btn-sm">Dismiss</button>
+        </div>
+
+        <!-- ===============================================================
+             VIEW 1: EXECUTIVE OVERVIEW
+             =============================================================== -->
+        <section id="view-overview" class="adm-view active">
+          <!-- 6 Headline KPI Cards -->
+          <div class="adm-kpi-grid" id="ov-kpi-grid"></div>
+
+          <!-- Primary Charts Row: Online Concurrency + User Growth -->
+          <div class="adm-grid-2">
+            <div class="adm-card">
+              <div class="adm-card-header">
+                <div>
+                  <div class="adm-card-title">Online Users Over Time</div>
+                  <div class="adm-card-sub">Live concurrent registered accounts &amp; guest sessions (2-min online window)</div>
+                </div>
+                <div class="adm-chart-legend">
+                  <span class="adm-legend-item"><span class="adm-legend-swatch" style="background:var(--adm-sage);"></span>Total Online</span>
+                  <span class="adm-legend-item"><span class="adm-legend-swatch" style="background:var(--adm-rose);"></span>Registered</span>
+                  <span class="adm-legend-item"><span class="adm-legend-swatch" style="background:var(--adm-blue);"></span>Guests</span>
+                </div>
+              </div>
+              <div id="chart-online-timeline" class="adm-chart-box"></div>
+            </div>
+
+            <div class="adm-card">
+              <div class="adm-card-header">
+                <div>
+                  <div class="adm-card-title">Users Growth, Signups &amp; Daily Active</div>
+                  <div class="adm-card-sub">Cumulative registered accounts, daily signups bars, and DAU curve</div>
+                </div>
+                <div class="adm-chart-legend">
+                  <span class="adm-legend-item"><span class="adm-legend-swatch" style="background:var(--adm-rose);"></span>Total Users</span>
+                  <span class="adm-legend-item"><span class="adm-legend-swatch" style="background:var(--adm-sage);"></span>New Signups</span>
+                  <span class="adm-legend-item"><span class="adm-legend-swatch" style="background:var(--adm-blue);"></span>DAU</span>
+                </div>
+              </div>
+              <div id="chart-user-growth" class="adm-chart-box"></div>
+            </div>
+          </div>
+
+          <!-- Live Active Strip -->
+          <div class="adm-card">
+            <div class="adm-card-header">
+              <div>
+                <div class="adm-card-title">Currently Active Sessions</div>
+                <div class="adm-card-sub">Real-time presence across registered users and guests &mdash; click any account to inspect</div>
+              </div>
+              <button type="button" class="adm-btn adm-btn-secondary adm-btn-sm" data-goto="users">View Full User Directory</button>
+            </div>
+            <div id="ov-live-strip" class="adm-live-strip"></div>
+          </div>
+
+          <!-- Bottom Trio: System Health Gauge + Auth Providers + Recent Signups / Alerts -->
+          <div class="adm-grid-3">
+            <div class="adm-card">
+              <div class="adm-card-header">
+                <div>
+                  <div class="adm-card-title">System Health &amp; Alerts</div>
+                  <div class="adm-card-sub">Composite score across DB, Gemini, and client runtime</div>
+                </div>
+              </div>
+              <div class="adm-gauge-wrap" style="margin-bottom:16px;">
+                <div id="ov-health-gauge"></div>
+                <div style="min-width:0;">
+                  <div id="ov-health-verdict" style="font-size:15px;font-weight:700;">Evaluating...</div>
+                  <div id="ov-health-sub" style="font-size:12px;color:var(--adm-text-secondary);margin-top:3px;">Checking telemetry pipelines</div>
+                </div>
+              </div>
+              <div id="ov-alerts-list" class="adm-alert-list"></div>
+            </div>
+
+            <div class="adm-card">
+              <div class="adm-card-header">
+                <div>
+                  <div class="adm-card-title">Authentication Providers</div>
+                  <div class="adm-card-sub">Account distribution by identity provider</div>
+                </div>
+              </div>
+              <div id="chart-ov-providers"></div>
+            </div>
+
+            <div class="adm-card">
+              <div class="adm-card-header">
+                <div>
+                  <div class="adm-card-title">Newest Accounts Created</div>
+                  <div class="adm-card-sub">Most recent signups and current presence status</div>
+                </div>
+              </div>
+              <div id="ov-recent-signups"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===============================================================
+             VIEW 2: USERS & LIVE PRESENCE
+             =============================================================== -->
+        <section id="view-users" class="adm-view">
+          <div class="adm-kpi-grid-4" id="users-kpi-grid"></div>
+
+          <div class="adm-grid-2">
+            <div class="adm-card">
+              <div class="adm-card-header">
+                <div>
+                  <div class="adm-card-title">Presence Distribution</div>
+                  <div class="adm-card-sub">Online (&le;2m) vs Idle (2&ndash;5m) vs Offline registered accounts</div>
+                </div>
+              </div>
+              <div id="chart-users-presence"></div>
+            </div>
+
+            <div class="adm-card">
+              <div class="adm-card-header">
+                <div>
+                  <div class="adm-card-title">Live Guest Sessions</div>
+                  <div class="adm-card-sub">Anonymous private-mode sessions active on the platform</div>
+                </div>
+              </div>
+              <div id="users-guest-table-wrap" class="adm-table-wrap"></div>
+            </div>
+          </div>
+
+          <div class="adm-card">
+            <div class="adm-card-header">
+              <div>
+                <div class="adm-card-title">Registered Accounts Directory</div>
+                <div class="adm-card-sub">Accurate Last Seen, live Online badge, creation date, provider &amp; privacy-safe activity counts</div>
+              </div>
+              <div style="display:flex;gap:8px;">
+                <button type="button" id="btn-export-users-csv" class="adm-btn adm-btn-secondary adm-btn-sm">Export CSV</button>
+              </div>
+            </div>
+
+            <div class="adm-toolbar">
+              <div class="adm-search-wrap">
+                <span class="adm-search-icon" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                </span>
+                <input type="search" id="users-search-input" class="adm-search-input" placeholder="Search name, email, or UUID...">
+              </div>
+
+              <div class="adm-filter-chips" id="users-status-chips">
+                <button type="button" class="adm-chip active" data-status="all">All Users</button>
+                <button type="button" class="adm-chip" data-status="online">Online Now</button>
+                <button type="button" class="adm-chip" data-status="active_24h">Active 24h</button>
+                <button type="button" class="adm-chip" data-status="offline">Offline</button>
+                <button type="button" class="adm-chip" data-status="admins">Admins</button>
+              </div>
+
+              <div style="display:flex;gap:8px;align-items:center;">
+                <select id="users-provider-select" class="adm-select" aria-label="Filter by provider">
+                  <option value="all">All Providers</option>
+                  <option value="google">Google</option>
+                  <option value="email">Email</option>
+                  <option value="apple">Apple</option>
+                  <option value="anonymous">Anonymous</option>
+                </select>
+                <select id="users-sort-select" class="adm-select" aria-label="Sort users">
+                  <option value="lastSeen">Sort: Online &amp; Last Seen</option>
+                  <option value="createdAt">Sort: Account Created</option>
+                  <option value="logs">Sort: Cycle Logs Count</option>
+                  <option value="ai">Sort: AI Chats Count</option>
+                  <option value="name">Sort: Name</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="adm-table-wrap">
+              <table class="adm-table" id="users-table">
+                <thead>
+                  <tr>
+                    <th>Account</th>
+                    <th>Status</th>
+                    <th>Last Seen</th>
+                    <th>Active View &amp; Device</th>
+                    <th>Provider</th>
+                    <th>Account Created</th>
+                    <th>Records (Logs / AI / Mem)</th>
+                    <th>Consent</th>
+                  </tr>
+                </thead>
+                <tbody id="users-table-body"></tbody>
+              </table>
+            </div>
+
+            <div class="adm-pagination" id="users-pagination"></div>
+          </div>
+        </section>
+
+        <!-- ===============================================================
+             VIEW 3: GEMINI AI MODELS & HEALTH
+             =============================================================== -->
+        <section id="view-gemini" class="adm-view">
+          <div class="adm-kpi-grid-4" id="gemini-kpi-grid"></div>
+
+          <div class="adm-card">
+            <div class="adm-card-header">
+              <div>
+                <div class="adm-card-title">Gemini 5-Model Failover Cascade Pipeline</div>
+                <div class="adm-card-sub">Live circuit-breaker status, response latencies, and direct upstream health probes</div>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" id="btn-gemini-probe-all" class="adm-btn adm-btn-primary adm-btn-sm">Probe All Models Live</button>
+                <button type="button" id="btn-gemini-reset-all" class="adm-btn adm-btn-secondary adm-btn-sm">Reset All Cooldowns</button>
+              </div>
+            </div>
+            <div id="gemini-models-grid" class="adm-model-grid"></div>
+          </div>
+
+          <div class="adm-grid-main-side">
+            <div class="adm-card">
+              <div class="adm-card-header">
+                <div>
+                  <div class="adm-card-title">AI Gateway Request Volume &amp; Latency</div>
+                  <div class="adm-card-sub">Total calls vs successful responses and average round-trip latency</div>
+                </div>
+                <div class="adm-chart-legend">
+                  <span class="adm-legend-item"><span class="adm-legend-swatch" style="background:var(--adm-rose);"></span>Requests</span>
+                  <span class="adm-legend-item"><span class="adm-legend-swatch" style="background:var(--adm-sage);"></span>Successes</span>
+                  <span class="adm-legend-item"><span class="adm-legend-swatch" style="background:var(--adm-amber);"></span>Failovers</span>
+                </div>
+              </div>
+              <div id="chart-gemini-series" class="adm-chart-box"></div>
+            </div>
+
+            <div class="adm-card">
+              <div class="adm-card-header">
+                <div>
+                  <div class="adm-card-title">Workload &amp; Upstream Error Distribution</div>
+                  <div class="adm-card-sub">Breakdown by task type and HTTP failure codes</div>
+                </div>
+              </div>
+              <div id="gemini-workload-bars" style="margin-bottom:18px;"></div>
+              <div style="font-size:12px;font-weight:700;color:var(--adm-text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Top Upstream Errors</div>
+              <div id="gemini-errors-list"></div>
+            </div>
+          </div>
+
+          <div class="adm-card">
+            <div class="adm-card-header">
+              <div>
+                <div class="adm-card-title">Recent Gemini Gateway Calls</div>
+                <div class="adm-card-sub">Metadata telemetry only &mdash; user prompts and AI answers are never logged here</div>
+              </div>
+              <button type="button" id="btn-export-gemini-csv" class="adm-btn adm-btn-secondary adm-btn-sm">Export Calls CSV</button>
+            </div>
+            <div class="adm-table-wrap">
+              <table class="adm-table">
+                <thead>
+                  <tr>
+                    <th>Timestamp</th>
+                    <th>Task</th>
+                    <th>Requested Model</th>
+                    <th>Served By</th>
+                    <th>HTTP</th>
+                    <th>Latency</th>
+                    <th>Tokens</th>
+                    <th>Outcome</th>
+                  </tr>
+                </thead>
+                <tbody id="gemini-calls-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===============================================================
+             VIEW 4: DATABASE INTEGRITY SUITE
+             =============================================================== -->
+        <section id="view-integrity" class="adm-view">
+          <div class="adm-grid-side-main">
+            <div class="adm-card">
+              <div class="adm-card-header">
+                <div>
+                  <div class="adm-card-title">Database Integrity Score</div>
+                  <div class="adm-card-sub">PostgreSQL health, RLS enforcement &amp; referential verification</div>
+                </div>
+                <button type="button" id="btn-integrity-rescan" class="adm-btn adm-btn-primary adm-btn-sm">Run Integrity Scan</button>
+              </div>
+              <div class="adm-gauge-wrap" style="margin-bottom:18px;">
+                <div id="db-integrity-gauge"></div>
+                <div>
+                  <div id="db-integrity-summary-title" style="font-size:15px;font-weight:700;">Scanning...</div>
+                  <div id="db-integrity-summary-sub" style="font-size:12.5px;color:var(--adm-text-secondary);margin-top:3px;"></div>
+                </div>
+              </div>
+              <div class="adm-kv-grid" id="db-engine-vitals"></div>
+            </div>
+
+            <div class="adm-card">
+              <div class="adm-card-header">
+                <div>
+                  <div class="adm-card-title">Automated Integrity Checks</div>
+                  <div class="adm-card-sub">Live verification of schema, RLS policies, orphans, GDPR RPCs, and anomalies</div>
+                </div>
+                <button type="button" id="btn-export-integrity-json" class="adm-btn adm-btn-secondary adm-btn-sm">Download Audit JSON</button>
+              </div>
+              <div id="db-checks-list" class="adm-check-list"></div>
+            </div>
+          </div>
+
+          <div class="adm-card">
+            <div class="adm-card-header">
+              <div>
+                <div class="adm-card-title">Table-Level Storage, RLS &amp; Bloat Matrix</div>
+                <div class="adm-card-sub">Every public schema table inspected for Row-Level Security, policy count, row volume, and dead tuples</div>
+              </div>
+            </div>
+            <div class="adm-table-wrap">
+              <table class="adm-table">
+                <thead>
+                  <tr>
+                    <th>Table</th>
+                    <th>Group</th>
+                    <th>Live Rows</th>
+                    <th>RLS</th>
+                    <th>Policies</th>
+                    <th>Total Size</th>
+                    <th>Dead Tuples</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="db-tables-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===============================================================
+             VIEW 5: TELEMETRY & PRODUCT INSIGHTS
+             =============================================================== -->
+        <section id="view-telemetry" class="adm-view">
+          <div class="adm-grid-2">
+            <div class="adm-card">
+              <div class="adm-card-header">
+                <div>
+                  <div class="adm-card-title">Retention Cohorts</div>
+                  <div class="adm-card-sub">Registered accounts returning after Day 1, Day 7, and Day 30</div>
+                </div>
+              </div>
+              <div id="tel-cohorts-grid" class="adm-cohort-grid"></div>
+            </div>
+
+            <div class="adm-card">
+              <div class="adm-card-header">
+                <div>
+                  <div class="adm-card-title">Feature Adoption &amp; View Engagement</div>
+                  <div class="adm-card-sub">Aggregated navigation &amp; active view counts across sessions</div>
+                </div>
+              </div>
+              <div id="tel-feature-bars"></div>
+            </div>
+          </div>
+
+          <div class="adm-card">
+            <div class="adm-card-header">
+              <div>
+                <div class="adm-card-title">Hourly Activity Heatmap (UTC)</div>
+                <div class="adm-card-sub">7-day &times; 24-hour intensity map of active sessions and product telemetry</div>
+              </div>
+            </div>
+            <div id="tel-heatmap"></div>
+          </div>
+
+          <div class="adm-grid-2">
+            <div class="adm-card">
+              <div class="adm-card-header">
+                <div>
+                  <div class="adm-card-title">Device Distribution</div>
+                  <div class="adm-card-sub">Desktop vs Mobile vs Tablet session breakdown</div>
+                </div>
+              </div>
+              <div id="tel-devices-donut"></div>
+            </div>
+
+            <div class="adm-card">
+              <div class="adm-card-header">
+                <div>
+                  <div class="adm-card-title">Browsers &amp; Operating Systems</div>
+                  <div class="adm-card-sub">Detected client platforms across telemetry sessions</div>
+                </div>
+              </div>
+              <div id="tel-browsers-bars"></div>
+            </div>
+          </div>
+
+          <div class="adm-card">
+            <div class="adm-card-header">
+              <div>
+                <div class="adm-card-title">Client Error &amp; Crash Feed</div>
+                <div class="adm-card-sub">Sanitized browser runtime exceptions &amp; unhandled promise rejections (PII &amp; tokens stripped)</div>
+              </div>
+              <button type="button" id="btn-export-errors-csv" class="adm-btn adm-btn-secondary adm-btn-sm">Export Errors CSV</button>
+            </div>
+            <div class="adm-table-wrap">
+              <table class="adm-table">
+                <thead>
+                  <tr>
+                    <th>Type</th>
+                    <th>Error Message</th>
+                    <th>View</th>
+                    <th>Device</th>
+                    <th>Count</th>
+                    <th>Last Seen</th>
+                  </tr>
+                </thead>
+                <tbody id="tel-errors-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===============================================================
+             VIEW 6: SYSTEM RUNTIME, SECURITY & AUDIT LOG
+             =============================================================== -->
+        <section id="view-system" class="adm-view">
+          <div class="adm-grid-2">
+            <div class="adm-card">
+              <div class="adm-card-header">
+                <div>
+                  <div class="adm-card-title">Server Runtime Vitals</div>
+                  <div class="adm-card-sub">Live Node.js process metrics, heap usage, and request counters</div>
+                </div>
+              </div>
+              <div class="adm-kv-grid" id="sys-runtime-grid"></div>
+            </div>
+
+            <div class="adm-card">
+              <div class="adm-card-header">
+                <div>
+                  <div class="adm-card-title">Security &amp; Privacy Shield Posture</div>
+                  <div class="adm-card-sub">Active transport, CORS, CSP, rate limiting, and admin auth safeguards</div>
+                </div>
+              </div>
+              <div id="sys-security-list" class="adm-check-list"></div>
+            </div>
+          </div>
+
+          <div class="adm-card">
+            <div class="adm-card-header">
+              <div>
+                <div class="adm-card-title">Data Export Center</div>
+                <div class="adm-card-sub">Download audit-logged operational exports (formula-injection hardened CSV &amp; structured JSON)</div>
+              </div>
+            </div>
+            <div class="adm-export-grid">
+              <div class="adm-export-card">
+                <div>
+                  <div style="font-weight:700;font-size:13.5px;">Users &amp; Presence Directory</div>
+                  <div style="font-size:12px;color:var(--adm-text-secondary);margin-top:3px;">Emails, creation dates, online status, last seen &amp; safe record counts.</div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                  <button type="button" class="adm-btn adm-btn-secondary adm-btn-sm" data-export="users" data-format="csv">CSV</button>
+                  <button type="button" class="adm-btn adm-btn-secondary adm-btn-sm" data-export="users" data-format="json">JSON</button>
+                </div>
+              </div>
+
+              <div class="adm-export-card">
+                <div>
+                  <div style="font-weight:700;font-size:13.5px;">Database Integrity Audit</div>
+                  <div style="font-size:12px;color:var(--adm-text-secondary);margin-top:3px;">All RLS checks, orphan scans, schema checks &amp; table bloat stats.</div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                  <button type="button" class="adm-btn adm-btn-secondary adm-btn-sm" data-export="integrity" data-format="csv">CSV</button>
+                  <button type="button" class="adm-btn adm-btn-secondary adm-btn-sm" data-export="integrity" data-format="json">JSON</button>
+                </div>
+              </div>
+
+              <div class="adm-export-card">
+                <div>
+                  <div style="font-weight:700;font-size:13.5px;">Gemini Model Telemetry</div>
+                  <div style="font-size:12px;color:var(--adm-text-secondary);margin-top:3px;">Model cascade calls, latencies, status codes &amp; token totals.</div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                  <button type="button" class="adm-btn adm-btn-secondary adm-btn-sm" data-export="gemini" data-format="csv">CSV</button>
+                  <button type="button" class="adm-btn adm-btn-secondary adm-btn-sm" data-export="gemini" data-format="json">JSON</button>
+                </div>
+              </div>
+
+              <div class="adm-export-card">
+                <div>
+                  <div style="font-weight:700;font-size:13.5px;">Full Ops Snapshot</div>
+                  <div style="font-size:12px;color:var(--adm-text-secondary);margin-top:3px;">Combined Overview, DB Integrity, Gemini Health &amp; Product Telemetry.</div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                  <button type="button" class="adm-btn adm-btn-primary adm-btn-sm" data-export="full" data-format="json">Download JSON</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="adm-card">
+            <div class="adm-card-header">
+              <div>
+                <div class="adm-card-title">Admin Audit Log</div>
+                <div class="adm-card-sub">Immutable record of admin sign-ins, Gemini live probes, circuit resets, and data exports</div>
+              </div>
+            </div>
+            <div class="adm-table-wrap">
+              <table class="adm-table">
+                <thead>
+                  <tr>
+                    <th>Timestamp</th>
+                    <th>Operator</th>
+                    <th>Action</th>
+                    <th>Target</th>
+                    <th>IP</th>
+                  </tr>
+                </thead>
+                <tbody id="sys-audit-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       USER INSPECTOR SLIDE-OVER DRAWER (PRIVACY-SAFE METADATA ONLY)
+       =================================================================== -->
+  <div id="user-drawer-overlay" class="adm-drawer-overlay" aria-hidden="true">
+    <div class="adm-drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-user-title">
+      <div class="adm-drawer-header">
+        <div>
+          <div id="drawer-user-title" style="font-size:16px;font-weight:700;">Account Inspector</div>
+          <div id="drawer-user-sub" style="font-size:12px;color:var(--adm-text-muted);">Privacy-safe metadata view</div>
+        </div>
+        <button type="button" id="btn-close-drawer" class="adm-btn adm-btn-ghost adm-btn-sm" aria-label="Close drawer">Close</button>
+      </div>
+      <div id="drawer-user-body" class="adm-drawer-body"></div>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       COMMAND PALETTE (Ctrl+K / Cmd+K)
+       =================================================================== -->
+  <div id="cmd-palette-overlay" class="adm-modal-overlay" aria-hidden="true">
+    <div class="adm-cmd-modal" role="dialog" aria-modal="true" aria-label="Command palette">
+      <div class="adm-cmd-input-wrap">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="cmd-palette-input" class="adm-cmd-input" placeholder="Jump to panel, probe Gemini models, scan DB, or export...">
+        <kbd class="adm-kbd">ESC</kbd>
+      </div>
+      <div id="cmd-palette-list" class="adm-cmd-list"></div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Stack -->
+  <div id="adm-toast-stack" class="adm-toast-stack" aria-live="polite"></div>
+
+  <script type="module" src="/js/admin-app.js"></script>
+</body>
+</html>

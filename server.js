@@ -3,6 +3,15 @@ const fs = require('fs');
 const path = require('path');
 const { applyCors, applySecurityHeaders } = require('./lib/http-security');
 const { getGeminiStatus, getConfiguredModel, processGeminiProxyRequest } = require('./lib/gemini');
+const {
+  handleTelemetryHeartbeatRequest,
+  handleAdminAuthRequest,
+  handleAdminOverviewRequest,
+  handleAdminUsersRequest,
+  handleAdminIntegrityRequest,
+  handleAdminGeminiRequest,
+  handleAdminTelemetryRequest
+} = require('./lib/admin-router');
 
 // Safe .env loader (supports Node 20+ built-in loadEnvFile with graceful fallback)
 function loadEnv() {
@@ -69,6 +78,29 @@ const BLOCKED_PREFIXES = ['/supabase/', '/lib/', '/scripts/', '/tests/', '/api/'
 
 async function handleRequest(req, res) {
   const [reqPath] = (req.url || '/').split('?');
+
+  // Dedicated Telemetry & Admin API routes (handle own CORS/credentials/headers)
+  if (reqPath === '/api/telemetry/heartbeat') {
+    return handleTelemetryHeartbeatRequest(req, res);
+  }
+  if (reqPath === '/api/admin/auth') {
+    return handleAdminAuthRequest(req, res);
+  }
+  if (reqPath === '/api/admin/overview') {
+    return handleAdminOverviewRequest(req, res);
+  }
+  if (reqPath === '/api/admin/users') {
+    return handleAdminUsersRequest(req, res);
+  }
+  if (reqPath === '/api/admin/integrity') {
+    return handleAdminIntegrityRequest(req, res);
+  }
+  if (reqPath === '/api/admin/gemini') {
+    return handleAdminGeminiRequest(req, res);
+  }
+  if (reqPath === '/api/admin/telemetry') {
+    return handleAdminTelemetryRequest(req, res);
+  }
 
   applySecurityHeaders(res);
   const cors = applyCors(req, res, 'GET, POST, OPTIONS');
@@ -160,9 +192,12 @@ async function handleRequest(req, res) {
   }
 
   const normalizedReqPath = path.normalize(reqPath).replace(/^(\.\.[\/\\])+/, '');
-  const relativePath = normalizedReqPath === '/' || normalizedReqPath === '' || normalizedReqPath === '\\'
-    ? 'index.html'
-    : normalizedReqPath.replace(/^[\/\\]+/, '');
+  const isAdminRoute = normalizedReqPath === '/admin' || normalizedReqPath.startsWith('/admin/');
+  const relativePath = isAdminRoute
+    ? 'admin.html'
+    : (normalizedReqPath === '/' || normalizedReqPath === '' || normalizedReqPath === '\\'
+      ? 'index.html'
+      : normalizedReqPath.replace(/^[\/\\]+/, ''));
 
   const filePath = path.resolve(PUBLIC_DIR, relativePath);
 

@@ -32,7 +32,15 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!api/|css/|js/|robots\\.txt|favicon.*|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.svg|.*\\.webmanifest|.*\\.ico).*)",
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/(.*)",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/((?!api/|css/|js/|admin\\.html|robots\\.txt|favicon.*|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.svg|.*\\.webmanifest|.*\\.ico).*)",
       "destination": "/index.html"
     }
   ]

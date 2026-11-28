@@ -14,6 +14,9 @@ On **ALL** platforms, configure the following environment variable in the platfo
 | `GEMINI_MODEL` | No (Default: `gemini-3.6-flash`) | Gemini model version | `gemini-3.6-flash` |
 | `SUPABASE_URL` | Optional | Supabase Project URL for cloud backup & sync | `https://xyz.supabase.co` |
 | `SUPABASE_ANON_KEY` | Optional | Supabase Public Anon Key | `eyJhbGciOi...` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Optional (Admin) | Server-only Supabase Service Role key for `/admin` telemetry & DB integrity | `eyJhbGciOi...` |
+| `ADMIN_EMAILS` | Optional (Admin) | Comma-separated allowlisted admin emails for `/admin` | `admin@example.com` |
+| `ADMIN_SECRET` | Optional (Admin) | Fallback admin secret key for `/admin` hybrid auth | `<strong-secret>` |
 | `PORT` | Auto (Default: `3000`) | Listening port | `3000` |
 
 > [!CAUTION]

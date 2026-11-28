@@ -12,6 +12,7 @@ const DIST = path.join(ROOT, 'dist');
 
 const STATIC_FILES = [
   'index.html',
+  'admin.html',
   'robots.txt',
   'site.webmanifest',
   'favicon.ico',

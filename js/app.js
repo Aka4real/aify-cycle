@@ -429,6 +429,13 @@ class AifyCycleApp {
       this.aiCoach._scheduleFloatingGreeting?.();
     }
     this.aiCoach.onTabChanged?.(this.currentView);
+
+    // Start live operational presence heartbeat (45s interval + exit beacon)
+    analytics.startPresenceHeartbeat(() => ({
+      activeView: this.currentView || 'dial',
+      isGuest: Boolean(this.auth.currentUser?.isGuest),
+      provider: this.auth.currentUser?.provider || 'guest'
+    }));
   }
 
   setupTheme() {
@@ -627,6 +634,7 @@ class AifyCycleApp {
   switchTab(tabId) {
     this.currentView = tabId;
     analytics.trackEvent('view', tabId);
+    analytics.sendHeartbeat('online');
 
     // Update tab bar buttons
     document.querySelectorAll('.nav-tab').forEach(tab => {
@@ -1180,6 +1188,8 @@ class AifyCycleApp {
     const btnLogout = document.getElementById('btn-logout');
     if (btnLogout) {
       btnLogout.addEventListener('click', async () => {
+        analytics.sendOfflineBeacon();
+        analytics.stopPresenceHeartbeat();
         await this.auth.logout();
         ui.showToast('Signed out successfully', 'logout');
         this._routeUser();
